@@ -1,0 +1,39 @@
+<scene version='2.0.0'>
+    <default name="spp" value="256"/>
+    <default name="res" value="256"/>
+
+    <integrator type='direct'/>
+
+    <sensor type="perspective" id="sensor">
+        <transform name="to_world">
+            <lookat target="0.0, 0.0, 1.25"
+                    origin="0.0, -12.0, 5.0"
+                    up    ="0.0, 0.0, 1.0"/>
+        </transform>
+        <sampler type="independent">
+            <integer name="sample_count" value="$spp"/>
+        </sampler>
+        <film type="hdrfilm">
+            <rfilter type="box"/>
+            <integer name="width"  value="$res"/>
+            <integer name="height" value="$res"/>
+        </film>
+    </sensor>
+
+    <shape type="ply" id="teapot">
+        <string name="filename" value="meshes/teapot.ply"/>
+        <bsdf type="diffuse">
+            <rgb name="reflectance" value="0.9 0.9 0.0"/>
+        </bsdf>
+    </shape>
+
+    <emitter type="point" id="light1">
+        <point name="position" x="3" y="-10.0" z="6.0"/>
+        <rgb name="intensity" value="100.0"/>
+    </emitter>
+
+    <emitter type="point" id="light2">
+        <point name="position" x="-3" y="-10.0" z="-2.0"/>
+        <rgb name="intensity" value="100.0"/>
+    </emitter>
+</scene>
