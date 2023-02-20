@@ -47,7 +47,7 @@ class TransientPath(TransientRBIntegrator):
                δL: Optional[mi.Spectrum],
                state_in: Optional[mi.Spectrum],
                active: mi.Bool,
-               addTransient,
+               add_transient,
                **kwargs # Absorbs unused arguments
     ) -> Tuple[mi.Spectrum,
                mi.Bool, mi.Spectrum]:
@@ -58,6 +58,11 @@ class TransientPath(TransientRBIntegrator):
 
         # Rendering a primal image? (vs performing forward/reverse-mode AD)
         primal = mode == dr.ADMode.Primal
+
+        # FIXME(diego): temporal hack to debug this code using scalar mode
+        # in the future it would probably be useful to keep scalar mode
+        # but clean it a bit
+        scalar = mi.variant().startswith('scalar')
 
         # Standard BSDF evaluation context for path tracing
         bsdf_ctx = mi.BSDFContext()
@@ -75,7 +80,7 @@ class TransientPath(TransientRBIntegrator):
         distance = mi.Float(0)                        # Distance of the path
 
         # Variables caching information from the previous bounce
-        prev_si         = dr.zero(mi.SurfaceInteraction3f)
+        prev_si         = dr.zeros(mi.SurfaceInteraction3f)
         prev_bsdf_pdf   = mi.Float(1.0)
         prev_bsdf_delta = mi.Bool(True)
 
@@ -89,30 +94,38 @@ class TransientPath(TransientRBIntegrator):
         if self.camera_unwarp:
             si = scene.ray_intersect(mi.Ray3f(ray),
                                     ray_flags=mi.RayFlags.All,
-                                    coherent=mi.Mask(True))
+                                    coherent=mi.Mask(not scalar))
+            if scalar:
+                if si.is_valid():
+                    distance = -si.t
+            else:
+                distance[si.is_valid()] = -si.t
 
-            distance[si.is_valid()] = -si.t
+        if scalar:
+            loop_active = active
+        else:
+            # Record the following loop in its entirety
+            loop = mi.Loop(name="Path Replay Backpropagation (%s)" % mode.name,
+                        state=lambda: (sampler, ray, depth, L, δL, β, η, active,
+                                        prev_si, prev_bsdf_pdf, prev_bsdf_delta,
+                                        distance))
 
+            # Specify the max. number of loop iterations (this can help avoid
+            # costly synchronization when when wavefront-style loops are generated)
+            loop.set_max_iterations(self.max_depth)
 
-        # Record the following loop in its entirety
-        loop = mi.Loop(name="Path Replay Backpropagation (%s)" % mode.name,
-                       state=lambda: (sampler, ray, depth, L, δL, β, η, active,
-                                      prev_si, prev_bsdf_pdf, prev_bsdf_delta,
-                                      distance))
+            loop_active = loop(active)
 
-        # Specify the max. number of loop iterations (this can help avoid
-        # costly synchronization when when wavefront-style loops are generated)
-        loop.set_max_iterations(self.max_depth)
-
-        while loop(active):
+        while loop_active:
             # Compute a surface interaction that tracks derivatives arising
             # from differentiable shape parameters (position, normals, etc.)
             # In primal mode, this is just an ordinary ray tracing operation.
 
             with dr.resume_grad(when=not primal):
                 si = scene.ray_intersect(ray,
-                                         ray_flags=mi.RayFlags.All,
-                                         coherent=dr.eq(depth, 0))
+                                            ray_flags=mi.RayFlags.All,
+                                            coherent=dr.eq(depth, 0))
+
             # Update distance
             distance += dr.select(active, si.t, 0.0) * η
 
@@ -133,7 +146,7 @@ class TransientPath(TransientRBIntegrator):
                 Le = β * mis * ds.emitter.eval(si)
 
             # Add transient contribution
-            addTransient(Le, distance, ray.wavelengths, active)
+            add_transient(Le, distance, ray.wavelengths, active)
 
             # ---------------------- Emitter sampling ----------------------
 
@@ -164,7 +177,7 @@ class TransientPath(TransientRBIntegrator):
                 Lr_dir = β * mis_em * bsdf_value_em * em_weight
 
             # Add contribution direct emitter sampling
-            addTransient(Lr_dir, distance + ds.dist * η, ray.wavelengths, active)
+            add_transient(Lr_dir, distance + ds.dist * η, ray.wavelengths, active)
 
             # ------------------ Detached BSDF sampling -------------------
 
@@ -189,12 +202,12 @@ class TransientPath(TransientRBIntegrator):
             # -------------------- Stopping criterion ---------------------
 
             # Don't run another iteration if the throughput has reached zero
-            β_max = dr.hmax(β)
+            β_max = dr.max(β)
             active_next &= dr.neq(β_max, 0)
 
             # Russian roulette stopping probability (must cancel out ior^2
             # to obtain unitless throughput, enforces a minimum probability)
-            rr_prob = dr.min(β_max * η**2, .95)
+            rr_prob = dr.minimum(β_max * η**2, .95)
 
             # Apply only further along the path since, this introduces variance
             rr_active = depth >= self.rr_depth
@@ -253,6 +266,8 @@ class TransientPath(TransientRBIntegrator):
 
             depth[si.is_valid()] += 1
             active = active_next
+            if scalar:
+                loop_active = active
 
         return (
             L if primal else δL, # Radiance/differential radiance

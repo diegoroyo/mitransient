@@ -14,9 +14,14 @@ def get_module(class_):
 '''
 Define multiple multidimensional arrays
 '''
-ArrayXf = get_module(mi.Float).ArrayXf
-ArrayXu = get_module(mi.Float).ArrayXu
-ArrayXi = get_module(mi.Float).ArrayXi
+if mi.variant().startswith('scalar'):
+    ArrayXf = dr.scalar.ArrayXf
+    ArrayXu = dr.scalar.ArrayXu
+    ArrayXi = dr.scalar.ArrayXi
+else:
+    ArrayXf = get_module(mi.Float).ArrayXf
+    ArrayXu = get_module(mi.Float).ArrayXu
+    ArrayXi = get_module(mi.Float).ArrayXi
 
 def load_filter(name, **kargs):
     '''

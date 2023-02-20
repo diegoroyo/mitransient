@@ -43,7 +43,7 @@ class TransientBlock:
         sizeData = self.m_size + 2 * (self.m_border_size if force else self.m_original_border_size)
         width = self.m_channel_count * np.prod(sizeData)
         shape = tuple(list(sizeData) + [self.m_channel_count])
-        self.m_data = TensorXf(dr.zero(Float, width), shape)
+        self.m_data = TensorXf(dr.zeros(Float, width), shape)
 
     # Configure filter's information
     def configure_filter(self, filter, border=True):
@@ -147,7 +147,7 @@ class TransientBlock:
                     self.m_weights[i] *= factor[0]
 
 
-            idxs = dr.zero(UInt32, len(self.m_filter))
+            idxs = dr.zeros(UInt32, len(self.m_filter))
             while (True):
                 # Gather weigths
                 weigth = Float(1.0)
@@ -160,7 +160,7 @@ class TransientBlock:
                 offset = UInt32(0)
                 enabled = Mask(active)
                 for j in range(len(self.m_filter)-1, -1, -1):
-                    offset += UInt32((idxs[j] + lo[j]) * UInt32(dr.hprod(size[j+1:])))
+                    offset += UInt32((idxs[j] + lo[j]) * UInt32(dr.prod(size[j+1:])))
                     enabled &= (idxs[j] + lo[j]) <= hi[j]
                 offset *= UInt32(self.m_channel_count)
 
@@ -184,7 +184,7 @@ class TransientBlock:
             offset = UInt32(0)
 
             for j in range(len(self.m_size)-1, -1, -1):
-                offset += UInt32(lo[j]) * UInt32(dr.hprod(size[j+1:]))
+                offset += UInt32(lo[j]) * UInt32(dr.prod(size[j+1:]))
 
             offset *= UInt32(self.m_channel_count)
             enabled = active & dr.all((lo >= 0) & (lo < size))
@@ -200,7 +200,7 @@ class TransientBlock:
         if raw:
             return res
 
-        pixel_count = dr.hprod(res.shape[0:-1])
+        pixel_count = dr.prod(res.shape[0:-1])
         ch = res.shape[-1]
         target_ch = ch - 2
 

@@ -1,4 +1,5 @@
 from __future__ import annotations as __annotations__ # Delayed parsing of type annotations
+from typing import Any, Callable, Optional, Union, Tuple
 
 import mitsuba as mi
 import drjit as dr
@@ -20,9 +21,14 @@ def get_module(class_):
 '''
 Define multiple multidimensional arrays
 '''
-ArrayXf = get_module(mi.Float).ArrayXf
-ArrayXu = get_module(mi.Float).ArrayXu
-ArrayXi = get_module(mi.Float).ArrayXi
+if mi.variant().startswith('scalar'):
+    ArrayXf = dr.scalar.ArrayXf
+    ArrayXu = dr.scalar.ArrayXu
+    ArrayXi = dr.scalar.ArrayXi
+else:
+    ArrayXf = get_module(mi.Float).ArrayXf
+    ArrayXu = get_module(mi.Float).ArrayXu
+    ArrayXi = get_module(mi.Float).ArrayXi
 
 def load_filter(name, **kargs):
     '''
@@ -87,6 +93,7 @@ class TransientADIntegrator(mi.CppADIntegrator):
         return []
 
     def to_string(self):
+        # FIXME(diego): dedent
         return f'''
             {type(self).__name__}[
                 max_depth = {self.max_depth},
@@ -94,7 +101,7 @@ class TransientADIntegrator(mi.CppADIntegrator):
                 temporal_bins = {self.temporal_bins},
                 exposure = {self.exposure},
                 initial_time = {self.initial_time},
-                camera_unwarp = {self.camera_warp},
+                camera_unwarp = {self.camera_unwarp},
                 temporal_filter = {self.temporal_filter}
             ]
         '''
@@ -127,11 +134,11 @@ class TransientADIntegrator(mi.CppADIntegrator):
 
         return [sensor.film().rfilter(), sensor.film().rfilter(), time_filter]
 
-    def addTransientFunc(self, pos_, ray_weight_):
+    def add_transient_f(self, pos_, ray_weight_):
         '''
         Return a lambda for saving transient samples
         '''
-        def addTransientData(spec, distance, wavelengths, active, pos, ray_weight):
+        def add_transient_data(spec, distance, wavelengths, active, pos, ray_weight):
             if self.transientBlock == None:
                 return
             else:
@@ -140,7 +147,7 @@ class TransientADIntegrator(mi.CppADIntegrator):
                 mask = (idd >= 0) & (idd < self.temporal_bins)
                 self.transientBlock.put(coords, wavelengths, spec * ray_weight, mi.Float(1.0), active & mask)
 
-        return lambda spec, distance, wavelengths, active: addTransientData(spec, distance, wavelengths, active, pos_, ray_weight_)
+        return lambda spec, distance, wavelengths, active: add_transient_data(spec, distance, wavelengths, active, pos_, ray_weight_)
 
     def render(self: mi.SamplingIntegrator,
                scene: mi.Scene,
@@ -181,7 +188,7 @@ class TransientADIntegrator(mi.CppADIntegrator):
                 state_in=None,
                 reparam=None,
                 active=mi.Bool(True),
-                addTransient=self.addTransientFunc(pos, weight)
+                add_transient=self.add_transient_f(pos, weight)
             )
 
             # Prepare an ImageBlock as specified by the film
@@ -418,7 +425,7 @@ class TransientADIntegrator(mi.CppADIntegrator):
         spp = sampler.sample_count()
 
         # Compute discrete sample position
-        idx = dr.arange(mi.UInt32, dr.hprod(film_size) * spp)
+        idx = dr.arange(mi.UInt32, dr.prod(film_size) * spp)
 
         # Try to avoid a division by an unknown constant if we can help it
         log_spp = dr.log2i(spp)
@@ -430,7 +437,7 @@ class TransientADIntegrator(mi.CppADIntegrator):
         # Compute the position on the image plane
         pos = mi.Vector2i()
         pos.y = idx // film_size[0]
-        pos.x = dr.fnmadd(film_size[0], pos.y, idx)
+        pos.x = dr.fma(film_size[0], pos.y, idx)
 
         if film.sample_border():
             pos -= border_size
@@ -443,7 +450,7 @@ class TransientADIntegrator(mi.CppADIntegrator):
         # Re-scale the position to [0, 1]^2
         scale = dr.rcp(mi.ScalarVector2f(film.crop_size()))
         offset = -mi.ScalarVector2f(film.crop_offset()) * scale
-        pos_adjusted = dr.fmadd(pos_f, scale, offset)
+        pos_adjusted = dr.fma(pos_f, scale, offset)
 
         aperture_sample = mi.Vector2f(0.0)
         if sensor.needs_aperture_sample():
@@ -540,16 +547,17 @@ class TransientADIntegrator(mi.CppADIntegrator):
             sampler.set_sample_count(spp)
 
         spp = sampler.sample_count()
-        sampler.set_samples_per_wavefront(spp)
+        if not mi.variant().startswith('scalar'):
+            sampler.set_samples_per_wavefront(spp)
 
         film_size = film.crop_size()
 
         if film.sample_border():
             film_size += 2 * film.rfilter().border_size()
 
-        wavefront_size = dr.hprod(film_size) * spp
+        wavefront_size = dr.prod(film_size) * spp
 
-        is_llvm = dr.is_llvm_array_v(mi.Float)
+        is_llvm = dr.is_llvm_v(mi.Float)
         wavefront_size_limit = 0xffffffff if is_llvm else 0x40000000
 
         if wavefront_size >  wavefront_size_limit:
@@ -1315,4 +1323,4 @@ def mis_weight(pdf_a, pdf_b):
     of two sampling strategies according to the power heuristic.
     """
     a2 = dr.sqr(pdf_a)
-    return dr.detach(dr.select(pdf_a > 0, a2 / dr.fmadd(pdf_b, pdf_b, a2), 0), True)
+    return dr.detach(dr.select(pdf_a > 0, a2 / dr.fma(pdf_b, pdf_b, a2), 0), True)
