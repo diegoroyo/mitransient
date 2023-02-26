@@ -21,7 +21,7 @@ else:
             continue
 
         name = os.path.basename(f)[:-3]
-        if do_reload and not name == 'common':
+        if do_reload and not name.startswith('common'):
             importlib.reload(globals()[name])
         else:
             importlib.import_module(f'.{name}', package=__name__)

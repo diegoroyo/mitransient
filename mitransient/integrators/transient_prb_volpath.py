@@ -72,7 +72,7 @@ class TransientPRBVolpathIntegrator(TransientRBIntegrator):
                δL: Optional[mi.Spectrum],
                state_in: Optional[mi.Spectrum],
                active: mi.Bool,
-               addTransient,
+               add_transient,
                **kwargs # Absorbs unused arguments
     ) -> Tuple[mi.Spectrum,
                mi.Bool, mi.Spectrum]:
@@ -113,8 +113,8 @@ class TransientPRBVolpathIntegrator(TransientRBIntegrator):
         specular_chain = mi.Bool(True)
 
         if mi.is_rgb: # Sample a color channel to sample free-flight distances
-            n_channels = dr.array_size_v(mi.Spectrum)
-            channel = dr.min(n_channels * sampler.next_1d(active), n_channels - 1)
+            n_channels = dr.size_v(mi.Spectrum)
+            channel = dr.minimum(n_channels * sampler.next_1d(active), n_channels - 1)
 
         loop = mi.Loop(name=f"Path Replay Backpropagation ({mode.name})",
                     state=lambda: (sampler, active, depth, ray, medium, si,
@@ -124,7 +124,7 @@ class TransientPRBVolpathIntegrator(TransientRBIntegrator):
                                    distance))
         while loop(active):
             active &= dr.any(dr.neq(throughput, 0.0))
-            q = dr.min(dr.hmax(throughput) * dr.sqr(η), 0.99)
+            q = dr.minimum(dr.max(throughput) * dr.sqr(η), 0.99)
             perform_rr = (depth > self.rr_depth)
             active &= (sampler.next_1d(active) < q) | ~perform_rr
             throughput[perform_rr] = throughput * dr.rcp(q)
@@ -144,7 +144,7 @@ class TransientPRBVolpathIntegrator(TransientRBIntegrator):
                 si[intersect] = si_new
 
                 needs_intersection &= ~active_medium
-                mei.t[active_medium & (si.t < mei.t)] = dr.Infinity
+                mei.t[active_medium & (si.t < mei.t)] = dr.inf
 
                 # Evaluate ratio of transmittance and free-flight PDF
                 tr, free_flight_pdf = medium.eval_tr_and_pdf(mei, si, active_medium)
@@ -229,7 +229,7 @@ class TransientPRBVolpathIntegrator(TransientRBIntegrator):
                 if not is_primal and dr.grad_enabled(contrib):
                     dr.backward(δL * contrib)
 
-                addTransient(contrib, distance + dr.select(si.is_valid(), ds.dist, 0.0) * η, ray.wavelengths, active_e)
+                add_transient(contrib, distance + dr.select(si.is_valid(), ds.dist, 0.0) * η, ray.wavelengths, active_e)
 
                 active_surface &= si.is_valid()
                 ctx = mi.BSDFContext()
@@ -263,7 +263,7 @@ class TransientPRBVolpathIntegrator(TransientRBIntegrator):
                         if dr.grad_enabled(nee_weight) or dr.grad_enabled(emitted):
                             dr.backward(δL * contrib)
 
-                    addTransient(contrib, distance + ds.dist * η, ray.wavelengths, active_e)
+                    add_transient(contrib, distance + ds.dist * η, ray.wavelengths, active_e)
 
                 # ----------------------- BSDF sampling ----------------------
                 with dr.suspend_grad():
@@ -342,7 +342,7 @@ class TransientPRBVolpathIntegrator(TransientRBIntegrator):
 
             # Handle medium interactions / transmittance
             mei = medium.sample_interaction(ray, sampler.next_1d(active_medium), channel, active_medium)
-            mei.t[active_medium & (si.t < mei.t)] = dr.Infinity
+            mei.t[active_medium & (si.t < mei.t)] = dr.inf
             mei.t = dr.detach(mei.t)
 
             tr_multiplier = mi.Spectrum(1.0)
@@ -350,9 +350,9 @@ class TransientPRBVolpathIntegrator(TransientRBIntegrator):
             # Special case for homogeneous media: directly advance to the next surface / end of the segment
             if self.nee_handle_homogeneous:
                 active_homogeneous = active_medium & medium.is_homogeneous()
-                mei.t[active_homogeneous] = dr.min(remaining_dist, si.t)
+                mei.t[active_homogeneous] = dr.minimum(remaining_dist, si.t)
                 tr_multiplier[active_homogeneous] = medium.eval_tr_and_pdf(mei, si, active_homogeneous)[0]
-                mei.t[active_homogeneous] = dr.Infinity
+                mei.t[active_homogeneous] = dr.inf
 
             escaped_medium = active_medium & ~mei.is_valid()
 

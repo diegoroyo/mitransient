@@ -6,8 +6,29 @@ import mitsuba as mi
 from .common import TransientRBIntegrator, mis_weight
 
 class TransientPath(TransientRBIntegrator):
-    """
-    This class implements a basic Path Replay Backpropagation (PRB) integrator
+    r"""
+    .. _integrator-prb:
+
+    Path Replay Backpropagation (:monosp:`prb`)
+    -------------------------------------------
+
+    .. pluginparameters::
+
+     * - max_depth
+       - |int|
+       - Specifies the longest path depth in the generated output image (where -1
+         corresponds to :math:`\infty`). A value of 1 will only render directly
+         visible light sources. 2 will lead to single-bounce (direct-only)
+         illumination, and so on. (Default: 6)
+
+     * - rr_depth
+       - |int|
+       - Specifies the path depth, at which the implementation will begin to use
+         the *russian roulette* path termination criterion. For example, if set to
+         1, then path generation many randomly cease after encountering directly
+         visible surfaces. (Default: 5)
+
+    This plugin implements a basic Path Replay Backpropagation (PRB) integrator
     with the following properties:
 
     - Emitter sampling (a.k.a. next event estimation).
@@ -21,22 +42,18 @@ class TransientPath(TransientRBIntegrator):
     - Detached sampling. This means that the properties of ideal specular
       objects (e.g., the IOR of a glass vase) cannot be optimized.
 
-    See 'prb_basic.py' for an even more reduced implementation that removes
+    See ``prb_basic.py`` for an even more reduced implementation that removes
     the first two features.
 
-    See the papers
-
-      "Path Replay Backpropagation: Differentiating Light Paths using
-       Constant Memory and Linear Time" (Proceedings of SIGGRAPH'21)
-       by Delio Vicini, Sébastien Speierer, and Wenzel Jakob
-
-    and
-
-      "Monte Carlo Estimators for Differential Light Transport"
-      (Proceedings of SIGGRAPH'21) by Tizan Zeltner, Sébastien Speierer,
-      Iliyan Georgiev, and Wenzel Jakob
-
+    See the papers :cite:`Vicini2021` and :cite:`Zeltner2021MonteCarlo`
     for details on PRB, attached/detached sampling, and reparameterizations.
+
+    .. tabs::
+
+        .. code-tab:: python
+
+            'type': 'prb',
+            'max_depth': 8
     """
 
     def sample(self,
@@ -59,18 +76,13 @@ class TransientPath(TransientRBIntegrator):
         # Rendering a primal image? (vs performing forward/reverse-mode AD)
         primal = mode == dr.ADMode.Primal
 
-        # FIXME(diego): temporal hack to debug this code using scalar mode
-        # in the future it would probably be useful to keep scalar mode
-        # but clean it a bit
-        scalar = mi.variant().startswith('scalar')
-
         # Standard BSDF evaluation context for path tracing
         bsdf_ctx = mi.BSDFContext()
 
         # --------------------- Configure loop state ----------------------
 
         # Copy input arguments to avoid mutating the caller's state
-        ray = mi.Ray3f(ray)
+        ray = mi.Ray3f(dr.detach(ray))
         depth = mi.UInt32(0)                          # Depth of current vertex
         L = mi.Spectrum(0 if primal else state_in)    # Radiance accumulator
         δL = mi.Spectrum(δL if δL is not None else 0) # Differential/adjoint radiance
@@ -84,47 +96,32 @@ class TransientPath(TransientRBIntegrator):
         prev_bsdf_pdf   = mi.Float(1.0)
         prev_bsdf_delta = mi.Bool(True)
 
-        # Correct for camera unwarping
-        # si = scene.ray_intersect(mi.Ray3f(ray),
-        #                          ray_flags=mi.RayFlags.All,
-        #                          coherent=dr.eq(depth, 0))
-        # if self.camera_warp:
-        #     distance[si.is_valid()] = -si.t
-
         if self.camera_unwarp:
             si = scene.ray_intersect(mi.Ray3f(ray),
                                     ray_flags=mi.RayFlags.All,
-                                    coherent=mi.Mask(not scalar))
-            if scalar:
-                if si.is_valid():
-                    distance = -si.t
-            else:
-                distance[si.is_valid()] = -si.t
+                                    coherent=mi.Mask(True))
 
-        if scalar:
-            loop_active = active
-        else:
-            # Record the following loop in its entirety
-            loop = mi.Loop(name="Path Replay Backpropagation (%s)" % mode.name,
-                        state=lambda: (sampler, ray, depth, L, δL, β, η, active,
-                                        prev_si, prev_bsdf_pdf, prev_bsdf_delta,
-                                        distance))
+            distance[si.is_valid()] = -si.t
 
-            # Specify the max. number of loop iterations (this can help avoid
-            # costly synchronization when when wavefront-style loops are generated)
-            loop.set_max_iterations(self.max_depth)
+        # Record the following loop in its entirety
+        loop = mi.Loop(name="Path Replay Backpropagation (%s)" % mode.name,
+                       state=lambda: (sampler, ray, depth, L, δL, β, η, active,
+                                      prev_si, prev_bsdf_pdf, prev_bsdf_delta,
+                                      distance))
 
-            loop_active = loop(active)
+        # Specify the max. number of loop iterations (this can help avoid
+        # costly synchronization when when wavefront-style loops are generated)
+        loop.set_max_iterations(self.max_depth)
 
-        while loop_active:
+        while loop(active):
             # Compute a surface interaction that tracks derivatives arising
             # from differentiable shape parameters (position, normals, etc.)
             # In primal mode, this is just an ordinary ray tracing operation.
 
             with dr.resume_grad(when=not primal):
                 si = scene.ray_intersect(ray,
-                                            ray_flags=mi.RayFlags.All,
-                                            coherent=dr.eq(depth, 0))
+                                         ray_flags=mi.RayFlags.All,
+                                         coherent=dr.eq(depth, 0))
 
             # Update distance
             distance += dr.select(active, si.t, 0.0) * η
@@ -266,8 +263,6 @@ class TransientPath(TransientRBIntegrator):
 
             depth[si.is_valid()] += 1
             active = active_next
-            if scalar:
-                loop_active = active
 
         return (
             L if primal else δL, # Radiance/differential radiance

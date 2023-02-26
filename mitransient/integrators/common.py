@@ -1,34 +1,8 @@
 from __future__ import annotations as __annotations__ # Delayed parsing of type annotations
-from typing import Any, Callable, Optional, Union, Tuple
 
 import mitsuba as mi
 import drjit as dr
 import gc
-
-'''
-Transient utils
-'''
-def get_class(name):
-    name = name.split('.')
-    value = __import__(".".join(name[:-1]))
-    for item in name[1:]:
-        value = getattr(value, item)
-    return value
-
-def get_module(class_):
-    return get_class(class_.__module__)
-
-'''
-Define multiple multidimensional arrays
-'''
-if mi.variant().startswith('scalar'):
-    ArrayXf = dr.scalar.ArrayXf
-    ArrayXu = dr.scalar.ArrayXu
-    ArrayXi = dr.scalar.ArrayXi
-else:
-    ArrayXf = get_module(mi.Float).ArrayXf
-    ArrayXu = get_module(mi.Float).ArrayXu
-    ArrayXi = get_module(mi.Float).ArrayXi
 
 def load_filter(name, **kargs):
     '''
@@ -37,10 +11,6 @@ def load_filter(name, **kargs):
     kargs['type'] = name
     f = mi.load_dict(kargs)
     return f
-
-'''
-----------------------------------------------------------------------
-'''
 
 class TransientADIntegrator(mi.CppADIntegrator):
     """
@@ -51,21 +21,21 @@ class TransientADIntegrator(mi.CppADIntegrator):
      * - max_depth
        - |int|
        - Specifies the longest path depth in the generated output image (where -1
-         corresponds to :math:`\\infty`). A value of |1| will only render directly
-         visible light sources. |2| will lead to single-bounce (direct-only)
-         illumination, and so on. (Default: |-1|)
+         corresponds to :math:`\\infty`). A value of 1 will only render directly
+         visible light sources. 2 will lead to single-bounce (direct-only)
+         illumination, and so on. (Default: 6)
      * - rr_depth
        - |int|
        - Specifies the path depth, at which the implementation will begin to use
          the *russian roulette* path termination criterion. For example, if set to
-         |1|, then path generation many randomly cease after encountering directly
-         visible surfaces. (Default: |5|)
+         1, then path generation many randomly cease after encountering directly
+         visible surfaces. (Default: 5)
     """
 
     def __init__(self, props = mi.Properties()):
         super().__init__(props)
 
-        max_depth = props.get('max_depth', 4)
+        max_depth = props.get('max_depth', 6)
         if max_depth < 0 and max_depth != -1:
             raise Exception("\"max_depth\" must be set to -1 (infinite) or a value >= 0")
 
@@ -93,18 +63,8 @@ class TransientADIntegrator(mi.CppADIntegrator):
         return []
 
     def to_string(self):
-        # FIXME(diego): dedent
-        return f'''
-            {type(self).__name__}[
-                max_depth = {self.max_depth},
-                rr_depth = { self.rr_depth },
-                temporal_bins = {self.temporal_bins},
-                exposure = {self.exposure},
-                initial_time = {self.initial_time},
-                camera_unwarp = {self.camera_unwarp},
-                temporal_filter = {self.temporal_filter}
-            ]
-        '''
+        return f'{type(self).__name__}[max_depth = {self.max_depth},' \
+               f' rr_depth = { self.rr_depth }]'
 
     def prepare_transient(self, scene, sensor):
         '''
@@ -143,7 +103,7 @@ class TransientADIntegrator(mi.CppADIntegrator):
                 return
             else:
                 idd = (distance / self.exposure) - self.initial_time
-                coords = ArrayXf(pos.x, pos.y, idd)
+                coords = mi.Vector3f(pos.x, pos.y, idd)
                 mask = (idd >= 0) & (idd < self.temporal_bins)
                 self.transientBlock.put(coords, wavelengths, spec * ray_weight, mi.Float(1.0), active & mask)
 
@@ -395,9 +355,9 @@ class TransientADIntegrator(mi.CppADIntegrator):
         scene: mi.Scene,
         sensor: mi.Sensor,
         sampler: mi.Sampler,
-        reparam: Callable[[mi.Ray3f, mi.Bool],
-                          Tuple[mi.Ray3f, mi.Float]] = None
-    ) -> Tuple[mi.RayDifferential3f, mi.Spectrum, mi.Vector2f]:
+        reparam: Callable[[mi.Ray3f, mi.UInt32, mi.Bool],
+                          Tuple[mi.Vector3f, mi.Float]] = None
+    ) -> Tuple[mi.RayDifferential3f, mi.Spectrum, mi.Vector2f, mi.Float]:
         """
         Sample a 2D grid of primary rays for a given sensor
 
@@ -437,7 +397,7 @@ class TransientADIntegrator(mi.CppADIntegrator):
         # Compute the position on the image plane
         pos = mi.Vector2i()
         pos.y = idx // film_size[0]
-        pos.x = dr.fma(film_size[0], pos.y, idx)
+        pos.x = dr.fma(-film_size[0], pos.y, idx)
 
         if film.sample_border():
             pos -= border_size
@@ -464,12 +424,13 @@ class TransientADIntegrator(mi.CppADIntegrator):
         if mi.is_spectral:
             wavelength_sample = sampler.next_1d()
 
-        ray, weight = sensor.sample_ray_differential(
-            time=time,
-            sample1=wavelength_sample,
-            sample2=pos_adjusted,
-            sample3=aperture_sample
-        )
+        with dr.resume_grad():
+            ray, weight = sensor.sample_ray_differential(
+                time=time,
+                sample1=wavelength_sample,
+                sample2=pos_adjusted,
+                sample3=aperture_sample
+            )
 
         reparam_det = 1.0
 
@@ -480,7 +441,7 @@ class TransientADIntegrator(mi.CppADIntegrator):
                     "motion due to differentiable shape or camera pose "
                     "parameters. This is, however, incompatible with the box "
                     "reconstruction filter that is currently used. Please "
-                    "specify a a smooth reconstruction filter in your scene "
+                    "specify a smooth reconstruction filter in your scene "
                     "description (e.g. 'gaussian', which is actually the "
                     "default)")
 
@@ -497,18 +458,27 @@ class TransientADIntegrator(mi.CppADIntegrator):
 
             with dr.resume_grad():
                 # Reparameterize the camera ray
-                reparam_d, reparam_det = reparam(ray=ray, depth=mi.UInt32(0))
+                reparam_d, reparam_det = reparam(ray=dr.detach(ray),
+                                                 depth=mi.UInt32(0))
 
-                # Create a fake interaction along the sampled ray and use it to the
-                # position with derivative tracking
-                it = dr.zero(mi.Interaction3f)
+                # TODO better understand why this is necessary
+                # Reparameterize the camera ray to handle camera translations
+                if dr.grad_enabled(ray.o):
+                    reparam_d, _ = reparam(ray=ray, depth=mi.UInt32(0))
+
+                # Create a fake interaction along the sampled ray and use it to
+                # recompute the position with derivative tracking
+                it = dr.zeros(mi.Interaction3f)
                 it.p = ray.o + reparam_d
                 ds, _ = sensor.sample_direction(it, aperture_sample)
 
                 # Return a reparameterized image position
                 pos_f = ds.uv + film.crop_offset()
 
-        return ray, weight, pos_f, reparam_det
+        # With box filter, ignore random offset to prevent numerical instabilities
+        splatting_pos = mi.Vector2f(pos) if rfilter.is_box_filter() else pos_f
+
+        return ray, weight, splatting_pos, reparam_det
 
     def prepare(self,
                 sensor: mi.Sensor,
@@ -547,8 +517,7 @@ class TransientADIntegrator(mi.CppADIntegrator):
             sampler.set_sample_count(spp)
 
         spp = sampler.sample_count()
-        if not mi.variant().startswith('scalar'):
-            sampler.set_samples_per_wavefront(spp)
+        sampler.set_samples_per_wavefront(spp)
 
         film_size = film.crop_size()
 
@@ -557,17 +526,12 @@ class TransientADIntegrator(mi.CppADIntegrator):
 
         wavefront_size = dr.prod(film_size) * spp
 
-        is_llvm = dr.is_llvm_v(mi.Float)
-        wavefront_size_limit = 0xffffffff if is_llvm else 0x40000000
-
-        if wavefront_size >  wavefront_size_limit:
+        if wavefront_size > 2**32:
             raise Exception(
-                "Tried to perform a %s-based rendering with a total sample "
-                "count of %u, which exceeds 2^%u = %u (the upper limit "
-                "for this backend). Please use fewer samples per pixel or "
-                "render using multiple passes." %
-                ("LLVM JIT" if is_llvm else "OptiX", wavefront_size,
-                 dr.log2i(wavefront_size_limit) + 1, wavefront_size_limit))
+                "The total number of Monte Carlo samples required by this "
+                "rendering task (%i) exceeds 2^32 = 4294967296. Please use "
+                "fewer samples per pixel or render using multiple passes."
+                % wavefront_size)
 
         sampler.seed(seed, wavefront_size)
         film.prepare(aovs)
@@ -583,11 +547,9 @@ class TransientADIntegrator(mi.CppADIntegrator):
                δL: Optional[mi.Spectrum],
                state_in: Any,
                reparam: Optional[
-                   Callable[[mi.Ray3f, mi.Bool],
-                            Tuple[mi.Ray3f, mi.Float]]],
-               active: mi.Bool,
-               addTransient) -> Tuple[mi.Spectrum,
-                                      mi.Bool]:
+                   Callable[[mi.Ray3f, mi.UInt32, mi.Bool],
+                            Tuple[mi.Vector3f, mi.Float]]],
+               active: mi.Bool) -> Tuple[mi.Spectrum, mi.Bool]:
         """
         This function does the main work of differentiable rendering and
         remains unimplemented here. It is provided by subclasses of the
@@ -670,8 +632,8 @@ class TransientADIntegrator(mi.CppADIntegrator):
 
 class TransientRBIntegrator(TransientADIntegrator):
     """
-        Abstract base class of radiative-backpropagation style differentiable
-        integrators.
+    Abstract base class of radiative-backpropagation style differentiable
+    integrators.
     """
 
     def render_forward(self: mi.SamplingIntegrator,
@@ -1268,8 +1230,8 @@ class _ReparamWrapper:
                  params: Any,
                  reparam: Callable[
                      [mi.Scene, mi.PCG32, Any,
-                      mi.Ray3f, mi.Bool],
-                     Tuple[mi.Ray3f, mi.Float]],
+                      mi.Ray3f, mi.UInt32, mi.Bool],
+                     Tuple[mi.Vector3f, mi.Float]],
                  wavefront_size : int,
                  seed : int):
 
@@ -1323,4 +1285,6 @@ def mis_weight(pdf_a, pdf_b):
     of two sampling strategies according to the power heuristic.
     """
     a2 = dr.sqr(pdf_a)
-    return dr.detach(dr.select(pdf_a > 0, a2 / dr.fma(pdf_b, pdf_b, a2), 0), True)
+    b2 = dr.sqr(pdf_b)
+    w = a2 / (a2 + b2)
+    return dr.detach(dr.select(dr.isfinite(w), w, 0))
