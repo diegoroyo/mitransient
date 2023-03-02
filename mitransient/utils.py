@@ -1,6 +1,7 @@
 import drjit as dr
 import mitsuba as mi
 
+
 def get_class(name):
     name = name.split('.')
     value = __import__(".".join(name[:-1]))
@@ -8,28 +9,17 @@ def get_class(name):
         value = getattr(value, item)
     return value
 
+
 def get_module(class_):
     return get_class(class_.__module__)
+
 
 '''
 Define multiple multidimensional arrays
 '''
-if mi.variant().startswith('scalar'):
-    ArrayXf = dr.scalar.ArrayXf
-    ArrayXu = dr.scalar.ArrayXu
-    ArrayXi = dr.scalar.ArrayXi
-else:
-    ArrayXf = get_module(mi.Float).ArrayXf
-    ArrayXu = get_module(mi.Float).ArrayXu
-    ArrayXi = get_module(mi.Float).ArrayXi
-
-def load_filter(name, **kargs):
-    '''
-    Shorthand for loading an specific reconstruction kernel
-    '''
-    kargs['type'] = name
-    f = mi.load_dict(kargs)
-    return f
+ArrayXf = get_module(mi.Float).ArrayXf
+ArrayXu = get_module(mi.Float).ArrayXu
+ArrayXi = get_module(mi.Float).ArrayXi
 
 
 def showVideo(input_sample, axisVideo):
@@ -48,11 +38,13 @@ def showVideo(input_sample, axisVideo):
     numFrames = input_sample.shape[axisVideo]
     fig = plt.figure()
 
-    im = plt.imshow(input_sample[generateIndex(axisVideo, len(input_sample.shape), 0)])
+    im = plt.imshow(input_sample[generateIndex(
+        axisVideo, len(input_sample.shape), 0)])
     plt.axis('off')
 
     def update(i):
-        img = input_sample[generateIndex(axisVideo, len(input_sample.shape), i)]
+        img = input_sample[generateIndex(
+            axisVideo, len(input_sample.shape), i)]
         im.set_data(img)
         return im
 

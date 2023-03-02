@@ -9,9 +9,7 @@ import mitsuba.util
 
 do_reload = 'common' in globals()
 
-if mitsuba.variant() is None:
-    raise AssertionError('No variant set. Please call mitsuba.set_variant() first.')
-else:
+if mitsuba.variant() is not None and not mitsuba.variant().startswith('scalar'):
     # Make sure `common.py` is reloaded before the integrators
     if do_reload:
         importlib.reload(globals()['common'])
