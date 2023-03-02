@@ -1,6 +1,17 @@
 import drjit as dr
 import mitsuba as mi
 
+'''
+Constants
+'''
+
+speed_of_light = 299792458.0
+
+
+'''
+Define multiple multidimensional arrays
+'''
+
 
 def get_class(name):
     name = name.split('.')
@@ -14,15 +25,17 @@ def get_module(class_):
     return get_class(class_.__module__)
 
 
-'''
-Define multiple multidimensional arrays
-'''
 ArrayXf = get_module(mi.Float).ArrayXf
 ArrayXu = get_module(mi.Float).ArrayXu
 ArrayXi = get_module(mi.Float).ArrayXi
 
 
-def showVideo(input_sample, axisVideo):
+'''
+Auxiliary functions
+'''
+
+
+def show_video(input_sample, axisVideo):
     # if not in_ipython():
     #     print("[showVideo()] Need to be executed in IPython/Jupyter environment")
     #     return

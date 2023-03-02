@@ -1,3 +1,9 @@
+"""
+TODO(diego): Figure out how to handle large numbers of samples per pixel
+so that the progress bar updates more frequently
+(similar to mitsuba2-transient-nlos's multiple passes)
+"""
+
 # Delayed parsing of type annotations
 from __future__ import annotations as __annotations__
 
@@ -54,7 +60,7 @@ class TransientADIntegrator(ADIntegrator):
         Prepare the integrator to perform a transient simulation
         '''
         import numpy as np
-        from mitransient.render import TransientBlock
+        from mitransient.render.transient_block import TransientBlock
 
         if isinstance(sensor, int):
             sensor = scene.sensors()[sensor]

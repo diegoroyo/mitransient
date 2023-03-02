@@ -1,3 +1,9 @@
+"""
+TODO(diego): For now the TransientADIntegrator creates its own TransientBlock,
+but the TransientBlock is not defined in the XML. Figure out how to export this film
+so that it fits inside the NLOSCaptureMeter (or just figure out how to put this in the XML)
+"""
+
 import drjit as dr
 import numpy as np
 
