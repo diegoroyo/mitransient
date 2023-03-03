@@ -1,5 +1,5 @@
 """
-TODO(diego): For now the TransientADIntegrator creates its own TransientBlock,
+FIXME(diego): For now the TransientADIntegrator creates its own TransientBlock,
 but the TransientBlock is not defined in the XML. Figure out how to export this film
 so that it fits inside the NLOSCaptureMeter (or just figure out how to put this in the XML)
 """
@@ -239,7 +239,7 @@ class TransientBlock:
         return res[crop_size]
 
     def __str__(self):
-        # TODO update
+        # FIXME update
         # return f'ImageBlockND[size = {self.m_size}]'
         return f'''ImageBlockND[
         size = {self.m_size}
@@ -250,4 +250,4 @@ class TransientBlock:
         weigths = {self.m_weights}
         data = {self.m_data}
 ]
-        '''
+'''

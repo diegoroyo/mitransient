@@ -22,7 +22,6 @@ if mitsuba.variant() is not None and not mitsuba.variant().startswith('scalar'):
         if do_reload and not name.startswith('common'):
             importlib.reload(globals()[name])
         else:
-            print(f'Importing {name}')
             importlib.import_module(f'.{name}', package=__name__)
 
         del name

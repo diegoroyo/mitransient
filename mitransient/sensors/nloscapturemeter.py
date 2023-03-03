@@ -10,7 +10,7 @@ from typing import Tuple
 
 class NLOSCaptureMeter(mi.Sensor):
     """
-    TODO docs
+    FIXME(diego) add docs
     """
 
     # NOTE(diego): we assume the rays start in a vacuum
@@ -197,14 +197,11 @@ class NLOSCaptureMeter(mi.Sensor):
     def bbox(self) -> mi.BoundingBox3f:
         return self.m_shape.bbox()
 
-    def is_nlos_sensor(self) -> bool:
-        return True
-
     def to_string(self):
-        # TODO update with the rest of parameters
+        # FIXME(diego) update with the rest of parameters
         # m_shape, m_emitter from NLOSCaptureMeter, m_film from Sensor, etc.
         return f'{type(self).__name__}[laser_target = {self.m_laser_target},' \
                f' confocal = { self.m_is_confocal }]'
 
 
-mi.register_sensor('NLOSCaptureMeter', lambda props: NLOSCaptureMeter(props))
+mi.register_sensor('nlos_capture_meter', lambda props: NLOSCaptureMeter(props))

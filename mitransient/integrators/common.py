@@ -1,9 +1,3 @@
-"""
-TODO(diego): Figure out how to handle large numbers of samples per pixel
-so that the progress bar updates more frequently
-(similar to mitsuba2-transient-nlos's multiple passes)
-"""
-
 # Delayed parsing of type annotations
 from __future__ import annotations as __annotations__
 
@@ -33,7 +27,7 @@ class TransientADIntegrator(ADIntegrator):
          1, then path generation many randomly cease after encountering directly
          visible surfaces. (Default: 5)
     """
-    # TODO: Add documentation for other parameters
+    # FIXME: Add documentation for other parameters
     # note that temporal bins, exposure, initial time are measured in optical path length
 
     def __init__(self, props=mi.Properties()):
@@ -41,9 +35,19 @@ class TransientADIntegrator(ADIntegrator):
 
         # imported: max_depth and rr_depth
 
+        # FIXME(diego): set these values in the XML file
+        # self.transient_block = None
+        # self.temporal_bins = props.get('temporal_bins', 128)
+        # self.exposure = props.get('exposure', 3.5)
+        # self.initial_time = props.get('initial_time', 0)
+        # self.camera_unwarp = props.get('camera_unwarp', False)
+        # self.temporal_filter = props.get('temporal_filter', '')
+        # self.gaussian_stddev = props.get('gaussian_stddev', 2.0)
+        # self.progressive = props.get('progressive', 0.0)
+
         self.transient_block = None
-        self.temporal_bins = props.get('temporal_bins', 128)
-        self.exposure = props.get('exposure', 3.5)
+        self.temporal_bins = props.get('temporal_bins', 2048)
+        self.exposure = props.get('exposure', 0.003)
         self.initial_time = props.get('initial_time', 0)
         self.camera_unwarp = props.get('camera_unwarp', False)
         self.temporal_filter = props.get('temporal_filter', '')
@@ -51,7 +55,7 @@ class TransientADIntegrator(ADIntegrator):
         self.progressive = props.get('progressive', 0.0)
 
     def to_string(self):
-        # TODO add other parameters
+        # FIXME add other parameters
         return f'{type(self).__name__}[max_depth = {self.max_depth},' \
                f' rr_depth = { self.rr_depth }]'
 
@@ -565,7 +569,7 @@ class TransientADIntegrator(ADIntegrator):
             This mask array can optionally be used to indicate that some of
             the rays are disabled.
 
-        TODO(diego): Parameter ``add_transient_f`` (and document type above)
+        FIXME(diego): Parameter ``add_transient_f`` (and document type above)
         or probably refer to non-transient RB
 
         The function returns a tuple ``(spec, valid, state_out)`` where
@@ -583,8 +587,7 @@ class TransientADIntegrator(ADIntegrator):
                         'It should be implemented by subclasses that '
                         'specialize the abstract RBIntegrator interface.')
 
-# Prioritizes RBIntegrator functions over TransientADIntegrator
-
 
 class TransientRBIntegrator(RBIntegrator, TransientADIntegrator):
+    # Prioritizes RBIntegrator functions over TransientADIntegrator
     pass

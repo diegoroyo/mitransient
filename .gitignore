@@ -1,7 +1,8 @@
 notebooks/transientFrames/**
 
 .vscode
-test
+test/*
+!test/z-scene-properties
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
