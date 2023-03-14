@@ -126,9 +126,9 @@ class TransientBlock:
         # if dr.any(rfilter_radius > (0.5 + RayEpsilon))[0]:
         if np.any(self.rfilter_radius > (0.5 + RayEpsilon)):
             # Determine the affected range of pixels
-            lo = dr.max(dr.ceil(pos - rfilter_radius), 0)
-            hi = dr.min(dr.floor(pos + rfilter_radius),
-                        size - (1 + border_offset))
+            lo = dr.maximum(dr.ceil(pos - rfilter_radius), 0)
+            hi = dr.minimum(dr.floor(pos + rfilter_radius),
+                            size - (1 + border_offset))
             lo = ArrayXu(lo)
             hi = ArrayXu(hi)
 
@@ -154,7 +154,8 @@ class TransientBlock:
                 base_index = UInt32(0)
                 for j in range(len(self.m_rfilter)):
                     index = UInt32(n[j])[0]
-                    factor *= dr.hsum(self.m_weights[base_index[0]:base_index[0]+index])
+                    factor *= dr.hsum(self.m_weights[base_index[0]
+                                      :base_index[0]+index])
                     base_index += UInt32(n[j])
 
                 factor = dr.rcp(factor)

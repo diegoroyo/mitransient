@@ -65,21 +65,24 @@ class TransientNLOSPath(TransientRBIntegrator):
     def __init__(self, props: mi.Properties):
         super().__init__(props)
 
-        self.filter_depth = props.get('filter_depth', -1)
+        self.filter_depth: int = props.get('filter_depth', -1)
         if self.filter_depth != -1 and self.max_depth != -1:
             if self.filter_depth >= self.max_depth:
                 Log(LogLevel.Warn,
                     'You have set filter_depth >= max_depth. '
                     'This will cause the final image to be all zero.')
-        self.discard_direct_paths = props.get('discard_direct_paths', False)
-        self.laser_sampling = props.get('nlos_laser_sampling', False)
-        self.hg_sampling = props.get('nlos_hidden_geometry_sampling', False)
-        self.hg_sampling_do_rroulette = (
+        self.discard_direct_paths: bool = props.get(
+            'discard_direct_paths', False)
+        self.laser_sampling: bool = props.get(
+            'nlos_laser_sampling', False)
+        self.hg_sampling: bool = props.get(
+            'nlos_hidden_geometry_sampling', False)
+        self.hg_sampling_do_rroulette: bool = (
             props.get('nlos_hidden_geometry_sampling_do_rroulette', False)
             and
             self.hg_sampling
         )
-        self.hg_sampling_includes_relay_wall = (
+        self.hg_sampling_includes_relay_wall: bool = (
             props.get('nlos_hidden_geometry_sampling_includes_relay_wall', False)
             and
             self.hg_sampling
@@ -89,6 +92,23 @@ class TransientNLOSPath(TransientRBIntegrator):
         super().prepare_transient(scene, sensor)
 
         import numpy as np
+
+        # prepare laser sampling
+
+        if isinstance(sensor, int):
+            sensor = scene.sensors()[sensor]
+
+        if self.laser_sampling:
+            trafo: mi.Transform4f = sensor.emitter.world_transform()
+            laser_origin: mi.Point3f = trafo.translation()
+            laser_dir: mi.Vector3f = trafo.transform_affine(
+                mi.Vector3f(0, 0, 1))
+            si = scene.ray_intersect(mi.Ray3f(laser_origin, laser_dir))
+            assert dr.all(
+                si.is_valid()), 'The emitter is not pointing at the scene!'
+            self.nlos_laser_target: mi.Point3f = si.p
+
+        # prepare hidden geometry sampling
 
         total_pdf = 0.0
         # same as m_shapes, but excluding relay wall objects (i.e. objects
@@ -194,8 +214,10 @@ class TransientNLOSPath(TransientRBIntegrator):
             mis = dr.select(ds.delta, 1.0, mis_weight(ds.pdf, bsdf_pdf))
 
             Lr_dir = mi.Spectrum(0)
-            if depth == self.filter_depth or not (self.discard_direct_paths and depth < 2):
-                Lr_dir[active_e] = β * mis * bsdf_spec * emitter_spec
+            active_e &= (dr.eq(depth, self.filter_depth)
+                         |
+                         ~(self.discard_direct_paths & (depth < 2)))
+            Lr_dir[active_e] = β * mis * bsdf_spec * emitter_spec
 
             add_transient(Lr_dir, distance + ds.dist * η,
                           si.wavelengths, active_e)
@@ -230,7 +252,7 @@ class TransientNLOSPath(TransientRBIntegrator):
                             maxt=distance_laser * (1.0 - ShadowEpsilon),
                             time=si.time,
                             wavelengths=si.wavelengths)
-        active_e &= not scene.ray_test(ray_bsdf, active_e)
+        active_e &= ~scene.ray_test(ray_bsdf, active_e)
 
         # 2. Evaluate BSDF to desired direction
         wo = si.to_local(d)
@@ -241,7 +263,7 @@ class TransientNLOSPath(TransientRBIntegrator):
         si_bsdf: mi.SurfaceInteraction3f = scene.ray_intersect(
             ray_bsdf, active_e)
         active_e &= si_bsdf.is_valid()
-        active_e &= dr.any(mi.depolarizer(bsdf_spec) > dr.epsilon)
+        active_e &= dr.any(mi.depolarizer(bsdf_spec) > dr.epsilon(mi.Float))
         wl = si_bsdf.to_local(-d)
         active_e &= mi.Frame3f.cos_theta(wl) > 0.0
 
@@ -261,16 +283,16 @@ class TransientNLOSPath(TransientRBIntegrator):
 
         # 3. Combine laser + emitter sampling
         return self.emitter_nee_sample(
-            mode=mode, scene=scene, sampler=sampler, ray=ray_bsdf, si=si_bsdf,
+            mode=mode, scene=scene, sampler=sampler, si=si_bsdf,
             bsdf=bsdf_next, bsdf_ctx=bsdf_ctx, β=β * bsdf_spec, distance=distance + distance_laser * η, η=η,
-            depth=depth+1, active=active_e, add_transient=add_transient)
+            depth=depth+1, active_e=active_e, add_transient=add_transient)
 
     def hidden_geometry_sample(
             self, scene: mi.Scene, bsdf: mi.BSDF, bsdf_ctx: mi.BSDFContext, si: mi.SurfaceInteraction3f,
             _: mi.Float, sample2: mi.Point2f, active: mi.Mask) -> Tuple[mi.BSDFSample3f, mi.Spectrum]:
         # FIXME add this functionality in transientnlos
         ps_hg: mi.PositionSample3f = self._sample_hidden_geometry_position(
-            si=si, sample2=sample2, active=active)
+            ref=si, sample2=sample2, active=active)
         active &= dr.neq(ps_hg.pdf, 0.0)
 
         d = ps_hg.p - si.p
@@ -285,19 +307,18 @@ class TransientNLOSPath(TransientRBIntegrator):
         p_test = si_test.p
         active_test = mi.Mask(active)
         num_intersections = mi.UInt(0)
-        while num_intersections == 0 or dr.any(active_test):
+        loop = mi.Loop(name="Hidden geometry sample",
+                       state=lambda: (num_intersections, active_test))
+        loop.set_max_iterations(100)
+        while loop(active_test):
             num_intersections[active_test] += 1
             ray_test = mi.Ray3f(o=p_test, d=d, time=si_test.time,
                                 wavelengths=si_test.wavelengths)
             si_test: mi.SurfaceInteraction3f = scene.ray_intersect(
                 ray_test, active_test)
             active_test &= si_test.is_valid()
-            if num_intersections > 100:
-                # Some rays get stuck in an infinite loop, creating a cycle
-                # of p_test points. Just ignore these cases.
-                active[active_test] = False
-                active_test = mi.Mask(False)
             p_test = si_test.p
+        active_test[num_intersections >= 100] = False
 
         wo = si.to_local(d)
         bsdf_spec = bsdf.eval(ctx=bsdf_ctx, si=si, wo=wo, active=active)
@@ -309,16 +330,16 @@ class TransientNLOSPath(TransientRBIntegrator):
         # discard low travel dist, produces high variance
         # the intergator will use bsdf sampling instead
         active &= travel_dist > 0.5
-        active &= dr.any(mi.depolarizer(bsdf_spec) > dr.epsilon)
+        active &= dr.any(mi.depolarizer(bsdf_spec) > dr.epsilon(mi.Float))
 
         bs: mi.BSDFSample3f = dr.zeros(mi.BSDFSample3f)
         bs.wo = wo
         bs.pdf = ps_hg.pdf * num_intersections
         bs.eta = 1.0
-        bs.sampled_type = mi.BSDFType.DeltaReflection
+        bs.sampled_type = mi.BSDFFlags.DeltaReflection
         bs.sampled_component = 0
 
-        return bs, dr.select(active and bs.pdf > dr.epsilon, bsdf_spec, 0.0)
+        return bs, dr.select(active & (bs.pdf > dr.epsilon(mi.Float)), bsdf_spec, 0.0)
 
     def sample(self,
                mode: dr.ADMode,
@@ -329,9 +350,11 @@ class TransientNLOSPath(TransientRBIntegrator):
                state_in: Optional[mi.Spectrum],
                active: mi.Bool,
                max_distance: mi.Float,
-               add_transient) -> Tuple[mi.Spectrum,
-                                       mi.Bool,
-                                       mi.Spectrum]:
+               add_transient,
+               **kwargs  # Absorbs unused arguments
+               ) -> Tuple[mi.Spectrum,
+                          mi.Bool,
+                          mi.Spectrum]:
         """
         See ``TransientADIntegrator.sample()`` for a description of this interface and
         the role of the various parameters and return values.
@@ -444,13 +467,19 @@ class TransientNLOSPath(TransientRBIntegrator):
                 do_hg_sample = mi.Mask(self.hg_sampling)
                 pdf_bsdf_method = mi.Float(1.0)
 
-            if do_hg_sample:
-                bsdf_sample, bsdf_weight = self.hidden_geometry_sample(
-                    scene, bsdf,
-                    bsdf_ctx, si, sampler.next_1d(), sampler.next_2d(), active_next)
-            if not do_hg_sample or dr.all(mi.depolarizer(bsdf_sample) < dr.epsilon):
-                bsdf_sample, bsdf_weight = bsdf.sample(
-                    bsdf_ctx, si, sampler.next_1d(), sampler.next_2d(), active_next)
+            active_hg = active_next & do_hg_sample
+            bsdf_sample_hg, bsdf_weight_hg = self.hidden_geometry_sample(
+                scene, bsdf,
+                bsdf_ctx, si, sampler.next_1d(), sampler.next_2d(), active_hg)
+            hg_failed = dr.all(mi.depolarizer(bsdf_weight_hg)
+                               < dr.epsilon(mi.Float))
+            active_nhg = active_next & (~do_hg_sample | hg_failed)
+            bsdf_sample_nhg, bsdf_weight_nhg = bsdf.sample(
+                bsdf_ctx, si, sampler.next_1d(), sampler.next_2d(), ~active_hg)
+            bsdf_sample = dr.select(
+                active_nhg, bsdf_sample_nhg, bsdf_sample_hg)
+            bsdf_weight = dr.select(
+                active_nhg, bsdf_weight_nhg, bsdf_weight_hg)
 
             # ---- Update loop variables based on current interaction -----
 

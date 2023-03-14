@@ -6,6 +6,7 @@ import drjit as dr
 import gc
 
 from mitsuba.ad.integrators.common import ADIntegrator, RBIntegrator, mis_weight, _ReparamWrapper
+from mitsuba import Log, LogLevel
 
 
 class TransientADIntegrator(ADIntegrator):
@@ -59,7 +60,7 @@ class TransientADIntegrator(ADIntegrator):
         return f'{type(self).__name__}[max_depth = {self.max_depth},' \
                f' rr_depth = { self.rr_depth }]'
 
-    def prepare_transient(self, scene, sensor):
+    def prepare_transient(self, scene: mi.Scene, sensor: mi.Sensor):
         '''
         Prepare the integrator to perform a transient simulation
         '''
@@ -69,9 +70,20 @@ class TransientADIntegrator(ADIntegrator):
         if isinstance(sensor, int):
             sensor = scene.sensors()[sensor]
 
+        # FIXME manually call set_shape, even though it should be called by
+        # https://github.com/mitsuba-renderer/mitsuba3/blob/ff9cf94323703885068779b15be36345a2eadb89/src/render/shape.cpp#L553
+        for shape in scene.shapes():
+            if shape.is_sensor():
+                sensor.set_shape(shape)
+
         # Create the transient block responsible for storing the time contribution
         crop_size = sensor.film().crop_size()
-        size = np.array([crop_size.y, crop_size.x, self.temporal_bins])
+        # FIXME(diego): figure out how to set crop_size in the XML or add it as default
+        # parameter of TransientBlock
+        Log(LogLevel.Warn, 'Ignoring crop_size of ({x}, {y}), setting to (256, 256)'.format(
+            x=crop_size.x, y=crop_size.y))
+        size = np.array([256, 256, self.temporal_bins])
+        # size = np.array([crop_size.y, crop_size.x, self.temporal_bins])
 
         def load_filter(name, **kargs):
             '''
@@ -156,6 +168,8 @@ class TransientADIntegrator(ADIntegrator):
                 state_in=None,
                 reparam=None,
                 active=mi.Bool(True),
+                # FIXME set to transientblock's end of the histogram
+                max_distance=mi.Float(999999999),
                 add_transient=self.add_transient_f(pos, weight)
             )
 

@@ -28,6 +28,9 @@ def get_module(class_):
 ArrayXf = get_module(mi.Float).ArrayXf
 ArrayXu = get_module(mi.Float).ArrayXu
 ArrayXi = get_module(mi.Float).ArrayXi
+Array2f = get_module(mi.Float).Array2f
+Array2u = get_module(mi.Float).Array2u
+Array3f = get_module(mi.Float).Array3f
 
 
 '''

@@ -54,6 +54,9 @@
             <point name="sensor_origin" x="-0.5" y="0.0" z="0.25"/>
             <point name="laser_origin" x="-0.5" y="0.0" z="0.25"/>
             <point name="laser_lookat_pixel" x="127.5" y="127.5" z="0"/>
+            <rfilter type="box">
+              <!-- <float name="stddev" value="1.0"/> -->
+            </rfilter>
         </sensor>
     </shape>
 </scene>
