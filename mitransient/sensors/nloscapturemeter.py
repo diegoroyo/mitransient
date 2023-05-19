@@ -7,10 +7,10 @@ from mitsuba import Log, LogLevel
 
 # NOTE(diego): idk why, but mitsuba's variant is not set for NLOSCaptureMeter.__init__ method
 # it is fine if we import it here
-from mitsuba import Emitter, Float, Transform4f, Properties, PluginManager
+from mitsuba import Emitter, Float, Transform4f
 
 from mitsuba import ScalarVector2u
-from drjit.scalar import Array2f as ScalarArray2f, Array3f as ScalarArray3f
+from drjit.scalar import Array3f as ScalarArray3f
 
 from typing import Tuple
 
@@ -46,6 +46,10 @@ class NLOSCaptureMeter(mi.Sensor):
 
             self.emitter = value
 
+        if self.emitter is None:
+            raise Exception(
+                'No laser emitter was specified for the NLOS capture meter.')
+
         self.needs_sample_3: bool = False
 
         self.account_first_and_last_bounces: bool = \
@@ -58,18 +62,18 @@ class NLOSCaptureMeter(mi.Sensor):
         self.is_confocal: bool = props.get('confocal', False)
         self.film_size: ScalarVector2u = self.film().size()
         if self.is_confocal:
-            self.film().size().assign(ScalarVector2u(1, 1))
-            self.film().crop_size().assign(ScalarVector2u(1, 1))
+            # NOTE: uses custom python interface for c++'s set_size method
+            self.film().set_size(ScalarVector2u(1, 1))
 
-        self.laser_origin: ScalarArray3f = \
-            props.get('laser_origin', ScalarArray3f(0))
+        self.laser_origin: ScalarArray3f = props.get(
+            'laser_origin', ScalarArray3f(0))
         laser_lookat3_pixel = props.get(
             'laser_lookat_pixel', ScalarArray3f(-1))
         laser_lookat3_3d = props.get('laser_lookat_3d', ScalarArray3f(0))
         self.laser_lookat_is_pixel: bool = \
             laser_lookat3_pixel.x > 0.0 and laser_lookat3_pixel.y > 0.0
         if self.laser_lookat_is_pixel:
-            film_width, film_height = self._film_size()
+            film_width, film_height = self.film_size
             if laser_lookat3_pixel.x < 0.0 or film_width < laser_lookat3_pixel.x:
                 Log(LogLevel.Warn, 'Laser lookat pixel (X postiion) is out of bounds')
             if laser_lookat3_pixel.y < 0.0 or film_height < laser_lookat3_pixel.y:
@@ -81,23 +85,11 @@ class NLOSCaptureMeter(mi.Sensor):
             self.laser_lookat: ScalarArray3f = laser_lookat3_3d
         self.laser_target = None
 
-        if self.emitter is None:
-            Log(LogLevel.Warn,
-                'This sensor should include a (projector) emitter. '
-                'Adding a default one, but this is probably not what '
-                'you want.')
-            props_film = Properties('projector')
-            self.emitter: Emitter = \
-                PluginManager.create_object(props_film)
-
-    def _film_size(self) -> Tuple[mi.UInt, mi.UInt]:
-        return (self.film_size.x, self.film_size.y)
-
     def _sensor_origin(self) -> ScalarArray3f:
         return self.world_transform.translation()
 
     def _pixel_to_sample(self, pixel: mi.Point2f) -> mi.Point2f:
-        film_width, film_height = self._film_size()
+        film_width, film_height = self.film_size
         return mi.Point2f(
             pixel.x / film_width,
             pixel.y / film_height)
@@ -111,7 +103,7 @@ class NLOSCaptureMeter(mi.Sensor):
         if self.is_confocal:
             target = self.laser_target
         else:
-            film_width, film_height = self._film_size()
+            film_width, film_height = self.film_size
             # instead of continuous samples over the whole shape,
             # discretize samples so they only land on the center of the film's
             # "pixels"
@@ -129,19 +121,20 @@ class NLOSCaptureMeter(mi.Sensor):
         return distance, direction
 
     def set_scene(self, scene: mi.Scene):
+        # NOTE uses custom add_emitter function
+        self.emitter.set_scene(scene)
+        scene.add_emitter(self.emitter)
         scene_emitters = scene.emitters()
-        if len(scene_emitters) > 0:
+        if len(scene_emitters) > 1:
             Log(LogLevel.Warn,
-                'This sensor only supports exactly one emitter object, '
-                'which should be placed inside the sensor. Please remove '
-                'other emitters.')
-        scene_emitters.append(self.emitter)
+                f'You have defined multiple ({len(scene_emitters)}) emitters in the scene with a NLOS capture meter.')
 
     def set_shape(self, shape: mi.Shape):
+        # NOTE: set_shape is called by the integrator
         # super().set_shape(shape)  # sets self.shape
 
         if self.laser_lookat_is_pixel:
-            # FIXME probably this can be made easier
+            # NOTE probably this can be made easier
             self.laser_target = ScalarArray3f(dr.ravel(
                 self.shape().sample_position(
                     0.0,
@@ -150,7 +143,7 @@ class NLOSCaptureMeter(mi.Sensor):
                             self.laser_lookat.x,
                             self.laser_lookat.y
                         ))).p))  # sampled position of PositionSample3f
-            Log(LogLevel.Warn,
+            Log(LogLevel.Info,
                 'Laser is pointed to pixel ({sx:.5f}, {sy:.5f}), '
                 'which equals to 3D point ({px:.5f}, {py:.5f}, {pz:.5f})'.format(
                     sx=self.laser_lookat.x, sy=self.laser_lookat.y,
@@ -161,17 +154,18 @@ class NLOSCaptureMeter(mi.Sensor):
                 'Laser is pointed to 3D point ({px:.5f}, {py:.5f}, {pz:.5f})'.format(
                     px=self.laser_target.x, py=self.laser_target.y, pz=self.laser_target.z))
 
-        self.emitter.world_transform().assign(
-            mi.Transform4f.look_at(
-                origin=self.laser_origin,
-                target=self.laser_target,
-                up=mi.Vector3f(0, 1, 0)))
+        # NOTE uses custom set_world_transform function
+        lookat = mi.Transform4f.look_at(
+            origin=self.laser_origin,
+            target=self.laser_target,
+            up=mi.Vector3f(0, 1, 0))
+        self.emitter.set_world_transform(lookat)
 
         self.laser_bounce_opl = dr.norm(
             self.laser_target - self.laser_origin) * self.IOR_BASE
 
     def traverse(self, callback: mi.TraversalCallback):
-        # TODO not implemented (?)
+        # TODO implement traverse (use callback for params and objects)
         super().traverse(callback)
 
     def sample_ray_differential(

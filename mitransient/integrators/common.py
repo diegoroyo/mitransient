@@ -36,16 +36,7 @@ class TransientADIntegrator(ADIntegrator):
 
         # imported: max_depth and rr_depth
 
-        # FIXME(diego): set these values in the XML file
-        # self.transient_block = None
-        # self.temporal_bins = props.get('temporal_bins', 128)
-        # self.exposure = props.get('exposure', 3.5)
-        # self.initial_time = props.get('initial_time', 0)
-        # self.camera_unwarp = props.get('camera_unwarp', False)
-        # self.temporal_filter = props.get('temporal_filter', '')
-        # self.gaussian_stddev = props.get('gaussian_stddev', 2.0)
-        # self.progressive = props.get('progressive', 0.0)
-
+        # test/z-scene-properties
         self.transient_block = None
         self.temporal_bins = props.get('temporal_bins', 2048)
         self.exposure = props.get('exposure', 0.003)
@@ -60,6 +51,67 @@ class TransientADIntegrator(ADIntegrator):
         return f'{type(self).__name__}[max_depth = {self.max_depth},' \
                f' rr_depth = { self.rr_depth }]'
 
+    def prepare(self,
+                sensor: mi.Sensor,
+                seed: int = 0,
+                spp: int = 0,
+                aovs: list = []):
+        """
+        Given a sensor and a desired number of samples per pixel, this function
+        computes the necessary number of Monte Carlo samples and then suitably
+        seeds the sampler underlying the sensor.
+
+        Returns the created sampler and the final number of samples per pixel
+        (which may differ from the requested amount depending on the type of
+        ``Sampler`` being used)
+
+        Parameter ``sensor`` (``int``, ``mi.Sensor``):
+            Specify a sensor to render the scene from a different viewpoint.
+
+        Parameter ``seed` (``int``)
+            This parameter controls the initialization of the random number
+            generator during the primal rendering step. It is crucial that you
+            specify different seeds (e.g., an increasing sequence) if subsequent
+            calls should produce statistically independent images (e.g. to
+            de-correlate gradient-based optimization steps).
+
+        Parameter ``spp`` (``int``):
+            Optional parameter to override the number of samples per pixel for the
+            primal rendering step. The value provided within the original scene
+            specification takes precedence if ``spp=0``.
+        """
+
+        # FIXME change samples_per_wavefront (see wavefront_size below)
+        # and divide in multiple passes if necessary (prob. with progress bar for y-tal)
+
+        film = sensor.film()
+        sampler = sensor.sampler().clone()
+
+        if spp != 0:
+            sampler.set_sample_count(spp)
+
+        spp = sampler.sample_count()
+        sampler.set_samples_per_wavefront(spp)
+
+        film_size = film.crop_size()
+
+        if film.sample_border():
+            film_size += 2 * film.rfilter().border_size()
+
+        wavefront_size = dr.prod(film_size) * spp
+
+        if wavefront_size > 2**32:
+            raise Exception(
+                "The total number of Monte Carlo samples required by this "
+                "rendering task (%i) exceeds 2^32 = 4294967296. Please use "
+                "fewer samples per pixel or render using multiple passes."
+                % wavefront_size)
+
+        sampler.seed(seed, wavefront_size)
+        film.prepare(aovs)
+
+        return sampler, spp
+
     def prepare_transient(self, scene: mi.Scene, sensor: mi.Sensor):
         '''
         Prepare the integrator to perform a transient simulation
@@ -70,20 +122,17 @@ class TransientADIntegrator(ADIntegrator):
         if isinstance(sensor, int):
             sensor = scene.sensors()[sensor]
 
-        # FIXME manually call set_shape, even though it should be called by
+        # TODO fix, here we manually call set_scene and set_shape, even though it should be called by
         # https://github.com/mitsuba-renderer/mitsuba3/blob/ff9cf94323703885068779b15be36345a2eadb89/src/render/shape.cpp#L553
+        # the virtual function call does not reach child class defined in mitransient
+        sensor.set_scene(scene)
         for shape in scene.shapes():
             if shape.is_sensor():
                 sensor.set_shape(shape)
 
         # Create the transient block responsible for storing the time contribution
         crop_size = sensor.film().crop_size()
-        # FIXME(diego): figure out how to set crop_size in the XML or add it as default
-        # parameter of TransientBlock
-        Log(LogLevel.Warn, 'Ignoring crop_size of ({x}, {y}), setting to (256, 256)'.format(
-            x=crop_size.x, y=crop_size.y))
-        size = np.array([256, 256, self.temporal_bins])
-        # size = np.array([crop_size.y, crop_size.x, self.temporal_bins])
+        size = np.array([crop_size.x, crop_size.y, self.temporal_bins])
 
         def load_filter(name, **kargs):
             '''
@@ -129,6 +178,7 @@ class TransientADIntegrator(ADIntegrator):
 
     # NOTE(diego): The only change of this function w.r.t. non-transient ADIntegrator
     # is that we add the "add_transient" parameter to the call of self.sample()
+
     def render(self: mi.SamplingIntegrator,
                scene: mi.Scene,
                sensor: Union[int, mi.Sensor] = 0,
@@ -143,6 +193,8 @@ class TransientADIntegrator(ADIntegrator):
 
         if isinstance(sensor, int):
             sensor = scene.sensors()[sensor]
+
+        film = sensor.film()
 
         # Disable derivatives in all of the following
         with dr.suspend_grad():
@@ -174,12 +226,13 @@ class TransientADIntegrator(ADIntegrator):
             )
 
             # Prepare an ImageBlock as specified by the film
-            block = sensor.film().create_block()
+            block = film.create_block()
 
             # Only use the coalescing feature when rendering enough samples
             block.set_coalesce(block.coalesce() and spp >= 4)
 
             # Accumulate into the image block
+            # FIXME separate into _splat_to(_transient?)_block function
             alpha = dr.select(valid, mi.Float(1), mi.Float(0))
             if mi.has_flag(sensor.film().flags(), mi.FilmFlags.Special):
                 aovs = sensor.film().prepare_sample(L * weight, ray.wavelengths,
@@ -194,8 +247,8 @@ class TransientADIntegrator(ADIntegrator):
             gc.collect()
 
             # Perform the weight division and return an image tensor
-            sensor.film().put_block(block)
-            self.primal_image = sensor.film().develop()
+            film.put_block(block)
+            self.primal_image = film.develop()
 
             return self.primal_image
 
@@ -206,6 +259,9 @@ class TransientADIntegrator(ADIntegrator):
                        sensor: Union[int, mi.Sensor] = 0,
                        seed: int = 0,
                        spp: int = 0) -> mi.TensorXf:
+        # TODO implement render_forward
+        raise NotImplementedError(
+            "Check https://github.com/mitsuba-renderer/mitsuba3/blob/1e513ef94db0534f54a884f2aeab7204f6f1e3ed/src/python/python/ad/integrators/common.py")
 
         if isinstance(sensor, int):
             sensor = scene.sensors()[sensor]
@@ -288,6 +344,9 @@ class TransientADIntegrator(ADIntegrator):
                         sensor: Union[int, mi.Sensor] = 0,
                         seed: int = 0,
                         spp: int = 0) -> None:
+        # TODO implement render_backward
+        raise NotImplementedError(
+            "Check https://github.com/mitsuba-renderer/mitsuba3/blob/1e513ef94db0534f54a884f2aeab7204f6f1e3ed/src/python/python/ad/integrators/common.py")
 
         if isinstance(sensor, int):
             sensor = scene.sensors()[sensor]

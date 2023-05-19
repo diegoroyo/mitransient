@@ -25,12 +25,20 @@ def get_module(class_):
     return get_class(class_.__module__)
 
 
-ArrayXf = get_module(mi.Float).ArrayXf
-ArrayXu = get_module(mi.Float).ArrayXu
-ArrayXi = get_module(mi.Float).ArrayXi
-Array2f = get_module(mi.Float).Array2f
-Array2u = get_module(mi.Float).Array2u
-Array3f = get_module(mi.Float).Array3f
+if mi.variant().startswith('scalar'):
+    ArrayXf = dr.scalar.ArrayXf
+    ArrayXu = dr.scalar.ArrayXu
+    ArrayXi = dr.scalar.ArrayXi
+    Array2f = dr.scalar.Array2f
+    Array2u = dr.scalar.Array2u
+    Array3f = dr.scalar.Array3f
+else:
+    ArrayXf = get_module(mi.Float).ArrayXf
+    ArrayXu = get_module(mi.Float).ArrayXu
+    ArrayXi = get_module(mi.Float).ArrayXi
+    Array2f = get_module(mi.Float).Array2f
+    Array2u = get_module(mi.Float).Array2u
+    Array3f = get_module(mi.Float).Array3f
 
 
 '''

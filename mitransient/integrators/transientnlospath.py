@@ -377,7 +377,8 @@ class TransientNLOSPath(TransientRBIntegrator):
         β = mi.Spectrum(1)                            # Path throughput weight
         η = mi.Float(1)                               # Index of refraction
         active = mi.Bool(active)                      # Active SIMD lanes
-        distance = mi.Float(0)                        # Distance of the path
+        # NOTE(diego): nloscapturemeter sets ray.time in optical path length (distance)
+        distance = mi.Float(ray.time)                 # Distance of the path
 
         # Variables caching information from the previous bounce
         prev_si = dr.zeros(mi.SurfaceInteraction3f)

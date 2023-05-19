@@ -3,6 +3,8 @@ notebooks/transientFrames/**
 .vscode
 test/*
 !test/z-scene-properties
+test/z-scene-properties/*.npy
+test/z-scene-properties/*.ipynb
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

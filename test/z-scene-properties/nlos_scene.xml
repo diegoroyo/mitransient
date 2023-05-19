@@ -1,4 +1,4 @@
-<scene version="3.2.1">
+<scene version="3.3.0">
     <integrator type="transient_nlos_path">
         <integer name="block_size" value="1"/>
         <integer name="max_depth" value="-1"/>
@@ -22,7 +22,7 @@
             <rotate x="1" angle="0.0"/>
             <rotate y="1" angle="0.0"/>
             <rotate z="1" angle="0.0"/>
-            <translate x="0.0" y="0.0" z="2.5"/>
+            <translate x="0.0" y="0.0" z="1.0"/>
         </transform>
     </shape>
 
@@ -49,11 +49,17 @@
                 <float name="fov" value="0.2"/>
             </emitter>
 
+            <film type="hdrfilm">
+                <integer name="width" value="32"/>
+                <integer name="height" value="32"/>
+            </film>
+
             <boolean name="confocal" value="false"/>
             <boolean name="account_first_and_last_bounces" value="false"/>
             <point name="sensor_origin" x="-0.5" y="0.0" z="0.25"/>
             <point name="laser_origin" x="-0.5" y="0.0" z="0.25"/>
-            <point name="laser_lookat_pixel" x="127.5" y="127.5" z="0"/>
+            <!-- <point name="laser_lookat_pixel" x="0.5" y="0.5" z="0"/> -->
+            <point name="laser_lookat_pixel" x="15.5" y="15.5" z="0"/>
             <rfilter type="box">
               <!-- <float name="stddev" value="1.0"/> -->
             </rfilter>
