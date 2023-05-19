@@ -119,11 +119,22 @@ class TransientADIntegrator(ADIntegrator):
         if isinstance(sensor, int):
             sensor = scene.sensors()[sensor]
 
-        # FIXME if sensor is NLOSCaptureMeter, ensure camera_unwarp is False and refer user to account_first_and_last_bounces
-        # also check gaussian_stddev and progressive, figure out default values for those
+        from mitransient.sensors.nloscapturemeter import NLOSCaptureMeter
+        if isinstance(sensor, NLOSCaptureMeter):
+            if self.camera_unwarp:
+                raise AssertionError(
+                    'camera_unwarp is not supported for NLOSCaptureMeter. '
+                    'Use account_first_and_last_bounces in the NLOSCaptureMeter plugin instead.')
+            if self.temporal_filter != 'box':
+                self.temporal_filter = 'box'
+                mi.Log(mi.LogLevel.Warn,
+                       'Setting temporal_filter to box because you are using a NLOSCaptureMeter')
 
         film = sensor.film()
-        # FIXME check that film is a TransientHDRFilm
+        from mitransient.films.transient_hdr_film import TransientHDRFilm
+        if not isinstance(film, TransientHDRFilm):
+            raise AssertionError(
+                'The film of the sensor must be of type transient_hdr_film')
 
         # TODO fix, here we manually call set_scene and set_shape, even though it should be called by
         # https://github.com/mitsuba-renderer/mitsuba3/blob/ff9cf94323703885068779b15be36345a2eadb89/src/render/shape.cpp#L553
@@ -217,8 +228,7 @@ class TransientADIntegrator(ADIntegrator):
                 state_in=None,
                 reparam=None,
                 active=mi.Bool(True),
-                # FIXME set to transientblock's end of the histogram
-                max_distance=mi.Float(999999999),
+                max_distance=self._film.end_opl(),
                 add_transient=self.add_transient_f(pos, weight)
             )
 

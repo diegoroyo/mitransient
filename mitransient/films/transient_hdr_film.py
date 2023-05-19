@@ -23,6 +23,7 @@ class TransientHDRFilm(mi.Film):
             coords, wavelengths, spec * ray_weight, mi.Float(1.0), active & mask)
 
     def prepare(self, aovs):
+        # NOTE could be done with mi.load_dict where type='hdrfilm' and the rest of the properties
         props = mi.Properties('hdrfilm')
         props['width'] = self.size().x
         props['height'] = self.size().y

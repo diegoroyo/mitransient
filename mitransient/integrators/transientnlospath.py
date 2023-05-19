@@ -387,7 +387,6 @@ class TransientNLOSPath(TransientRBIntegrator):
         prev_bsdf_delta = mi.Bool(True)
 
         if self.camera_unwarp:
-            # TODO(diego): remove camera_unwarp in favour of this
             raise AssertionError('Use account_first_and_last_bounces instead')
 
         # Record the following loop in its entirety

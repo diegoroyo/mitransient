@@ -8,6 +8,7 @@
         <boolean name="nlos_hidden_geometry_sampling" value="false"/>
         <boolean name="nlos_hidden_geometry_sampling_do_rroulette" value="false"/>
         <boolean name="nlos_hidden_geometry_sampling_includes_relay_wall" value="false"/>
+        <string name="temporal_filter" value="box"/>
     </integrator>
 
     <shape type="obj">
@@ -39,7 +40,7 @@
         </transform>
         <sensor type="nlos_capture_meter">
             <sampler type="independent">
-                <integer name="sample_count" value="1"/>
+                <integer name="sample_count" value="100000"/>
                 <integer name="seed" value="0"/>
             </sampler>
 
@@ -49,15 +50,14 @@
             </emitter>
 
             <boolean name="confocal" value="false"/>
-            <!-- FIXME merge with "camera_unwarp" -->
             <boolean name="account_first_and_last_bounces" value="false"/>
             <point name="sensor_origin" x="-0.5" y="0.0" z="0.25"/>
             <point name="laser_origin" x="-0.5" y="0.0" z="0.25"/>
             <point name="laser_lookat_pixel" x="15.5" y="15.5" z="0"/>
 
             <film type="transient_hdr_film">
-                <integer name="width" value="32"/>
-                <integer name="height" value="32"/>
+                <integer name="width" value="256"/>
+                <integer name="height" value="256"/>
 
                 <integer name="temporal_bins" value="2048"/>
                 <float name="bin_width_opl" value="0.003"/>
