@@ -16,10 +16,7 @@ transient_integrator.prepare_transient(scene, 0)
 # integrator = scene.integrator()
 # transient_integrator.prepare_transient(kernel_scene, 0)
 
-img = transient_integrator.render(scene, spp=1_000, seed=50)
+steady, transient = transient_integrator.render(scene, seed=50)
 
-img_transient = transient_integrator.transient_block.develop(
-    raw=False, gamma=False)
-
-np.save('img.npy', np.array(img))
-np.save('img_transient.npy', np.array(img_transient))
+np.save('img.npy', np.array(steady))
+np.save('img_transient.npy', np.array(transient))

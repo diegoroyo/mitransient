@@ -7,8 +7,9 @@
         <boolean name="nlos_laser_sampling" value="true"/>
         <boolean name="nlos_hidden_geometry_sampling" value="false"/>
         <boolean name="nlos_hidden_geometry_sampling_do_rroulette" value="false"/>
-        <boolean name="nlos_hidden_geometry_sampling_includes_relay_wall" value="false"/>
+        <boolean name="nlos_hidden_geometry_sampling_includes_relay_wall" value="true"/>
     </integrator>
+    <!-- <integrator type="path"/> -->
 
     <shape type="obj">
         <string name="filename" value="Z.obj"/>
@@ -39,7 +40,7 @@
         </transform>
         <sensor type="nlos_capture_meter">
             <sampler type="independent">
-                <integer name="sample_count" value="1"/>
+                <integer name="sample_count" value="100000"/>
                 <integer name="seed" value="0"/>
             </sampler>
 
@@ -48,26 +49,19 @@
                 <float name="fov" value="0.2"/>
             </emitter>
 
+            <film type="hdrfilm">
+                <integer name="width" value="32"/>
+                <integer name="height" value="32"/>
+            </film>
+
             <boolean name="confocal" value="false"/>
-            <!-- FIXME merge with "camera_unwarp" -->
             <boolean name="account_first_and_last_bounces" value="false"/>
             <point name="sensor_origin" x="-0.5" y="0.0" z="0.25"/>
             <point name="laser_origin" x="-0.5" y="0.0" z="0.25"/>
             <point name="laser_lookat_pixel" x="15.5" y="15.5" z="0"/>
-
-            <film type="transient_hdr_film">
-                <integer name="width" value="32"/>
-                <integer name="height" value="32"/>
-
-                <integer name="temporal_bins" value="2048"/>
-                <float name="bin_width_opl" value="0.003"/>
-                <float name="start_opl" value="0"/> 
-        
-                <!-- Always use box filter -->
-                <rfilter type="box">
-                    <!-- <float name="stddev" value="1.0"/> -->
-                </rfilter>
-            </film>
+            <rfilter type="box">
+              <!-- <float name="stddev" value="1.0"/> -->
+            </rfilter>
         </sensor>
     </shape>
 </scene>

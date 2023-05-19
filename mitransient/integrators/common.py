@@ -5,8 +5,9 @@ import mitsuba as mi
 import drjit as dr
 import gc
 
+from typing import Union, Any, Callable, Optional, Tuple
+
 from mitsuba.ad.integrators.common import ADIntegrator, RBIntegrator, mis_weight, _ReparamWrapper
-from mitsuba import Log, LogLevel
 
 
 class TransientADIntegrator(ADIntegrator):
@@ -28,7 +29,7 @@ class TransientADIntegrator(ADIntegrator):
          1, then path generation many randomly cease after encountering directly
          visible surfaces. (Default: 5)
     """
-    # FIXME: Add documentation for other parameters
+    # TODO: Add documentation for other parameters
     # note that temporal bins, exposure, initial time are measured in optical path length
 
     def __init__(self, props=mi.Properties()):
@@ -36,18 +37,14 @@ class TransientADIntegrator(ADIntegrator):
 
         # imported: max_depth and rr_depth
 
-        # test/z-scene-properties
-        self.transient_block = None
-        self.temporal_bins = props.get('temporal_bins', 2048)
-        self.exposure = props.get('exposure', 0.003)
-        self.initial_time = props.get('initial_time', 0)
-        self.camera_unwarp = props.get('camera_unwarp', False)
+        # NOTE box, gaussian, or empty string sets it to the same as the film
         self.temporal_filter = props.get('temporal_filter', '')
+        self.camera_unwarp = props.get('camera_unwarp', False)
         self.gaussian_stddev = props.get('gaussian_stddev', 2.0)
         self.progressive = props.get('progressive', 0.0)
 
     def to_string(self):
-        # FIXME add other parameters
+        # TODO add other parameters
         return f'{type(self).__name__}[max_depth = {self.max_depth},' \
                f' rr_depth = { self.rr_depth }]'
 
@@ -122,6 +119,12 @@ class TransientADIntegrator(ADIntegrator):
         if isinstance(sensor, int):
             sensor = scene.sensors()[sensor]
 
+        # FIXME if sensor is NLOSCaptureMeter, ensure camera_unwarp is False and refer user to account_first_and_last_bounces
+        # also check gaussian_stddev and progressive, figure out default values for those
+
+        film = sensor.film()
+        # FIXME check that film is a TransientHDRFilm
+
         # TODO fix, here we manually call set_scene and set_shape, even though it should be called by
         # https://github.com/mitsuba-renderer/mitsuba3/blob/ff9cf94323703885068779b15be36345a2eadb89/src/render/shape.cpp#L553
         # the virtual function call does not reach child class defined in mitransient
@@ -131,8 +134,9 @@ class TransientADIntegrator(ADIntegrator):
                 sensor.set_shape(shape)
 
         # Create the transient block responsible for storing the time contribution
-        crop_size = sensor.film().crop_size()
-        size = np.array([crop_size.x, crop_size.y, self.temporal_bins])
+        crop_size = film.crop_size()
+        temporal_bins = film.temporal_bins
+        size = np.array([crop_size.x, crop_size.y, temporal_bins])
 
         def load_filter(name, **kargs):
             '''
@@ -155,26 +159,19 @@ class TransientADIntegrator(ADIntegrator):
             return [sensor.film().rfilter(), sensor.film().rfilter(), time_filter]
 
         filters = get_filters(sensor)
-        self.transient_block = TransientBlock(
+        film.prepare_transient(
             size=size,
             channel_count=5,
             rfilter=filters)
+        self._film = film
 
     def add_transient_f(self, pos, ray_weight):
         '''
         Return a lambda for saving transient samples
         '''
-        def add_transient_data(spec, distance, wavelengths, active, pos, ray_weight):
-            if self.transient_block == None:
-                return
-            else:
-                idd = (distance / self.exposure) - self.initial_time
-                coords = mi.Vector3f(pos.x, pos.y, idd)
-                mask = (idd >= 0) & (idd < self.temporal_bins)
-                self.transient_block.put(
-                    coords, wavelengths, spec * ray_weight, mi.Float(1.0), active & mask)
-
-        return lambda spec, distance, wavelengths, active: add_transient_data(spec, distance, wavelengths, active, pos, ray_weight)
+        return lambda spec, distance, wavelengths, active: \
+            self._film.add_transient_data(
+                spec, distance, wavelengths, active, pos, ray_weight)
 
     # NOTE(diego): The only change of this function w.r.t. non-transient ADIntegrator
     # is that we add the "add_transient" parameter to the call of self.sample()
@@ -226,17 +223,16 @@ class TransientADIntegrator(ADIntegrator):
             )
 
             # Prepare an ImageBlock as specified by the film
-            block = film.create_block()
+            block = film.steady.create_block()
 
             # Only use the coalescing feature when rendering enough samples
             block.set_coalesce(block.coalesce() and spp >= 4)
 
             # Accumulate into the image block
-            # FIXME separate into _splat_to(_transient?)_block function
             alpha = dr.select(valid, mi.Float(1), mi.Float(0))
-            if mi.has_flag(sensor.film().flags(), mi.FilmFlags.Special):
-                aovs = sensor.film().prepare_sample(L * weight, ray.wavelengths,
-                                                    block.channel_count(), alpha=alpha)
+            if mi.has_flag(film.steady.flags(), mi.FilmFlags.Special):
+                aovs = film.steady.prepare_sample(L * weight, ray.wavelengths,
+                                                  block.channel_count(), alpha=alpha)
                 block.put(pos, aovs)
                 del aovs
             else:
@@ -247,10 +243,11 @@ class TransientADIntegrator(ADIntegrator):
             gc.collect()
 
             # Perform the weight division and return an image tensor
-            film.put_block(block)
-            self.primal_image = film.develop()
+            film.steady.put_block(block)
+            self.primal_image = film.steady.develop()
+            transient_image = film.transient.develop()
 
-            return self.primal_image
+            return self.primal_image, transient_image
 
     # NOTE(diego): For now, this does not change w.r.t. ADIntegrator
     def render_forward(self: mi.SamplingIntegrator,
@@ -303,7 +300,7 @@ class TransientADIntegrator(ADIntegrator):
                     active=mi.Bool(True)
                 )
 
-                block = film.create_block()
+                block = film.steady.create_block()
                 # Only use the coalescing feature when rendering enough samples
                 block.set_coalesce(block.coalesce() and spp >= 4)
 
@@ -329,8 +326,8 @@ class TransientADIntegrator(ADIntegrator):
                     )
 
                 # Perform the weight division and return an image tensor
-                film.put_block(block)
-                result_img = film.develop()
+                film.steady.put_block(block)
+                result_img = film.steady.develop()
 
                 dr.forward_to(result_img)
 
@@ -389,7 +386,7 @@ class TransientADIntegrator(ADIntegrator):
                 )
 
                 # Prepare an ImageBlock as specified by the film
-                block = film.create_block()
+                block = film.steady.create_block()
 
                 # Only use the coalescing feature when rendering enough samples
                 block.set_coalesce(block.coalesce() and spp >= 4)
@@ -642,7 +639,7 @@ class TransientADIntegrator(ADIntegrator):
             This mask array can optionally be used to indicate that some of
             the rays are disabled.
 
-        FIXME(diego): Parameter ``add_transient_f`` (and document type above)
+        TODO(diego): Parameter ``add_transient_f`` (and document type above)
         or probably refer to non-transient RB
 
         The function returns a tuple ``(spec, valid, state_out)`` where

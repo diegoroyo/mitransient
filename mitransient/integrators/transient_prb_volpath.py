@@ -3,7 +3,9 @@ from __future__ import annotations  # Delayed parsing of type annotations
 import drjit as dr
 import mitsuba as mi
 
-from .common import TransientRBIntegrator, mis_weight
+from typing import Optional, Tuple
+
+from mitransient.integrators.common import TransientRBIntegrator, mis_weight
 
 
 def index_spectrum(spec, idx):

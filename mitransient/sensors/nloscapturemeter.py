@@ -17,7 +17,7 @@ from typing import Tuple
 
 class NLOSCaptureMeter(mi.Sensor):
     """
-    FIXME(diego) add docs
+    TODO(diego) add docs
     """
 
     # NOTE(diego): we assume the rays start in a vacuum
@@ -176,9 +176,10 @@ class NLOSCaptureMeter(mi.Sensor):
         sensor_distance, direction = self._sample_direction(
             time, sample2, active)
 
-        # FIXME call to sample_wavelengths yields
+        # TODO call to sample_wavelengths yields
         # *** RuntimeError: Tried to call pure virtual function "Sensor::sample_wavelengths"
         # but it is only used in spectral mode (https://github.com/mitsuba-renderer/mitsuba3/blob/ff9cf94323703885068779b15be36345a2eadb89/include/mitsuba/core/spectrum.h#L471)
+        # we do not have support for spectral rendering anyway, transient block is stuck with 3 channels I think
         wavelengths, wav_weight = [], 1
         # wavelengths, wav_weight = self.sample_wavelengths(
         #     dr.zeros(mi.SurfaceInteraction3f), sample1, active)
@@ -207,7 +208,7 @@ class NLOSCaptureMeter(mi.Sensor):
         return self.shape().bbox()
 
     def to_string(self):
-        # FIXME(diego) update with the rest of parameters
+        # TODO(diego) update with the rest of parameters
         # m_shape, m_emitter from NLOSCaptureMeter, m_film from Sensor, etc.
         return f'{type(self).__name__}[laser_target = {self.laser_target},' \
                f' confocal = { self.is_confocal }]'

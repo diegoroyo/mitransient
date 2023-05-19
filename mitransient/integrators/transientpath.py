@@ -3,6 +3,8 @@ from __future__ import annotations  # Delayed parsing of type annotations
 import drjit as dr
 import mitsuba as mi
 
+from typing import Optional, Tuple
+
 from mitransient.integrators.common import TransientRBIntegrator, mis_weight
 
 

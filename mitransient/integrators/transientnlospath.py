@@ -11,7 +11,7 @@ from typing import Tuple, Optional
 
 
 class TransientNLOSPath(TransientRBIntegrator):
-    # FIXME(diego): docs
+    # TODO(diego): docs
     r"""
     .. _integrator-prb:
 
@@ -75,6 +75,7 @@ class TransientNLOSPath(TransientRBIntegrator):
             'discard_direct_paths', False)
         self.laser_sampling: bool = props.get(
             'nlos_laser_sampling', False)
+        # FIXME gets stuck
         self.hg_sampling: bool = props.get(
             'nlos_hidden_geometry_sampling', False)
         self.hg_sampling_do_rroulette: bool = (
@@ -240,7 +241,7 @@ class TransientNLOSPath(TransientRBIntegrator):
         sampling the laser we sample(1) the point that the laser
         is illuminating and then(2) the laser
         """
-        # FIXME probably needs some "with dr.resume_grad(when=not primal):"
+        # TODO probably needs some "with dr.resume_grad(when=not primal):"
         primal = mode == dr.ADMode.Primal
 
         # 1. Obtain direction to NLOS illuminated point
@@ -386,7 +387,7 @@ class TransientNLOSPath(TransientRBIntegrator):
         prev_bsdf_delta = mi.Bool(True)
 
         if self.camera_unwarp:
-            # FIXME(diego): remove camera_unwarp in favour of this
+            # TODO(diego): remove camera_unwarp in favour of this
             raise AssertionError('Use account_first_and_last_bounces instead')
 
         # Record the following loop in its entirety

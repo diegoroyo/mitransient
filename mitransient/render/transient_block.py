@@ -240,7 +240,7 @@ class TransientBlock:
         return res[crop_size]
 
     def __str__(self):
-        # FIXME update
+        # TODO update
         # return f'ImageBlockND[size = {self.m_size}]'
         return f'''ImageBlockND[
         size = {self.m_size}
