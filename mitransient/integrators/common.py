@@ -48,6 +48,89 @@ class TransientADIntegrator(ADIntegrator):
         return f'{type(self).__name__}[max_depth = {self.max_depth},' \
                f' rr_depth = { self.rr_depth }]'
 
+    def _prepare_los(self,
+                     sensor: mi.Sensor,
+                     seed: int = 0,
+                     spp: int = 0,
+                     aovs: list = []):
+
+        film = sensor.film()
+        sampler = sensor.sampler().clone()
+
+        if spp != 0:
+            sampler.set_sample_count(spp)
+
+        spp = sampler.sample_count()
+        sampler.set_samples_per_wavefront(spp)
+
+        film_size = film.crop_size()
+
+        if film.sample_border():
+            film_size += 2 * film.rfilter().border_size()
+
+        wavefront_size = dr.prod(film_size) * spp
+
+        if wavefront_size > 2**32:
+            raise Exception(
+                "The total number of Monte Carlo samples required by this "
+                "rendering task (%i) exceeds 2^32 = 4294967296. Please use "
+                "fewer samples per pixel or render using multiple passes."
+                % wavefront_size)
+
+        sampler.seed(seed, wavefront_size)
+        film.prepare(aovs)
+
+        return sampler, spp
+
+    def _prepare_nlos(self,
+                      sensor: mi.Sensor,
+                      seed: int = 0,
+                      spp: int = 0,
+                      aovs: list = []):
+
+        film = sensor.film()
+        sampler = sensor.sampler().clone()
+
+        film_size = film.crop_size()
+        if film.sample_border():
+            film_size += 2 * film.rfilter().border_size()
+        film.prepare(aovs)
+
+        if spp == 0:
+            spp = sampler.sample_count()
+
+        # It is not possible to render more than 2^32 samples
+        # in a single pass (32-bit integer)
+        spp_per_pass = int((2**32 - 1) / dr.prod(film_size))
+        if spp_per_pass == 0:
+            raise Exception(
+                "The total number of Monte Carlo samples required for one sample "
+                "of this rendering task (%i) exceeds 2^32 = 4294967296. Please use "
+                "a smaller film size."
+                % (film_size))
+
+        # Split into max-size jobs (maybe add reminder at the end)
+        needs_remainder = spp % spp_per_pass != 0
+        num_passes = spp // spp_per_pass + 1 * needs_remainder
+
+        sampler.set_sample_count(num_passes)
+        sampler.set_samples_per_wavefront(num_passes)
+        sampler.seed(seed, num_passes)
+        seeds = mi.UInt32(sampler.next_1d() * 2**32)
+
+        def sampler_per_pass(i):
+            if needs_remainder and i == num_passes - 1:
+                spp_per_pass_i = spp % spp_per_pass
+            else:
+                spp_per_pass_i = spp_per_pass
+            sampler_clone = sensor.sampler().clone()
+            sampler_clone.set_sample_count(spp_per_pass_i)
+            sampler_clone.set_samples_per_wavefront(spp_per_pass_i)
+            sampler_clone.seed(seeds[i], dr.prod(film_size) * spp_per_pass_i)
+            return sampler_clone
+
+        return [(sampler_per_pass(i), spp_per_pass) for i in range(num_passes)]
+
     def prepare(self,
                 sensor: mi.Sensor,
                 seed: int = 0,
@@ -77,37 +160,11 @@ class TransientADIntegrator(ADIntegrator):
             primal rendering step. The value provided within the original scene
             specification takes precedence if ``spp=0``.
         """
-
-        # FIXME change samples_per_wavefront (see wavefront_size below)
-        # and divide in multiple passes if necessary (prob. with progress bar for y-tal)
-
-        film = sensor.film()
-        sampler = sensor.sampler().clone()
-
-        if spp != 0:
-            sampler.set_sample_count(spp)
-
-        spp = sampler.sample_count()
-        sampler.set_samples_per_wavefront(spp)
-
-        film_size = film.crop_size()
-
-        if film.sample_border():
-            film_size += 2 * film.rfilter().border_size()
-
-        wavefront_size = dr.prod(film_size) * spp
-
-        if wavefront_size > 2**32:
-            raise Exception(
-                "The total number of Monte Carlo samples required by this "
-                "rendering task (%i) exceeds 2^32 = 4294967296. Please use "
-                "fewer samples per pixel or render using multiple passes."
-                % wavefront_size)
-
-        sampler.seed(seed, wavefront_size)
-        film.prepare(aovs)
-
-        return sampler, spp
+        from mitransient.sensors.nloscapturemeter import NLOSCaptureMeter
+        if isinstance(sensor, NLOSCaptureMeter):
+            return self._prepare_nlos(sensor, seed, spp, aovs)
+        else:
+            return [self._prepare_los(sensor, seed, spp, aovs)]
 
     def prepare_transient(self, scene: mi.Scene, sensor: mi.Sensor):
         '''
@@ -207,53 +264,55 @@ class TransientADIntegrator(ADIntegrator):
         # Disable derivatives in all of the following
         with dr.suspend_grad():
             # Prepare the film and sample generator for rendering
-            sampler, spp = self.prepare(
+            prepare_result = self.prepare(
                 sensor=sensor,
                 seed=seed,
                 spp=spp,
                 aovs=self.aovs()
             )
 
-            # Generate a set of rays starting at the sensor
-            ray, weight, pos, _ = self.sample_rays(scene, sensor, sampler)
+            for sampler, spp in prepare_result:
+                # Generate a set of rays starting at the sensor
+                ray, weight, pos, _ = self.sample_rays(scene, sensor, sampler)
 
-            # Launch the Monte Carlo sampling process in primal mode
-            L, valid, state = self.sample(
-                mode=dr.ADMode.Primal,
-                scene=scene,
-                sampler=sampler,
-                ray=ray,
-                depth=mi.UInt32(0),
-                δL=None,
-                state_in=None,
-                reparam=None,
-                active=mi.Bool(True),
-                max_distance=self._film.end_opl(),
-                add_transient=self.add_transient_f(pos, weight)
-            )
+                # Launch the Monte Carlo sampling process in primal mode
+                L, valid, state = self.sample(
+                    mode=dr.ADMode.Primal,
+                    scene=scene,
+                    sampler=sampler,
+                    ray=ray,
+                    depth=mi.UInt32(0),
+                    δL=None,
+                    state_in=None,
+                    reparam=None,
+                    active=mi.Bool(True),
+                    max_distance=self._film.end_opl(),
+                    add_transient=self.add_transient_f(pos, weight)
+                )
 
-            # Prepare an ImageBlock as specified by the film
-            block = film.steady.create_block()
+                # Prepare an ImageBlock as specified by the film
+                block = film.steady.create_block()
 
-            # Only use the coalescing feature when rendering enough samples
-            block.set_coalesce(block.coalesce() and spp >= 4)
+                # Only use the coalescing feature when rendering enough samples
+                block.set_coalesce(block.coalesce() and spp >= 4)
 
-            # Accumulate into the image block
-            alpha = dr.select(valid, mi.Float(1), mi.Float(0))
-            if mi.has_flag(film.steady.flags(), mi.FilmFlags.Special):
-                aovs = film.steady.prepare_sample(L * weight, ray.wavelengths,
-                                                  block.channel_count(), alpha=alpha)
-                block.put(pos, aovs)
-                del aovs
-            else:
-                block.put(pos, ray.wavelengths, L * weight, alpha)
+                # Accumulate into the image block
+                alpha = dr.select(valid, mi.Float(1), mi.Float(0))
+                if mi.has_flag(film.steady.flags(), mi.FilmFlags.Special):
+                    aovs = film.steady.prepare_sample(L * weight, ray.wavelengths,
+                                                      block.channel_count(), alpha=alpha)
+                    block.put(pos, aovs)
+                    del aovs
+                else:
+                    block.put(pos, ray.wavelengths, L * weight, alpha)
 
-            # Explicitly delete any remaining unused variables
-            del sampler, ray, weight, pos, L, valid, alpha
-            gc.collect()
+                # Explicitly delete any remaining unused variables
+                del sampler, ray, weight, pos, L, valid, alpha
+                gc.collect()
 
-            # Perform the weight division and return an image tensor
-            film.steady.put_block(block)
+                # Perform the weight division and return an image tensor
+                film.steady.put_block(block)
+
             self.primal_image = film.steady.develop()
             transient_image = film.transient.develop()
 
