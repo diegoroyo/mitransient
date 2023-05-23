@@ -1,0 +1,3 @@
+[submodule "ext/mitsuba3"]
+	path = ext/mitsuba3
+	url = git@github.com:diegoroyo/mitsuba3.git
