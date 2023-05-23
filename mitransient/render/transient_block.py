@@ -1,9 +1,3 @@
-"""
-FIXME(diego): For now the TransientADIntegrator creates its own TransientBlock,
-but the TransientBlock is not defined in the XML. Figure out how to export this film
-so that it fits inside the NLOSCaptureMeter (or just figure out how to put this in the XML)
-"""
-
 import drjit as dr
 import numpy as np
 
@@ -18,6 +12,7 @@ class TransientBlock:
     def __init__(self,
                  size: np.ndarray,
                  channel_count: UInt32,
+                 channel_use_weights: bool = True,
                  rfilter: ReconstructionFilter = None,
                  warn_negative: bool = False,
                  warn_invalid: bool = False,
@@ -26,6 +21,7 @@ class TransientBlock:
         self.m_offset = 0
         self.m_size = 0
         self.m_channel_count = channel_count
+        self.m_channel_use_weights = channel_use_weights
         self.m_warn_negative = warn_negative
         self.m_warn_invalid = warn_invalid
         self.m_normalize = normalize
@@ -229,7 +225,8 @@ class TransientBlock:
         weight = dr.gather(Float, res.array, weight_idx)
         values = dr.gather(Float, res.array, values_idx)
 
-        values = (values / weight) & (weight > 0.0)
+        if self.m_channel_use_weights:
+            values = (values / weight) & (weight > 0.0)
 
         if gamma:
             values = linear_to_srgb(values)

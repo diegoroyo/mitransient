@@ -75,7 +75,6 @@ class TransientNLOSPath(TransientRBIntegrator):
             'discard_direct_paths', False)
         self.laser_sampling: bool = props.get(
             'nlos_laser_sampling', False)
-        # FIXME gets stuck
         self.hg_sampling: bool = props.get(
             'nlos_hidden_geometry_sampling', False)
         self.hg_sampling_do_rroulette: bool = (
@@ -91,8 +90,6 @@ class TransientNLOSPath(TransientRBIntegrator):
 
     def prepare_transient(self, scene: mi.Scene, sensor: mi.Sensor):
         super().prepare_transient(scene, sensor)
-
-        import numpy as np
 
         # prepare laser sampling
 
@@ -111,26 +108,17 @@ class TransientNLOSPath(TransientRBIntegrator):
 
         # prepare hidden geometry sampling
 
-        total_pdf = 0.0
-        # same as m_shapes, but excluding relay wall objects (i.e. objects
-        # that are attached to a sensor)
-        self.hidden_geometries = []
-        # cumulative PDF of m_hidden_geometries
-        # m_hidden_geometries_pdf[i] = P(area-weighted random index <= i)
-        # e.g. if two hidden geometry objects with areas A_1 = 1 and A_2 = 2
-        # then hidden_geometries_pdf = {0.33f, 1.0f}
-        self.hidden_geometries_cpdf = []
-        for shape in scene.shapes():
+        self.hidden_geometries = scene.shapes_dr()
+        self.hidden_geometries_distribution = []
+        for shape in scene.shapes_dr():
             is_relay_wall = shape.sensor() == sensor
             if not self.hg_sampling_includes_relay_wall and is_relay_wall:
+                self.hidden_geometries_distribution.append(0)
                 continue
-            self.hidden_geometries.append(shape)
-            self.hidden_geometries_cpdf.append(
-                total_pdf + shape.surface_area())
-            total_pdf += shape.surface_area()
+            self.hidden_geometries_distribution.append(shape.surface_area()[0])
 
-        self.hidden_geometries_cpdf = np.array(
-            self.hidden_geometries_cpdf) / total_pdf
+        self.hidden_geometries_distribution = mi.DiscreteDistribution(
+            self.hidden_geometries_distribution)
 
     def _sample_hidden_geometry_position(
             self, ref: mi.Interaction3f,
@@ -164,26 +152,15 @@ class TransientNLOSPath(TransientRBIntegrator):
             return self.hidden_geometries[0].sample_position(
                 ref.time, sample2, active)
 
-        index = mi.UInt(0)
-        active_cpdf = mi.Mask(active)
-        for cpdf in self.hidden_geometries_cpdf:
-            active_cpdf[sample2.x < cpdf] = False
-            index[active] += 1
+        index, new_sample, shape_pdf = \
+            self.hidden_geometries_distribution.sample_reuse_pmf(
+                sample2.x, active)
+        sample2.x = new_sample
 
-        cpdf_before = dr.select(
-            index == 0, 0.0, self.hidden_geometries_cpdf[index - 1])
-        shape_pdf = self.hidden_geometries_cpdf[index] - cpdf_before
-
-        # Rescale sample.x() to lie in [0, 1) again
-        sample2.assign(mi.Point2f(
-            (sample2.x - cpdf_before) / shape_pdf, sample2.y))
-
-        shape: mi.Shape = dr.gather(
-            mi.Shape, self.hidden_geometries, index, active)
+        shape: mi.ShapePtr = dr.gather(
+            mi.ShapePtr, self.hidden_geometries, index, active)
         ps = shape.sample_position(ref.time, sample2, active)
         ps.pdf *= shape_pdf
-
-        active &= dr.neq(ps.pdf, 0.0)
 
         return ps
 
@@ -291,7 +268,6 @@ class TransientNLOSPath(TransientRBIntegrator):
     def hidden_geometry_sample(
             self, scene: mi.Scene, bsdf: mi.BSDF, bsdf_ctx: mi.BSDFContext, si: mi.SurfaceInteraction3f,
             _: mi.Float, sample2: mi.Point2f, active: mi.Mask) -> Tuple[mi.BSDFSample3f, mi.Spectrum]:
-        # FIXME add this functionality in transientnlos
         ps_hg: mi.PositionSample3f = self._sample_hidden_geometry_position(
             ref=si, sample2=sample2, active=active)
         active &= dr.neq(ps_hg.pdf, 0.0)
@@ -299,27 +275,24 @@ class TransientNLOSPath(TransientRBIntegrator):
         d = ps_hg.p - si.p
         dist = dr.norm(d)
         d /= dist
-        ray_hg = mi.Ray3f(o=si.p, d=d, time=si.time,
-                          wavelengths=si.wavelengths)
+        ray_hg = si.spawn_ray(d)
         si_hg: mi.SurfaceInteraction3f = scene.ray_intersect(ray_hg, active)
         active &= si_hg.is_valid()
 
-        si_test = si_hg
-        p_test = si_test.p
+        si_test = mi.SurfaceInteraction3f(dr.detach(si_hg))
         active_test = mi.Mask(active)
         num_intersections = mi.UInt(0)
         loop = mi.Loop(name="Hidden geometry sample",
-                       state=lambda: (num_intersections, active_test))
+                       state=lambda: (num_intersections, active_test, si_test))
         loop.set_max_iterations(100)
         while loop(active_test):
             num_intersections[active_test] += 1
-            ray_test = mi.Ray3f(o=p_test, d=d, time=si_test.time,
-                                wavelengths=si_test.wavelengths)
+            ray_test = si_test.spawn_ray(d)
             si_test: mi.SurfaceInteraction3f = scene.ray_intersect(
                 ray_test, active_test)
-            active_test &= si_test.is_valid()
-            p_test = si_test.p
-        active_test[num_intersections >= 100] = False
+            active_test &= \
+                (si_test.t > 2 * dr.epsilon(mi.Float)) & si_test.is_valid()
+        active[num_intersections >= 100] = False
 
         wo = si.to_local(d)
         bsdf_spec = bsdf.eval(ctx=bsdf_ctx, si=si, wo=wo, active=active)
@@ -337,7 +310,7 @@ class TransientNLOSPath(TransientRBIntegrator):
         bs.wo = wo
         bs.pdf = ps_hg.pdf * num_intersections
         bs.eta = 1.0
-        bs.sampled_type = mi.BSDFFlags.DeltaReflection
+        bs.sampled_type = mi.BSDFFlags.Reflection
         bs.sampled_component = 0
 
         return bs, dr.select(active & (bs.pdf > dr.epsilon(mi.Float)), bsdf_spec, 0.0)

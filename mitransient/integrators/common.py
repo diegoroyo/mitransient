@@ -177,7 +177,9 @@ class TransientADIntegrator(ADIntegrator):
             sensor = scene.sensors()[sensor]
 
         from mitransient.sensors.nloscapturemeter import NLOSCaptureMeter
+        is_nlos = False
         if isinstance(sensor, NLOSCaptureMeter):
+            is_nlos = True
             if self.camera_unwarp:
                 raise AssertionError(
                     'camera_unwarp is not supported for NLOSCaptureMeter. '
@@ -230,6 +232,7 @@ class TransientADIntegrator(ADIntegrator):
         film.prepare_transient(
             size=size,
             channel_count=5,
+            channel_use_weights=not is_nlos,
             rfilter=filters)
         self._film = film
 

@@ -36,10 +36,11 @@ class TransientHDRFilm(mi.Film):
         self.steady = mi.PluginManager.instance().create_object(props)
         self.steady.prepare(aovs)
 
-    def prepare_transient(self, size, channel_count, rfilter):
+    def prepare_transient(self, size, channel_count, channel_use_weights, rfilter):
         self.transient = TransientBlock(
             size=size,
             channel_count=channel_count,
+            channel_use_weights=channel_use_weights,
             rfilter=rfilter)
 
 
