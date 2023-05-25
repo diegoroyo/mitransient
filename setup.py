@@ -7,7 +7,7 @@ readme = (this_directory / "README.md").read_text()
 
 setup(
     name='mitransient',
-    version='0.0.0',
+    version='0.1.0',
     description='Mitsuba 3 transient',
     url='https://github.com/mcrescas/mitsuba3-transient',
     author='Miguel Crespo, Diego Royo',

@@ -100,7 +100,7 @@ class TransientBlock:
             from mitsuba import spectrum_to_srgb
             rgb = spectrum_to_srgb(spec_u, wavelengths, active)
         elif is_monochromatic:
-            rgb = spec_u.x()
+            rgb = spec_u.x
         else:
             rgb = spec_u
 

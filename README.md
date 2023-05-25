@@ -53,7 +53,10 @@ Usual rendering is referred as steady in terms of the light has infinite propaga
 - [ ] Differentiation of the transient simulation.
 - [ ] Fluorescence BRDF.
 - [X] Non-line-of-sight support (NLOS)
-
+  - [ ] `max_depth`
+  - [ ] `filter_depth`
+  - [ ] `discard_direct_paths`
+  - [ ] `auto_detect_bins`
 # Installation
 
 <!-- We provide the package via PyPI. Installing Mitsuba 3 transient this way is as simple as running
@@ -67,6 +70,7 @@ _NOTE: These instructions have been tested on Linux only_
 After cloning the repo, navigate to the root folder and execute the following commands to build the custom version of Mitsuba 3
 
 ```bash
+# install mitsuba
 git submodule update --init --recursive
 cd ext/mitsuba3
 mkdir -p build
@@ -75,6 +79,12 @@ cmake -GNinja ..
 # Here, edit build/mitsuba.conf and set the enabled variants
 # Recommended: scalar_rgb, llvm_rgb and cuda_rgb (FIXME: change to llvm_mono for NLOS?)
 ninja
+
+# install mitransient
+cd ..
+scripts/local_install.sh
+
+# after this you should be able to import mitsuba and mitransient in your python code
 ```
 
 After this you are all set to use our transient version of Mitsuba 3
