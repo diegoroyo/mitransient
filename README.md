@@ -84,7 +84,7 @@ ninja
 cd ..
 scripts/local_install.sh
 
-# after this you should be able to import mitsuba and mitransient in your python code
+# after this you should be able to import mitsuba and mitransient in your python code (careful about setting the correct PATH environment variable)
 ```
 
 After this you are all set to use our transient version of Mitsuba 3
@@ -100,7 +100,9 @@ For NLOS simulations, see https://github.com/diegoroyo/tal
 
 # Usage
 
-Here is a simple "Hello World" example that shows how simple it is to render a scene using Mitsuba 3 transient from Python:
+See `notebooks` folder for example Python code, which uses the scenes defined in the `scenes` folder.
+
+<!--Here is a simple "Hello World" example that shows how simple it is to render a scene using Mitsuba 3 transient from Python:
 
 ```python
 # Import the library using the alias "mi"
@@ -118,7 +120,7 @@ transient_integrator.prepare_transient(scene, 0)
 data_steady, data_transient = mi.render(scene)
 # Use the resulting tensor (steady: [PixelX, PixelY, Channels], transient: [PixelX, PixelY, TimeBins, Channels]) as you need, where steady is the sum over the temporal axis
 ...
-```
+```-->
 
 # About
 

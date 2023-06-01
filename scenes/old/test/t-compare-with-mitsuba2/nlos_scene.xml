@@ -1,0 +1,77 @@
+<!-- Auto-generated using TAL v0.9.3 -->
+<scene version="3.3.0">
+    <integrator type="transient_nlos_path">
+    <!-- <integrator type="transientpath"> -->
+        <integer name="block_size" value="1"/>
+        <integer name="max_depth" value="-1"/>
+        <integer name="filter_depth" value="-1"/>
+        <boolean name="discard_direct_paths" value="false"/>
+        <boolean name="nlos_laser_sampling" value="true"/>
+        <boolean name="nlos_hidden_geometry_sampling" value="true"/>
+        <boolean name="nlos_hidden_geometry_sampling_do_rroulette" value="false"/>
+        <boolean name="nlos_hidden_geometry_sampling_includes_relay_wall" value="false"/>
+        <!--NEW--><string name="temporal_filter" value="box"/>
+    </integrator>
+
+    <shape type="obj">
+        <string name="filename" value="/media/pleiades/vault/projects/202110-nlos-render/mitsuba3-transient/mitsuba3-transient/test/t-compare-with-mitsuba2/Z.obj"/>
+
+        <bsdf type="diffuse">
+            <rgb name="reflectance" value="1.0, 1.0, 1.0"/>
+        </bsdf>
+        <transform name="to_world">
+            <scale x="1" y="1" z="1"/>
+            <rotate x="1" angle="0.0"/>
+            <rotate y="1" angle="0.0"/>
+            <rotate z="1" angle="0.0"/>
+            <translate x="0.0" y="0.0" z="1.0"/>
+        </transform>
+    </shape>
+
+    <!-- relay_wall (RELAY WALL) -->
+    <shape type="rectangle">
+        <bsdf type="diffuse">
+            <rgb name="reflectance" value="1.0, 1.0, 1.0"/>
+        </bsdf>
+        <transform name="to_world">
+            <scale x="1" y="1" z="1"/>
+            <rotate x="1" angle="0.0"/>
+            <rotate y="1" angle="0.0"/>
+            <rotate z="1" angle="0.0"/>
+            <translate x="0.0" y="0.0" z="0.0"/>
+        </transform>
+        <sensor type="nlos_capture_meter">
+        <!-- <sensor type="nloscapturemeter"> -->
+            <sampler type="independent">
+                <integer name="sample_count" value="10000"/>
+                <integer name="seed" value="0"/>
+            </sampler>
+
+            <emitter type="projector">
+                <rgb name="irradiance" value="1.0, 1.0, 1.0"/>
+                <float name="fov" value="0.2"/>
+            </emitter>
+
+            <boolean name="confocal" value="false"/>
+            <boolean name="account_first_and_last_bounces" value="false"/>
+            <point name="sensor_origin" x="-0.5" y="0.0" z="0.25"/>
+            <point name="laser_origin" x="-0.5" y="0.0" z="0.25"/>
+            <point name="laser_lookat_pixel" x="31.5" y="31.5" z="0"/>
+            <film type="transient_hdr_film">
+                <integer name="width" value="64"/>
+                <integer name="height" value="64"/>
+                <!-- <string name="pixe_format" value="rgb"/> -->
+                <!-- <string name="component_format" value="float32"/> -->
+
+                <integer name="temporal_bins" value="1024"/>
+                <!-- <integer name="num_bins" value="1024"/> -->
+                <!-- <boolean name="auto_detect_bins" value="false"/> -->
+                <float name="bin_width_opl" value="0.012"/>
+                <float name="start_opl" value="0.0"/>
+
+                <!-- <rfilter name="rfilter" type="box"/> -->
+                <!-- <boolean name="high_quality_edges" value="false"/> -->
+            </film>
+        </sensor>
+    </shape>
+</scene>

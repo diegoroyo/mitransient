@@ -1,10 +1,9 @@
 notebooks/transientFrames/**
 
 .vscode
-test/*
-!test/z-scene-properties
-test/z-scene-properties/*.npy
-test/z-scene-properties/*.ipynb
+scenes/old/test/t-compare-with-mitsuba2/tal_Z/
+scenes/**/*.npy
+
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
