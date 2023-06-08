@@ -16,7 +16,7 @@ class TransientHDRFilm(mi.Film):
         return self.start_opl + self.bin_width_opl * self.temporal_bins
 
     def add_transient_data(self, spec, distance, wavelengths, active, pos, ray_weight):
-        idd = (distance / self.bin_width_opl) - self.start_opl
+        idd = (distance - self.start_opl) / self.bin_width_opl
         coords = mi.Vector3f(pos.x, pos.y, idd)
         mask = (idd >= 0) & (idd < self.temporal_bins)
         self.transient.put(

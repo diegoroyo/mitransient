@@ -77,11 +77,13 @@ mkdir -p build
 cd build
 cmake -GNinja ..
 # Here, edit build/mitsuba.conf and set the enabled variants
-# Recommended: scalar_rgb, llvm_rgb and cuda_rgb (FIXME: change to llvm_mono for NLOS?)
+# Recommended: scalar_rgb, llvm_rgb, llvm_ad_rgb, cuda_rgb, and cuda_ad_rgb
+# *IMPORTANT NOTE*: At least one *_ad_* variant needs to be specified.
+# FIXME: *_mono variants currently do not work. They would be better for NLOS
 ninja
 
 # install mitransient
-cd ..
+cd ../..
 scripts/local_install.sh
 
 # after this you should be able to import mitsuba and mitransient in your python code (careful about setting the correct PATH environment variable)
