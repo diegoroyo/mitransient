@@ -5,7 +5,7 @@ import importlib
 import glob
 
 # Make sure mitsuba.python.util is imported before the integrators
-import mitsuba.util
+import mitsuba.util  # type: ignore
 
 do_reload = 'common' in globals()
 

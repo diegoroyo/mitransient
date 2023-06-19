@@ -3,7 +3,7 @@ import numpy as np
 
 from mitsuba import Float, UInt32, TensorXf, Int32, Mask, ReconstructionFilter
 from mitsuba import is_monochromatic, is_spectral
-from mitsuba.math import RayEpsilon, linear_to_srgb
+from mitsuba.math import RayEpsilon, linear_to_srgb  # type: ignore
 
 from mitransient.utils import ArrayXu, ArrayXf
 

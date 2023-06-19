@@ -1,0 +1,10 @@
+{
+    "json.validate.enable": false,
+    "python.analysis.ignore": [
+        "build",
+        "ext"
+    ],
+    "python.analysis.extraPaths": [
+        "ext/mitsuba3/build/python"
+    ],
+}

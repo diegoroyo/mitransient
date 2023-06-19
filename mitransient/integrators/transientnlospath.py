@@ -6,7 +6,7 @@ import mitsuba as mi
 from mitransient.integrators.common import TransientRBIntegrator, mis_weight
 
 from mitsuba import Log, LogLevel
-from mitsuba.math import ShadowEpsilon
+from mitsuba.math import ShadowEpsilon  # type: ignore
 from typing import Tuple, Optional
 
 

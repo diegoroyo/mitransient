@@ -7,7 +7,7 @@ import gc
 
 from typing import Union, Any, Callable, Optional, Tuple
 
-from mitsuba.ad.integrators.common import ADIntegrator, RBIntegrator, mis_weight, _ReparamWrapper
+from mitsuba.ad.integrators.common import ADIntegrator, RBIntegrator, mis_weight, _ReparamWrapper  # type: ignore
 
 
 class TransientADIntegrator(ADIntegrator):

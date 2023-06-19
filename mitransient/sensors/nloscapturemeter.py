@@ -10,7 +10,7 @@ from mitsuba import Log, LogLevel
 from mitsuba import Emitter, Float, Transform4f
 
 from mitsuba import ScalarVector2u
-from drjit.scalar import Array3f as ScalarArray3f
+from drjit.scalar import Array3f as ScalarArray3f  # type: ignore
 
 from typing import Tuple
 
