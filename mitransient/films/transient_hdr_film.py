@@ -43,6 +43,13 @@ class TransientHDRFilm(mi.Film):
             channel_use_weights=channel_use_weights,
             rfilter=rfilter)
 
+    def traverse(self, callback):
+        # TODO: all the parameters are set as NonDifferentiable by default
+        super().traverse(callback)
+        callback.put_parameter('temporal_bins', self.temporal_bins, mi.ParamFlags.NonDifferentiable)
+        callback.put_parameter('bin_width_opl', self.bin_width_opl, mi.ParamFlags.NonDifferentiable)
+        callback.put_parameter('start_opl', self.start_opl, mi.ParamFlags.NonDifferentiable)
+
 
 mi.register_film("transient_hdr_film",
                  lambda props: TransientHDRFilm(props))
