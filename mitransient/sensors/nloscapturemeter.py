@@ -164,19 +164,6 @@ class NLOSCaptureMeter(mi.Sensor):
         self.laser_bounce_opl = dr.norm(
             self.laser_target - self.laser_origin) * self.IOR_BASE
 
-    def traverse(self, callback: mi.TraversalCallback):
-        # TODO: all the parameters are set as NonDifferentiable by default
-        super().traverse(callback)
-        callback.put_object("emitter", self.emitter, mi.ParamFlags.NonDifferentiable)
-        callback.put_parameter("needs_sample_3", self.needs_sample_3, mi.ParamFlags.NonDifferentiable)
-        callback.put_parameter("account_first_and_last_bounces", self.account_first_and_last_bounces, mi.ParamFlags.NonDifferentiable)
-        callback.put_parameter("is_confocal", self.is_confocal, mi.ParamFlags.NonDifferentiable)
-        callback.put_parameter("film_size", self.film_size, mi.ParamFlags.NonDifferentiable)
-        callback.put_parameter("laser_origin", self.laser_origin, mi.ParamFlags.NonDifferentiable)
-        callback.put_parameter("laser_lookat", self.laser_lookat, mi.ParamFlags.NonDifferentiable)
-        callback.put_parameter("laser_target", self.laser_target, mi.ParamFlags.NonDifferentiable)
-        callback.put_parameter("laser_bounce_opl", self.laser_bounce_opl, mi.ParamFlags.NonDifferentiable)
-
     def sample_ray_differential(
             self, time: mi.Float,
             sample1: mi.Float, sample2: mi.Point2f, sample3: mi.Point2f,
@@ -216,11 +203,36 @@ class NLOSCaptureMeter(mi.Sensor):
     def bbox(self) -> mi.BoundingBox3f:
         return self.shape().bbox()
 
+    def traverse(self, callback: mi.TraversalCallback):
+        # TODO: all the parameters are set as NonDifferentiable by default
+        super().traverse(callback)
+        callback.put_object("emitter", self.emitter, mi.ParamFlags.NonDifferentiable)
+        callback.put_parameter("needs_sample_3", self.needs_sample_3, mi.ParamFlags.NonDifferentiable)
+        callback.put_parameter("account_first_and_last_bounces", self.account_first_and_last_bounces, mi.ParamFlags.NonDifferentiable)
+        callback.put_parameter("is_confocal", self.is_confocal, mi.ParamFlags.NonDifferentiable)
+        callback.put_parameter("film_size", self.film_size, mi.ParamFlags.NonDifferentiable)
+        callback.put_parameter("laser_origin", self.laser_origin, mi.ParamFlags.NonDifferentiable)
+        callback.put_parameter("laser_lookat", self.laser_lookat, mi.ParamFlags.NonDifferentiable)
+        callback.put_parameter("laser_target", self.laser_target, mi.ParamFlags.NonDifferentiable)
+        callback.put_parameter("laser_bounce_opl", self.laser_bounce_opl, mi.ParamFlags.NonDifferentiable)
+
+    def parameters_changed(self, keys):
+        super().parameters_changed(keys)
+
     def to_string(self):
         # TODO(diego) update with the rest of parameters
         # m_shape, m_emitter from NLOSCaptureMeter, m_film from Sensor, etc.
-        return f'{type(self).__name__}[laser_target = {self.laser_target},' \
-               f' confocal = { self.is_confocal }]'
+        string = f"{type(self).__name__}[\n"
+        string += f"  needs_sample_3 = {self.needs_sample_3},"
+        string += f"  account_first_and_last_bounces = {self.account_first_and_last_bounces},"
+        string += f"  is_confocal = {self.is_confocal},"
+        string += f"  film_size = {self.film_size},"
+        string += f"  laser_origin = {self.laser_origin},"
+        string += f"  laser_lookat = {self.laser_lookat},"
+        string += f"  laser_target = {self.laser_target},"
+        string += f"  laser_bounce_opl = {self.laser_bounce_opl},"
+        string += f"]"
+        return string
 
 
 mi.register_sensor('nlos_capture_meter', lambda props: NLOSCaptureMeter(props))
