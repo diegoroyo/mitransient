@@ -1,7 +1,6 @@
 import mitsuba as mi
 
 from mitransient.render.transient_block import TransientBlock
-import mitsuba
 
 
 class TransientHDRFilm(mi.Film):
@@ -49,6 +48,22 @@ class TransientHDRFilm(mi.Film):
         callback.put_parameter('temporal_bins', self.temporal_bins, mi.ParamFlags.NonDifferentiable)
         callback.put_parameter('bin_width_opl', self.bin_width_opl, mi.ParamFlags.NonDifferentiable)
         callback.put_parameter('start_opl', self.start_opl, mi.ParamFlags.NonDifferentiable)
+
+    def parameters_changed(self, keys):
+        super().parameters_changed(keys)
+
+    def to_string(self):
+        string = "TransientHDRFilm[\n"
+        string += f"  size = {self.size()},\n"
+        string += f"  crop_size = {self.crop_size()},\n"
+        string += f"  crop_offset = {self.crop_offset()},\n"
+        string += f"  sample_border = {self.sample_border()},\n"
+        string += f"  filter = {self.rfilter()},\n"
+        string += f"  temporal_bins = {self.temporal_bins},\n"
+        string += f"  bin_width_opl = {self.bin_width_opl},\n"
+        string += f"  start_opl = {self.start_opl},\n"
+        string += f"]"
+        return string
 
 
 mi.register_film("transient_hdr_film",
