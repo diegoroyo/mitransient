@@ -77,6 +77,7 @@ class TransientNLOSPath(TransientRBIntegrator):
             'nlos_laser_sampling', False)
         self.hg_sampling: bool = props.get(
             'nlos_hidden_geometry_sampling', False)
+        self.hg_sampling_do_rs = False  # FIXME
         self.hg_sampling_do_rroulette: bool = (
             props.get('nlos_hidden_geometry_sampling_do_rroulette', False)
             and
@@ -266,23 +267,56 @@ class TransientNLOSPath(TransientRBIntegrator):
             depth=depth+1, active_e=active_e, add_transient=add_transient)
 
     def hidden_geometry_sample(
-            self, scene: mi.Scene, bsdf: mi.BSDF, bsdf_ctx: mi.BSDFContext, si: mi.SurfaceInteraction3f,
+            self, scene: mi.Scene, sampler: mi.Sampler, bsdf: mi.BSDF, bsdf_ctx: mi.BSDFContext, si: mi.SurfaceInteraction3f,
             _: mi.Float, sample2: mi.Point2f, active: mi.Mask) -> Tuple[mi.BSDFSample3f, mi.Spectrum]:
+
+        # first attempt at sampling a visible position
+        active_original = mi.Mask(active)
         ps_hg: mi.PositionSample3f = self._sample_hidden_geometry_position(
             ref=si, sample2=sample2, active=active)
         active &= dr.neq(ps_hg.pdf, 0.0)
-
+        # check visibility
         d = ps_hg.p - si.p
         dist = dr.norm(d)
         d /= dist
         ray_hg = si.spawn_ray(d)
         si_hg: mi.SurfaceInteraction3f = scene.ray_intersect(ray_hg, active)
-        active &= si_hg.is_valid()
+        active &= si_hg.is_valid() & (dr.dot(si.n, d) > 0.0)
 
+        # try again for the lanes that do not have a visible position
+        iters_rs = dr.ones(mi.UInt32)
+        if self.hg_sampling_do_rs:
+            retry_rs = active ^ active_original
+            loop_rs = mi.Loop(name='Hidden geometry rejection sampling',
+                        state=lambda: (ps_hg, si_hg, ray_hg, d, sampler, sample2, retry_rs, active, iters_rs))
+            max_iterations = 10
+            loop_rs.set_max_iterations(max_iterations)
+            while loop_rs(retry_rs):
+                iters_rs[retry_rs] += 1
+                sample2 = mi.Point2f(dr.select(retry_rs, sampler.next_2d(retry_rs), sample2))
+                ps_hg = dr.select(
+                    retry_rs,
+                    self._sample_hidden_geometry_position(
+                        ref=si, sample2=sample2, active=retry_rs),
+                    ps_hg)
+                successful_retries = retry_rs & dr.neq(ps_hg.pdf, 0.0)
+                # check visibility
+                d = ps_hg.p - si.p
+                dist = dr.norm(d)
+                d /= dist
+                ray_hg = si.spawn_ray(d)
+                si_hg: mi.SurfaceInteraction3f = scene.ray_intersect(
+                    ray_hg, retry_rs)
+                successful_retries &= si_hg.is_valid() & \
+                    (dr.dot(si.n, d) > 0.0)
+                active |= successful_retries
+                retry_rs &= (~successful_retries) & (iters_rs < max_iterations)
+
+        # compute the PDF of the position sample (num_intersections)
         si_test = mi.SurfaceInteraction3f(dr.detach(si_hg))
         active_test = mi.Mask(active)
         num_intersections = mi.UInt(0)
-        loop = mi.Loop(name="Hidden geometry sample",
+        loop = mi.Loop(name='Hidden geometry pdf calculation',
                        state=lambda: (num_intersections, active_test, si_test))
         loop.set_max_iterations(100)
         while loop(active_test):
@@ -301,6 +335,7 @@ class TransientNLOSPath(TransientRBIntegrator):
         wg = si_hg.to_local(-d)
         travel_dist = dr.norm(si_hg.p - si.p)
         bsdf_spec *= dr.sqr(dr.rcp(travel_dist)) * mi.Frame3f.cos_theta(wg)
+
         # discard low travel dist, produces high variance
         # the intergator will use bsdf sampling instead
         active &= travel_dist > 0.5
@@ -443,7 +478,7 @@ class TransientNLOSPath(TransientRBIntegrator):
 
             active_hg = active_next & do_hg_sample
             bsdf_sample_hg, bsdf_weight_hg = self.hidden_geometry_sample(
-                scene, bsdf,
+                scene, sampler, bsdf,
                 bsdf_ctx, si, sampler.next_1d(), sampler.next_2d(), active_hg)
             hg_failed = dr.all(mi.depolarizer(bsdf_weight_hg)
                                < dr.epsilon(mi.Float))
@@ -460,7 +495,7 @@ class TransientNLOSPath(TransientRBIntegrator):
             L = (L + Le + Lr_dir) if primal else (L - Le - Lr_dir)
             ray = si.spawn_ray(si.to_world(bsdf_sample.wo))
             η *= bsdf_sample.eta
-            β *= bsdf_weight / pdf_bsdf_method
+            β *= bsdf_weight / (bsdf_sample.pdf * pdf_bsdf_method)
 
             # Information about the current vertex needed by the next iteration
 
