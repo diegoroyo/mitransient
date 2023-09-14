@@ -14,12 +14,13 @@ class TransientHDRFilm(mi.Film):
     def end_opl(self):
         return self.start_opl + self.bin_width_opl * self.temporal_bins
 
-    def add_transient_data(self, spec, distance, wavelengths, active, pos, ray_weight):
+    def add_transient_data(self, spec, extra_weight, distance, wavelengths, active, pos, ray_weight):
         idd = (distance - self.start_opl) / self.bin_width_opl
         coords = mi.Vector3f(pos.x, pos.y, idd)
         mask = (idd >= 0) & (idd < self.temporal_bins)
+        import drjit as dr  # FIXME
         self.transient.put(
-            coords, wavelengths, spec * ray_weight, mi.Float(1.0), active & mask)
+            coords, wavelengths, spec * ray_weight, mi.Float(1.0), dr.maximum(extra_weight - 1.0, 0.0), active & mask)
 
     def prepare(self, aovs):
         # NOTE could be done with mi.load_dict where type='hdrfilm' and the rest of the properties
@@ -35,11 +36,10 @@ class TransientHDRFilm(mi.Film):
         self.steady = mi.PluginManager.instance().create_object(props)
         self.steady.prepare(aovs)
 
-    def prepare_transient(self, size, channel_count, channel_use_weights, rfilter):
+    def prepare_transient(self, size, channel_count, rfilter):
         self.transient = TransientBlock(
             size=size,
             channel_count=channel_count,
-            channel_use_weights=channel_use_weights,
             rfilter=rfilter)
 
     def traverse(self, callback):

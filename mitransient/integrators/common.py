@@ -171,7 +171,6 @@ class TransientADIntegrator(ADIntegrator):
         Prepare the integrator to perform a transient simulation
         '''
         import numpy as np
-        from mitransient.render.transient_block import TransientBlock
 
         if isinstance(sensor, int):
             sensor = scene.sensors()[sensor]
@@ -231,8 +230,7 @@ class TransientADIntegrator(ADIntegrator):
         filters = get_filters(sensor)
         film.prepare_transient(
             size=size,
-            channel_count=5,
-            channel_use_weights=not is_nlos,
+            channel_count=len(mi.Spectrum()) + 2,
             rfilter=filters)
         self._film = film
 
@@ -240,9 +238,9 @@ class TransientADIntegrator(ADIntegrator):
         '''
         Return a lambda for saving transient samples
         '''
-        return lambda spec, distance, wavelengths, active: \
+        return lambda spec, extra_weight, distance, wavelengths, active: \
             self._film.add_transient_data(
-                spec, distance, wavelengths, active, pos, ray_weight)
+                spec, extra_weight, distance, wavelengths, active, pos, ray_weight)
 
     # NOTE(diego): The only change of this function w.r.t. non-transient ADIntegrator
     # is that we add the "add_transient" parameter to the call of self.sample()
@@ -274,9 +272,14 @@ class TransientADIntegrator(ADIntegrator):
                 aovs=self.aovs()
             )
 
+            total_spp = 0
+            for sampler, spp in prepare_result:
+                total_spp += spp
+            film.transient.set_base_weight(total_spp)
+
             for sampler, spp in prepare_result:
                 # Generate a set of rays starting at the sensor
-                ray, weight, pos, _ = self.sample_rays(scene, sensor, sampler)
+                ray, ray_weight, pos, _ = self.sample_rays(scene, sensor, sampler)
 
                 # Launch the Monte Carlo sampling process in primal mode
                 L, valid, state = self.sample(
@@ -290,7 +293,7 @@ class TransientADIntegrator(ADIntegrator):
                     reparam=None,
                     active=mi.Bool(True),
                     max_distance=self._film.end_opl(),
-                    add_transient=self.add_transient_f(pos, weight)
+                    add_transient=self.add_transient_f(pos, ray_weight)
                 )
 
                 # Prepare an ImageBlock as specified by the film
@@ -302,18 +305,18 @@ class TransientADIntegrator(ADIntegrator):
                 # Accumulate into the image block
                 alpha = dr.select(valid, mi.Float(1), mi.Float(0))
                 if mi.has_flag(film.steady.flags(), mi.FilmFlags.Special):
-                    aovs = film.steady.prepare_sample(L * weight, ray.wavelengths,
+                    aovs = film.steady.prepare_sample(L * ray_weight, ray.wavelengths,
                                                       block.channel_count(), alpha=alpha)
                     block.put(pos, aovs)
                     del aovs
                 else:
-                    block.put(pos, ray.wavelengths, L * weight, alpha)
+                    block.put(pos, ray.wavelengths, L * ray_weight, alpha)
 
                 # Explicitly delete any remaining unused variables
-                del sampler, ray, weight, pos, L, valid, alpha
+                del sampler, ray, ray_weight, pos, L, valid, alpha
                 gc.collect()
 
-                # Perform the weight division and return an image tensor
+                # Perform the ray_weight division and return an image tensor
                 film.steady.put_block(block)
 
             self.primal_image = film.steady.develop()

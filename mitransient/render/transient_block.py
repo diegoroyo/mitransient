@@ -12,7 +12,6 @@ class TransientBlock:
     def __init__(self,
                  size: np.ndarray,
                  channel_count: UInt32,
-                 channel_use_weights: bool = True,
                  rfilter: ReconstructionFilter = None,
                  warn_negative: bool = False,
                  warn_invalid: bool = False,
@@ -21,7 +20,6 @@ class TransientBlock:
         self.m_offset = 0
         self.m_size = 0
         self.m_channel_count = channel_count
-        self.m_channel_use_weights = channel_use_weights
         self.m_warn_negative = warn_negative
         self.m_warn_invalid = warn_invalid
         self.m_normalize = normalize
@@ -89,12 +87,22 @@ class TransientBlock:
         width = np.sum(rfilter_size, dtype=np.uint32)
         self.m_weights = [Float(0.0)] * width
 
+    def set_base_weight(self, base_weight):
+        self.base_weight = base_weight
+
     def data(self):
         return self.m_data
 
-    def put(self, pos, wavelengths, value, alpha, active):
+    def put(self, pos, wavelengths, value, alpha, weight, active):
         from mitsuba import unpolarized_spectrum
         spec_u = unpolarized_spectrum(value)
+
+        # TODO make this work for N-D spectra
+        # values = list()
+        # for i in range(len(spec_u)):
+        #     values.append(spec_u[i])
+        # values.append(alpha)
+        # values.append(weight)
 
         if is_spectral:
             from mitsuba import spectrum_to_srgb
@@ -104,7 +112,7 @@ class TransientBlock:
         else:
             rgb = spec_u
 
-        values = [rgb[0], rgb[1], rgb[2], alpha, 1.0]
+        values = [rgb[0], rgb[1], rgb[2], alpha, weight]
         return self.put_(pos, values, active)
 
     def put_(self, pos_, value, active):
@@ -161,11 +169,11 @@ class TransientBlock:
 
             idxs = dr.zeros(UInt32, len(self.m_rfilter))
             while True:
-                # Gather weigths
-                weigth = Float(1.0)
+                # Gather weight
+                weight = Float(1.0)
                 base_index = 0
                 for j in range(len(self.m_rfilter)):
-                    weigth *= self.m_weights[base_index+idxs[j]]
+                    weight *= self.m_weights[base_index+idxs[j]]
                     base_index += n[j]
 
                 # Gather offset of values
@@ -179,7 +187,7 @@ class TransientBlock:
 
                 # Scatter values in imageblock
                 for k in range(self.m_channel_count):
-                    dr.scatter_reduce(dr.ReduceOp.Add, self.m_data.array, value[k] * weigth, offset + UInt32(k),
+                    dr.scatter_reduce(dr.ReduceOp.Add, self.m_data.array, value[k] * weight, offset + UInt32(k),
                                       enabled)
 
                 # Update
@@ -219,14 +227,16 @@ class TransientBlock:
 
         i = dr.arange(UInt32, pixel_count * target_ch)
         i_channel = i % target_ch
-        weight_idx = (i // target_ch) * ch + 4
+        weight_idx = (i // target_ch) * ch + (ch - 1)
         values_idx = (i // target_ch) * ch + i_channel
 
         weight = dr.gather(Float, res.array, weight_idx)
+        # NOTE(diego): this is intended to add spp per pixel
+        # and assumes that all pixels use the same spp
+        weight += self.base_weight
         values = dr.gather(Float, res.array, values_idx)
 
-        if self.m_channel_use_weights:
-            values = (values / weight) & (weight > 0.0)
+        values = (values / weight) & (weight > 0.0)
 
         if gamma:
             values = linear_to_srgb(values)

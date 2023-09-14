@@ -77,12 +77,14 @@ class TransientNLOSPath(TransientRBIntegrator):
             'nlos_laser_sampling', False)
         self.hg_sampling: bool = props.get(
             'nlos_hidden_geometry_sampling', False)
-        self.hg_sampling_do_rs = False  # FIXME
-        self.hg_sampling_do_rroulette: bool = (
+        self.hg_sampling_do_rroulette = (
             props.get('nlos_hidden_geometry_sampling_do_rroulette', False)
             and
             self.hg_sampling
         )
+        # NOTE: turned off for now, pdf does weird things and have not figured
+        # it out yet
+        self.hg_sampling_do_rs: bool = False
         self.hg_sampling_includes_relay_wall: bool = (
             props.get('nlos_hidden_geometry_sampling_includes_relay_wall', False)
             and
@@ -169,7 +171,7 @@ class TransientNLOSPath(TransientRBIntegrator):
             self, mode: dr.ADMode, scene: mi.Scene, sampler: mi.Sampler,
             si: mi.SurfaceInteraction3f, bsdf: mi.BSDF, bsdf_ctx: mi.BSDFContext,
             β: mi.Spectrum, distance: mi.Float, η: mi.Float, depth: mi.UInt,
-            active_e: mi.Mask, add_transient) -> mi.Spectrum:
+            extra_weight: mi.Float, active_e: mi.Mask, add_transient) -> mi.Spectrum:
         ds, emitter_spec = scene.sample_emitter_direction(
             ref=si, sample=sampler.next_2d(active_e), test_visibility=True, active=active_e)
         active_e &= dr.neq(ds.pdf, 0.0)
@@ -198,7 +200,8 @@ class TransientNLOSPath(TransientRBIntegrator):
                          ~(self.discard_direct_paths & (depth < 2)))
             Lr_dir[active_e] = β * mis * bsdf_spec * emitter_spec
 
-            add_transient(Lr_dir, distance + ds.dist * η,
+            effective_weight = dr.select(dr.any(Lr_dir > 0), extra_weight, 0)
+            add_transient(Lr_dir, effective_weight, distance + ds.dist * η,
                           si.wavelengths, active_e)
 
         return Lr_dir
@@ -207,7 +210,7 @@ class TransientNLOSPath(TransientRBIntegrator):
             self, mode: dr.ADMode, scene: mi.Scene, sampler: mi.Sampler,
             si: mi.SurfaceInteraction3f, bsdf: mi.BSDF, bsdf_ctx: mi.BSDFContext,
             β: mi.Spectrum, distance: mi.Float, η: mi.Float, depth: mi.UInt,
-            active_e: mi.Mask, add_transient) -> mi.Spectrum:
+            extra_weight: mi.Float, active_e: mi.Mask, add_transient) -> mi.Spectrum:
         """
         NLOS scenes only have one laser emitter - standard
         emitter sampling techniques do not apply as most
@@ -264,7 +267,7 @@ class TransientNLOSPath(TransientRBIntegrator):
         return self.emitter_nee_sample(
             mode=mode, scene=scene, sampler=sampler, si=si_bsdf,
             bsdf=bsdf_next, bsdf_ctx=bsdf_ctx, β=β * bsdf_spec, distance=distance + distance_laser * η, η=η,
-            depth=depth+1, active_e=active_e, add_transient=add_transient)
+            depth=depth+1, extra_weight=extra_weight, active_e=active_e, add_transient=add_transient)
 
     def hidden_geometry_sample(
             self, scene: mi.Scene, sampler: mi.Sampler, bsdf: mi.BSDF, bsdf_ctx: mi.BSDFContext, si: mi.SurfaceInteraction3f,
@@ -284,13 +287,14 @@ class TransientNLOSPath(TransientRBIntegrator):
         active &= si_hg.is_valid() & (dr.dot(si.n, d) > 0.0)
 
         # try again for the lanes that do not have a visible position
-        iters_rs = dr.ones(mi.UInt32)
+        extra_weight_i = dr.zeros(mi.UInt32)
         if self.hg_sampling_do_rs:
+            iters_rs = dr.zeros(mi.UInt32)
+            max_rs_iterations = 10
             retry_rs = active ^ active_original
             loop_rs = mi.Loop(name='Hidden geometry rejection sampling',
                         state=lambda: (ps_hg, si_hg, ray_hg, d, sampler, sample2, retry_rs, active, iters_rs))
-            max_iterations = 10
-            loop_rs.set_max_iterations(max_iterations)
+            loop_rs.set_max_iterations(max_rs_iterations)
             while loop_rs(retry_rs):
                 iters_rs[retry_rs] += 1
                 sample2 = mi.Point2f(dr.select(retry_rs, sampler.next_2d(retry_rs), sample2))
@@ -310,7 +314,8 @@ class TransientNLOSPath(TransientRBIntegrator):
                 successful_retries &= si_hg.is_valid() & \
                     (dr.dot(si.n, d) > 0.0)
                 active |= successful_retries
-                retry_rs &= (~successful_retries) & (iters_rs < max_iterations)
+                retry_rs &= (~successful_retries) & (iters_rs < max_rs_iterations)
+            extra_weight_i = dr.select(iters_rs < max_rs_iterations, iters_rs, 0.0)
 
         # compute the PDF of the position sample (num_intersections)
         si_test = mi.SurfaceInteraction3f(dr.detach(si_hg))
@@ -348,7 +353,9 @@ class TransientNLOSPath(TransientRBIntegrator):
         bs.sampled_type = mi.BSDFFlags.Reflection
         bs.sampled_component = 0
 
-        return bs, dr.select(active & (bs.pdf > dr.epsilon(mi.Float)), bsdf_spec, 0.0)
+        bsdf_spec /= bs.pdf
+
+        return bs, dr.select(active & (bs.pdf > dr.epsilon(mi.Float)), bsdf_spec, 0.0), extra_weight_i
 
     def sample(self,
                mode: dr.ADMode,
@@ -380,6 +387,8 @@ class TransientNLOSPath(TransientRBIntegrator):
         # Copy input arguments to avoid mutating the caller's state
         ray = mi.Ray3f(dr.detach(ray))
         depth = mi.UInt32(0)                          # Depth of current vertex
+        # FIXME maybe rename to just "weight" when i figure it out
+        extra_weight = mi.Float(1)                    # Path weight
         L = mi.Spectrum(0 if primal else state_in)    # Radiance accumulator
         # Differential/adjoint radiance
         δL = mi.Spectrum(δL if δL is not None else 0)
@@ -401,7 +410,7 @@ class TransientNLOSPath(TransientRBIntegrator):
         loop = mi.Loop(name="Path Replay Backpropagation (%s)" % mode.name,
                        state=lambda: (sampler, ray, depth, L, δL, β, η, active,
                                       prev_si, prev_bsdf_pdf, prev_bsdf_delta,
-                                      distance))
+                                      distance, extra_weight))
 
         # Specify the max. number of loop iterations (this can help avoid
         # costly synchronization when when wavefront-style loops are generated)
@@ -443,7 +452,8 @@ class TransientNLOSPath(TransientRBIntegrator):
                 Le = β * mis * ds.emitter.eval(si)
 
             # Add transient contribution
-            add_transient(Le, distance, ray.wavelengths, active)
+            effective_weight = dr.select(dr.any(Le > 0), extra_weight, 0)
+            add_transient(Le, effective_weight, distance, ray.wavelengths, active)
 
             # ---------------------- Emitter sampling ----------------------
 
@@ -459,7 +469,7 @@ class TransientNLOSPath(TransientRBIntegrator):
                 mode, scene, sampler,
                 si, bsdf, bsdf_ctx,
                 β, distance, η, depth,
-                active_e, add_transient)
+                extra_weight, active_e, add_transient)
 
             # ------------------ Detached BSDF sampling -------------------
 
@@ -477,14 +487,24 @@ class TransientNLOSPath(TransientRBIntegrator):
                 pdf_bsdf_method = mi.Float(1.0)
 
             active_hg = active_next & do_hg_sample
-            bsdf_sample_hg, bsdf_weight_hg = self.hidden_geometry_sample(
+            bsdf_sample_hg, bsdf_weight_hg, extra_weight_i = self.hidden_geometry_sample(
                 scene, sampler, bsdf,
                 bsdf_ctx, si, sampler.next_1d(), sampler.next_2d(), active_hg)
+
             hg_failed = dr.all(mi.depolarizer(bsdf_weight_hg)
                                < dr.epsilon(mi.Float))
+            add_extra_weights = active_hg & (~hg_failed)
+            extra_weight = dr.select(
+                add_extra_weights,
+                # NOTE transient_hdr_film subtracts one from extra_weight
+                extra_weight * (extra_weight_i + 1),
+                extra_weight)
+
             active_nhg = active_next & (~do_hg_sample | hg_failed)
+            extra_weight[active_hg & hg_failed] += 1.0
+
             bsdf_sample_nhg, bsdf_weight_nhg = bsdf.sample(
-                bsdf_ctx, si, sampler.next_1d(), sampler.next_2d(), ~active_hg)
+                bsdf_ctx, si, sampler.next_1d(), sampler.next_2d(), active_nhg)
             bsdf_sample = dr.select(
                 active_nhg, bsdf_sample_nhg, bsdf_sample_hg)
             bsdf_weight = dr.select(
@@ -495,7 +515,7 @@ class TransientNLOSPath(TransientRBIntegrator):
             L = (L + Le + Lr_dir) if primal else (L - Le - Lr_dir)
             ray = si.spawn_ray(si.to_world(bsdf_sample.wo))
             η *= bsdf_sample.eta
-            β *= bsdf_weight / (bsdf_sample.pdf * pdf_bsdf_method)
+            β *= bsdf_weight / pdf_bsdf_method
 
             # Information about the current vertex needed by the next iteration
 
@@ -513,10 +533,11 @@ class TransientNLOSPath(TransientRBIntegrator):
             # Russian roulette stopping probability (must cancel out ior^2
             # to obtain unitless throughput, enforces a minimum probability)
             rr_prob = dr.minimum(β_max * η**2, .95)
+            active_next &= rr_prob > 0
 
             # Apply only further along the path since, this introduces variance
             rr_active = depth >= self.rr_depth
-            β[rr_active] *= dr.rcp(rr_prob)
+            β[rr_active] *= dr.rcp(rr_prob) & (rr_prob > 0)
             rr_continue = sampler.next_1d() < rr_prob
             active_next &= ~rr_active | rr_continue
 
