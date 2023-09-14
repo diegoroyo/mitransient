@@ -18,9 +18,8 @@ class TransientHDRFilm(mi.Film):
         idd = (distance - self.start_opl) / self.bin_width_opl
         coords = mi.Vector3f(pos.x, pos.y, idd)
         mask = (idd >= 0) & (idd < self.temporal_bins)
-        import drjit as dr  # FIXME
         self.transient.put(
-            coords, wavelengths, spec * ray_weight, mi.Float(1.0), dr.maximum(extra_weight - 1.0, 0.0), active & mask)
+            coords, wavelengths, spec * ray_weight, mi.Float(1.0), 0.0, active & mask)
 
     def prepare(self, aovs):
         # NOTE could be done with mi.load_dict where type='hdrfilm' and the rest of the properties
