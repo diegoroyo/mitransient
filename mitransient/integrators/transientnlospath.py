@@ -192,9 +192,10 @@ class TransientNLOSPath(TransientRBIntegrator):
             mis = dr.select(ds.delta, 1.0, mis_weight(ds.pdf, bsdf_pdf))
 
             Lr_dir = mi.Spectrum(0)
-            active_e &= (dr.eq(depth, self.filter_depth)
-                         |
-                         ~(self.discard_direct_paths & (depth < 2)))
+            if self.filter_depth != -1:
+                active_e &= dr.eq(depth + 1, self.filter_depth)
+            if self.discard_direct_paths:
+                active_e &= depth > 1
             Lr_dir[active_e] = β * mis * bsdf_spec * emitter_spec
 
             effective_weight = 0.0
