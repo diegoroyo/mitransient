@@ -1,17 +1,17 @@
+<div align="center">
+<img align="center" src="https://github.com/mitsuba-renderer/mitsuba2/raw/master/docs/images/logo_plain.png" width="90" height="90"/>
+</div>
+
 <!-- PROJECT LOGO -->
-<br />
 <p align="center">
-
-  <h1 align="center"><a href="">Transient Mitsuba 3</a></h1>
-
-  <!-- <a href="">
-    <img src="https://mcrespo.me/publications/primary-space-cv/figures/socialMedia.png" alt="Logo" width="100%">
-  </a> -->
+  <h1 align="center">Transient Mitsuba 3</h1>
 
   <p align="center">
     <a href="https://mcrespo.me"><strong>Miguel Crespo</strong></a>
     &nbsp;&nbsp;&nbsp;&nbsp;
     <a href="https://diego.contact"><strong>Diego Royo</strong></a>
+    &nbsp;&nbsp;&nbsp;&nbsp;
+    <a href="https://jgarciapueyo.github.io/"><strong>Jorge García</strong></a>
   </p>
 
   <!-- <p align="center">
@@ -25,73 +25,50 @@
 </p>
 
 <br />
+
+<div align="center">
+  <img src=".images/cornell-box.png" width="200" height="200"/>
+  <img src=".images/cornell-box.gif" width="200" height="200"/>
+  <img src=".images/nlos-Z.png" width="200" height="200"/>
+  <img src=".images/nlos-Z.gif" width="200" height="200"/>
+</div>
+
 <br />
 
 # Introduction
 
-This library adds support to [Mitsuba 3](https://github.com/mitsuba-renderer/mitsuba3) for doing transient simulations. <!-- It works as an standalone python library, avoiding the need to compile the full system if you do not need anything custom. -->
+This library adds support to [Mitsuba 3](https://github.com/mitsuba-renderer/mitsuba3) for doing transient simulations, and especially non-line-of-sight (NLOS) data capture simulations. For now, it is based on a [custom fork of Mitsuba 3](https://github.com/diegoroyo/mitsuba3), as the transient extension requires new Python interfaces for some Mitsuba 3 classes.
 
-Usual rendering is referred as steady in terms of the light has infinite propagation speed. In contrast, transient rendering lift this limitation allowing to simulate light in motion (see the teaser image for a visual example).
 
-*TODO : improve explanation transient rendering.*
+## What is transient rendering?
 
-*TODO : put a video of the resulting simulation.*
+Conventional rendering is referred as steady state, where the light propagation speed is assumed to be infinite. In contrast, transient rendering breaks this assumtion allowing to simulate light in motion (see the teaser image for a visual example).
 
-*TODO : improve documentation.*
+For example, path tracing algorithms integrate over multiple paths that connect a light source with the camera. For a known path, transient path tracing uses the *very complex* formula of `time = distance / speed` (see [[Two New Sciences by Galileo]](https://en.wikipedia.org/wiki/Two_New_Sciences)) to compute the `time` when each photon arrives to the camera from the path's `distance` and light's `speed`. This adds a new `time` dimension to the captured images (i.e. it's a video now). The simulations now take new parameters as input: when to start recording the video, how long is each time step (framerate), and how many frames to record.
+
+*Note: note that the `time` values we need to compute are very small (e.g. light takes only ~3.33 * 10^-9 seconds to travel 1 meter), `time` is usually measured in optical path distance. See [Wikipedia](https://en.wikipedia.org/wiki/Optical_path_length) for more information. TL;DR `opl = distance * refractive_index`*
 
 # Main features
 
 * **Cross-platform:** Mitsuba 3 has been tested on Linux (x86_64), macOS (aarch64, x86_64), and Windows (x86_64).
-<!-- * **Python only** library for doing transient rendering in both CPU and GPU. -->
 * **Easy interface** to convert your algorithms for the transient domain.
-* **Several integrators already implemented** including path tracing and volumetric path-tracing.
 * **Temporal domain** filtering.
+<!-- * **Python only** library for doing transient rendering in both CPU and GPU. -->
+<!-- * **Several integrators already implemented** including path tracing and volumetric path-tracing. -->
 
-### Future / missing features
+### Roadmap
 
-- [ ] Importance sampling of the temporal domain.
-- [ ] Differentiation of the transient simulation.
-- [ ] Fluorescence BRDF.
+**Note: this section is probably outdated... (last update: Nov. 2023)*
+
+- [ ] Importance sampling of the temporal domain
+- [ ] Differentiable transient rendering
+- [ ] Fluorescence BRDF
 - [X] Non-line-of-sight support (NLOS)
-  - [ ] `max_depth`
-  - [ ] `filter_depth`
-  - [ ] `discard_direct_paths`
+  - [X] `max_depth`
+  - [X] `filter_depth`
+  - [X] `discard_direct_paths`
   - [ ] `auto_detect_bins`
-# Installation
-
-<!-- We provide the package via PyPI. Installing Mitsuba 3 transient this way is as simple as running
-
-```bash
-pip install mitransient
-``` -->
-
-_NOTE: These instructions have been tested on Linux only_
-
-After cloning the repo, navigate to the root folder and execute the following commands to build the custom version of Mitsuba 3
-
-```bash
-# install mitsuba
-git submodule update --init --recursive
-cd ext/mitsuba3
-mkdir -p build
-cd build
-cmake -GNinja ..
-# Here, edit build/mitsuba.conf and set the enabled variants
-# Recommended: scalar_rgb, llvm_rgb, llvm_ad_rgb, cuda_rgb, and cuda_ad_rgb
-# *IMPORTANT NOTE*: At least one *_ad_* variant needs to be specified.
-# FIXME: *_mono variants currently do not work. They would be better for NLOS
-ninja
-
-# install mitransient
-cd ../..
-scripts/local_install.sh
-
-# after this you should be able to import mitsuba and mitransient in your python code (careful about setting the correct PATH environment variable)
-```
-
-After this you are all set to use our transient version of Mitsuba 3
-
-For NLOS simulations, see https://github.com/diegoroyo/tal
+  - [ ] Faster implementation of exhaustive scanning
 
 # Requirements
 
@@ -100,42 +77,81 @@ For NLOS simulations, see https://github.com/diegoroyo/tal
 - (optional) For computation on the GPU: `Nvidia driver >= 495.89`
 - (optional) For vectorized / parallel computation on the CPU: `LLVM >= 11.1`
 
+
+# Installation
+
+<!-- We provide the package via PyPI. Installing Mitsuba 3 transient this way is as simple as running
+
+```bash
+pip install mitransient
+``` -->
+
+_NOTE: These instructions have been tested on Linux only, but can be adapted to Windows and MacOS probably (hopefully) without many problems_
+
+After cloning the repo, navigate to the root folder and execute the following commands to build the custom version of Mitsuba 3
+
+*  Step 0: Clone the repo (including the mitsuba3 custom fork submodule)
+```bash
+git clone git@github.com:diegoroyo/mitsuba3-transient-nlos.git mitsuba3-transient-nlos
+cd mitsuba3-transient-nlos
+git submodule update --init --recursive
+```
+
+* Step 1: Compile mitsuba3 (ext/mitsuba3) from source
+  * This is for Linux. for other OSes, check: https://mitsuba.readthedocs.io/en/latest/src/developer_guide/compiling.html
+```bash
+cd ext/mitsuba3
+mkdir -p build && cd build
+```
+  * You might want to set the C++/C compiler (probably you want this e.g. if `cmake` complains about your version of g++). Always set `C_COMPILER` version to the same version as `CXX_COMPILER` (e.g. if you use `g++-12`, then also set `gcc-12`)
+  * If you have multiple Python versions installed, also set Python_EXECUTABLE to ensure that the program is compiled for your specific version of Python
+```bash
+cmake \
+    -GNinja \
+    -DCMAKE_CXX_COMPILER=<path-to-c++-compiler> \
+    -DCMAKE_C_COMPILER=<path-to-c-compiler> \
+    -DPython_EXECUTABLE=<path-to-python-executable> \
+    ..
+```
+
+  * Step 1.1: You should see a message that a file was created on "build/mitsuba.conf". Open the file and look for "enabled" variants. Docs: https://mitsuba.readthedocs.io/en/latest/src/key_topics/variants.html
+    * Recommended variants: `"scalar_mono", "llvm_mono", "llvm_ad_mono", "cuda_mono", "cuda_ad_mono", "scalar_rgb", "llvm_rgb", "llvm_ad_rgb", "cuda_rgb", "cuda_ad_rgb"`.
+    * IMPORTANT: At least one *_ad_* variant needs to be specified.
+
+  * Step 1.2: Re-run the cmake command to read the updated mitsuba.conf and compile the code with ninja
+```bash
+cmake <same arguments as before> ..
+ninja  # this will take some time
+```
+
+* Step 2: Install `mitsuba3-transient-nlos` (a.k.a. `mitransient` Python library)
+```bash
+cd ../../..  # go back to initial mitsuba3-transient-nlos folder
+scripts/local_install.sh
+```
+
+At this point you should be able to `import mitsuba` and `import mitransient` in your Python code (careful about setting the correct `PATH` environment variable, check the `examples` folder).
+
+If it works, you're all set!
+
+For NLOS data capture simulations, see https://github.com/diegoroyo/tal. `tal` is a toolkit that allows you to create and simulate NLOS scenes with an easier shell interface instead of directly from Python.
+
 # Usage
 
-See `notebooks` folder for example Python code, which uses the scenes defined in the `scenes` folder.
+Check out the `examples` folder for practical usage.
 
-<!--Here is a simple "Hello World" example that shows how simple it is to render a scene using Mitsuba 3 transient from Python:
-
-```python
-# Import the library using the alias "mi"
-import mitsuba as mi
-# Set the variant of the renderer
-mi.set_variant('scalar_rgb')
-# Import the package
-import MiTransient as mitr
-# Load a scene
-scene = mi.load_dict(mitr.cornell_box())
-# Prepare transient storage
-transient_integrator = scene.integrator()
-transient_integrator.prepare_transient(scene, 0)
-# Render the scene and develop the data
-data_steady, data_transient = mi.render(scene)
-# Use the resulting tensor (steady: [PixelX, PixelY, Channels], transient: [PixelX, PixelY, TimeBins, Channels]) as you need, where steady is the sum over the temporal axis
-...
-```-->
+As of November 2023, `mitsuba3-transient-nlos` implements the following plugins which can be used in scene XML files. To view a description of their parameters, click on the name of your desired plugin.
+* `film`:
+  * [`transient_hdr_film`](https://github.com/diegoroyo/mitsuba3-transient-nlos/blob/main/mitransient/films/transient_hdr_film.py): Transient equivalent of Mitsuba 3's `hdrfilm` plugin.
+* `integrators`:
+  * [`transient_path`](https://github.com/diegoroyo/mitsuba3-transient-nlos/blob/main/mitransient/integrators/transientpath.py): Transient path tracing for line-of-sight scenes. If you want to do NLOS simulations, use `transientnlospath` instead.
+  * [`transient_nlos_path`](https://github.com/diegoroyo/mitsuba3-transient-nlos/blob/main/mitransient/integrators/transientnlospath.py): Transient path tracing with specific sampling routines for NLOS scenes (e.g. laser sampling and hidden geometry sampling of the ["Non-Line-of-Sight Transient Rendering" paper](https://diego.contact/publications/nlos-render)).
+  * [`transient_prbvolpath`](https://github.com/diegoroyo/mitsuba3-transient-nlos/blob/main/mitransient/integrators/transient_prb_volpath.py): Path Replay Backpropagation for volumetric path tracing. Implemented by Miguel Crespo, untested.
+* `sensor`:
+  * [`nlos_capture_meter`](https://github.com/diegoroyo/mitsuba3-transient-nlos/blob/main/mitransient/sensors/nloscapturemeter.py): Can be attached to one of the scene's geometries, and measures uniformly-spaced points on such geometry (e.g. relay wall).
 
 # About
 
-This project was created by [Miguel Crespo](https://mcrespo.me).
+This project was created by [Miguel Crespo](https://mcrespo.me) and expanded by [Diego Royo](https://diego.contact) and [Jorge García](https://jgarciapueyo.github.io/).
 
-When using Mitsuba 3 transient in academic projects, please cite:
-
-```bibtex
-@software{crespo2022mitsuba3transient,
-    title = {Mitsuba 3 transient renderer},
-    author = {Miguel Crespo},
-    note = {https://github.com/mcrescas/mitsuba3-transient},
-    version = {0.0.0},
-    year = 2022,
-}
-```
+If you use Mitsuba 3 in academic projects, please contact the authors. For now the code should be private.

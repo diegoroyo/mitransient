@@ -9,6 +9,13 @@ from mitransient.utils import ArrayXu, ArrayXf
 
 
 class TransientBlock:
+    """
+        Transient Mitsuba 3's equivalent for ImageBlock class
+
+        See Mitsuba 3's ImageBlock class for more information.
+        - https://github.com/diegoroyo/mitsuba3/blob/master/include/mitsuba/render/imageblock.h
+        See `transient_hdr_film` plugin for more information.
+    """
     def __init__(self,
                  size: np.ndarray,
                  channel_count: UInt32,

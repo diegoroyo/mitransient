@@ -46,9 +46,9 @@ Auxiliary functions
 '''
 
 
-def show_video(input_sample, axisVideo):
+def show_video(input_sample, axis_video):
     # if not in_ipython():
-    #     print("[showVideo()] Need to be executed in IPython/Jupyter environment")
+    #     print("[show_video()] needs to be executed in a IPython/Jupyter environment")
     #     return
 
     import matplotlib.animation as animation
@@ -56,22 +56,21 @@ def show_video(input_sample, axisVideo):
     from matplotlib import pyplot as plt
     import numpy as np
 
-    def generateIndex(axisVideo, dims, index):
-        return tuple([np.s_[:] if dim != axisVideo else np.s_[index] for dim in range(dims)])
+    def generate_index(axis_video, dims, index):
+        return tuple([np.s_[:] if dim != axis_video else np.s_[index] for dim in range(dims)])
 
-    numFrames = input_sample.shape[axisVideo]
+    num_frames = input_sample.shape[axis_video]
     fig = plt.figure()
 
-    im = plt.imshow(input_sample[generateIndex(
-        axisVideo, len(input_sample.shape), 0)])
+    im = plt.imshow(input_sample[generate_index(
+        axis_video, len(input_sample.shape), 0)])
     plt.axis('off')
 
     def update(i):
-        img = input_sample[generateIndex(
-            axisVideo, len(input_sample.shape), i)]
+        img = input_sample[generate_index(
+            axis_video, len(input_sample.shape), i)]
         im.set_data(img)
         return im
 
-    ani = animation.FuncAnimation(fig, update, frames=numFrames, repeat=False)
-    # display(HTML(ani.to_html5_video()))
+    ani = animation.FuncAnimation(fig, update, frames=num_frames, repeat=False)
     display(HTML(ani.to_html5_video()))

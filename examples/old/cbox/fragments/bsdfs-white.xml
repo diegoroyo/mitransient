@@ -1,0 +1,28 @@
+<scene version="2.0.0">
+
+    <bsdf type="diffuse" id="box">
+        <spectrum name="reflectance" value="0.75"/>
+        <!-- <rgb name="reflectance" value="0.75, 0.75, 0.75"/> -->
+    </bsdf>
+
+    <bsdf type="diffuse" id="white">
+        <spectrum name="reflectance" value="0.75"/>
+        <!-- <rgb name="reflectance" value="0.75, 0.75, 0.75"/> -->
+    </bsdf>
+
+    <bsdf type="diffuse" id="red">
+        <spectrum name="reflectance" value="0.75"/>
+        <!-- <rgb name="reflectance" value="0.75, 0.75, 0.75"/> -->
+    </bsdf>
+
+    <bsdf type="diffuse" id="green">
+        <spectrum name="reflectance" value="0.75"/>
+        <!-- <rgb name="reflectance" value="0.75, 0.75, 0.75"/> -->
+    </bsdf>
+
+    <bsdf type="diffuse" id="light">
+        <spectrum name="reflectance" value="0.75"/>
+        <!-- <rgb name="reflectance" value="0.75, 0.75, 0.75"/> -->
+    </bsdf>
+
+</scene>

@@ -5,58 +5,58 @@ import mitsuba as mi
 
 from typing import Optional, Tuple
 
-from mitransient.integrators.common import TransientRBIntegrator, mis_weight
+from mitransient.integrators.common import TransientADIntegrator, mis_weight
 
 
-class TransientPath(TransientRBIntegrator):
-    r"""
-    .. _integrator-prb:
+class TransientPath(TransientADIntegrator):
+    """
+        `transient_path` plugin
+        =======================
 
-    Path Replay Backpropagation (:monosp:`prb`)
-    -------------------------------------------
+        Standard path tracing algorithm which now includes the time dimension.
+        This can render line-of-sight (LOS) scenes.
+        The `transient_nlos_path` plugin contains different sampling routines
+        specific to NLOS setups.
+        Choose one or the other depending on if you have a LOS or NLOS scene.
 
-    .. pluginparameters::
+        The `transient_path` plugin accepts the following parameters:
+        * `camera_unwarp` (bool): Deprecated.
+            If True, does not take into account the distance from the camera origin
+            to the camera ray's first intersection point. This allows you to see
+            the transient video with the events happening in world time.
+            If False, this distance is taken into account, so you see the same thing
+            that you would see with a real-world ultra-fast camera.
+            (default: false)
+        * `temporal_filter` (string): Deprecated.
+            Can be either:
+            - 'box' for a box filter (no parameters)
+            - 'gaussian' for a Gaussian filter (see gaussian_stddev below)
+            - Empty string to use the same filter in the temporal domain as
+              the rfilter used in the spatial domain.
+            (default: empty string)
+        * `gaussian_stddev` (float): Deprecated.
+            When temporal_filter == 'gaussian', this marks the standard deviation
+            of the Gaussian filter.
+            (default: 2.0)
 
-     * - max_depth
-       - |int|
-       - Specifies the longest path depth in the generated output image (where -1
-         corresponds to :math:`\infty`). A value of 1 will only render directly
-         visible light sources. 2 will lead to single-bounce (direct-only)
-         illumination, and so on. (Default: 6)
-
-     * - rr_depth
-       - |int|
-       - Specifies the path depth, at which the implementation will begin to use
-         the *russian roulette* path termination criterion. For example, if set to
-         1, then path generation many randomly cease after encountering directly
-         visible surfaces. (Default: 5)
-
-    This plugin implements a basic Path Replay Backpropagation (PRB) integrator
-    with the following properties:
-
-    - Emitter sampling (a.k.a. next event estimation).
-
-    - Russian Roulette stopping criterion.
-
-    - No reparameterization. This means that the integrator cannot be used for
-      shape optimization (it will return incorrect/biased gradients for
-      geometric parameters like vertex positions.)
-
-    - Detached sampling. This means that the properties of ideal specular
-      objects (e.g., the IOR of a glass vase) cannot be optimized.
-
-    See ``prb_basic.py`` for an even more reduced implementation that removes
-    the first two features.
-
-    See the papers :cite:`Vicini2021` and :cite:`Zeltner2021MonteCarlo`
-    for details on PRB, attached/detached sampling, and reparameterizations.
-
-    .. tabs::
-
-        .. code-tab:: python
-
-            'type': 'prb',
-            'max_depth': 8
+        See also, from mi.ADIntegrator:
+        - https://github.com/diegoroyo/mitsuba3/blob/v3.3.0-nlos/src/python/python/ad/integrators/common.py
+        * `block_size` (integer):
+            Size of (square) image blocks to render in parallel (in scalar mode).
+            Should be a power of two.
+            (default: 0 i.e. let Mitsuba decide for you)
+        * `max_depth` (integer):
+            Specifies the longest path depth in the generated output image (where -1
+            corresponds to infinity). A value of 1 will only render directly
+            visible light sources. 2 will lead to single-bounce (direct-only)
+            illumination, and so on.
+            (default: 6)
+        * `rr_depth` (integer):
+            Specifies the path depth, at which the implementation will begin to use
+            the *russian roulette* path termination criterion. For example, if set to
+            1, then path generation many randomly cease after encountering directly
+            visible surfaces.
+            (default: 5)
     """
 
     def sample(self,
@@ -147,7 +147,7 @@ class TransientPath(TransientRBIntegrator):
                 Le = β * mis * ds.emitter.eval(si)
 
             # Add transient contribution
-            add_transient(Le, distance, ray.wavelengths, active)
+            add_transient(Le, 0.0, distance, ray.wavelengths, active)
 
             # ---------------------- Emitter sampling ----------------------
 
@@ -182,7 +182,7 @@ class TransientPath(TransientRBIntegrator):
                 Lr_dir = β * mis_em * bsdf_value_em * em_weight
 
             # Add contribution direct emitter sampling
-            add_transient(Lr_dir, distance + ds.dist *
+            add_transient(Lr_dir, 0.0, distance + ds.dist *
                           η, ray.wavelengths, active)
 
             # ------------------ Detached BSDF sampling -------------------

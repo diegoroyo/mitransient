@@ -5,7 +5,7 @@ import mitsuba as mi
 
 from typing import Optional, Tuple
 
-from mitransient.integrators.common import TransientRBIntegrator, mis_weight
+from mitransient.integrators.common import TransientADIntegrator, mis_weight
 
 
 def index_spectrum(spec, idx):
@@ -16,31 +16,37 @@ def index_spectrum(spec, idx):
     return m
 
 
-class TransientPRBVolpathIntegrator(TransientRBIntegrator):
+class TransientPRBVolpathIntegrator(TransientADIntegrator):
     """
-    This class implements a volumetric Path Replay Backpropagation (PRB) integrator
-    with the following properties:
+        `transient_prbvolpath` plugin
+        =============================
+        This class implements a volumetric Path Replay Backpropagation (PRB) integrator
+        It has not been tested for now.
 
-    - Differentiable delta tracking for free-flight distance sampling
+        Author: Miguel Crespo (miguel.crespo@epfl.ch)
 
-    - Emitter sampling (a.k.a. next event estimation).
+        It has the following properties:
 
-    - Russian Roulette stopping criterion.
+        - Differentiable delta tracking for free-flight distance sampling
 
-    - No reparameterization. This means that the integrator cannot be used for
-      shape optimization (it will return incorrect/biased gradients for
-      geometric parameters like vertex positions.)
+        - Emitter sampling (a.k.a. next event estimation).
 
-    - Detached sampling. This means that the properties of ideal specular
-      objects (e.g., the IOR of a glass vase) cannot be optimized.
+        - Russian Roulette stopping criterion.
 
-    See the paper
+        - No reparameterization. This means that the integrator cannot be used for
+        shape optimization (it will return incorrect/biased gradients for
+        geometric parameters like vertex positions.)
 
-      "Path Replay Backpropagation: Differentiating Light Paths using
-       Constant Memory and Linear Time" (Proceedings of SIGGRAPH'21)
-       by Delio Vicini, Sébastien Speierer, and Wenzel Jakob
+        - Detached sampling. This means that the properties of ideal specular
+        objects (e.g., the IOR of a glass vase) cannot be optimized.
 
-    for details on PRB and differentiable delta tracking.
+        See the paper
+
+        "Path Replay Backpropagation: Differentiating Light Paths using
+        Constant Memory and Linear Time" (Proceedings of SIGGRAPH'21)
+        by Delio Vicini, Sébastien Speierer, and Wenzel Jakob
+
+        for details on PRB and differentiable delta tracking.
     """
 
     def __init__(self, props=mi.Properties()):

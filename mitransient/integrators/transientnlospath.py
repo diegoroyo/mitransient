@@ -3,69 +3,105 @@ from __future__ import annotations  # Delayed parsing of type annotations
 import drjit as dr
 import mitsuba as mi
 
-from mitransient.integrators.common import TransientRBIntegrator, mis_weight
+from mitransient.integrators.common import TransientADIntegrator, mis_weight
 
 from mitsuba import Log, LogLevel
 from mitsuba.math import ShadowEpsilon  # type: ignore
 from typing import Tuple, Optional
 
 
-class TransientNLOSPath(TransientRBIntegrator):
-    # TODO(diego): docs
-    r"""
-    .. _integrator-prb:
+class TransientNLOSPath(TransientADIntegrator):
+    """
+        `transient_nlos_path` plugin
+        ============================
 
-    Path Replay Backpropagation (:monosp:`prb`)
-    -------------------------------------------
+        Standard path tracing algorithm which now includes the time dimension,
+        and *contains multiple sampling routines specific to
+        non-line-of-sight (NLOS) scenes*.
+        To render LOS scenes, use the `transient_path` integrator.
+        Choose one or the other depending on if you have a LOS or NLOS scene.
 
-    .. pluginparameters::
+        The `transient_nlos_path` plugin accepts the following parameters:
+        * `filter_bounces` (integer):
+            Only account for paths of specific number of bounces in the result.
+            A value of 1 will only render single-bounce (direct-only) illumination
+            3 will lead to three-bounce (single-corner) illumination in NLOS setups
+            And so on.
+            A value of -1 disables this feature
+            (default: -1 i.e. disabled)
+        * `discard_direct_paths` (boolean):
+            If True, paths with only 1 bounce (direct illuminations) are discarded.
+            If False, this parameter does not have any effect.
+            (default: false)
+        * `nlos_laser_sampling` (boolean):
+            If False, lights are sampled using Next-Event Estimation.
+            If True, lights are sampled using the Laser Sampling technique.
+            See [Royo2022] for more information about Laser Sampling.
+            (default: false)
+        * `nlos_hidden_geometry_sampling` (boolean):
+            If False, ray directions are sampled using material properties.
+            If True, ray directions are sampled using the Hidden Geometry Sampling technique.
+            See [Royo2022] for more information about Hidden Geometry Sampling
+            (default: false)
+        * `nlos_hidden_geometry_sampling_do_rroulette` (boolean):
+            Only relevant when `nlos_hidden_geometry_sampling` is True.
+            If False, always uses the Hidden Geometry Sampling technique
+            to sample new directions.
+            If True, uses Russian Roulette to choose between
+                50% Hidden Geometry Sampling
+                50% Material Sampling
+            See [Royo2022] for more information about Hidden Geometry Sampling
+            (default: false)
+        * `nlos_hidden_geometry_sampling_includes_relay_wall` (boolean):
+            Only relevant when `nlos_hidden_geometry_sampling` is True.
+            If False, points in the relay wall cannot be sampled using the
+            Hidden Geometry Sampling technique.
+            If True, points in the relay wall can be sampled.
+            See [Royo2022] for more information about Hidden Geometry Sampling
+            (default: false)
+        * `temporal_filter` (string): Deprecated.
+            Can be either:
+            - 'box' for a box filter (no parameters)
+            - 'gaussian' for a Gaussian filter (see gaussian_stddev below)
+            - Empty string to use the same filter in the temporal domain as
+              the rfilter used in the spatial domain.
+            IMPORTANT: RECOMMENDED TO SET TO 'box' FOR NLOS SIMULATIONS.
+            (default: empty string)
 
-     * - max_depth
-       - |int|
-       - Specifies the longest path depth in the generated output image (where -1
-         corresponds to :math:`\infty`). A value of 1 will only render directly
-         visible light sources. 2 will lead to single-bounce (direct-only)
-         illumination, and so on. (Default: 6)
+        [Royo2022] Royo, D., García, J., Muñoz, A., & Jarabo, A. (2022).
+        Non-line-of-sight transient rendering. Computers & Graphics, 107, 84-92.
 
-     * - rr_depth
-       - |int|
-       - Specifies the path depth, at which the implementation will begin to use
-         the *russian roulette* path termination criterion. For example, if set to
-         1, then path generation many randomly cease after encountering directly
-         visible surfaces. (Default: 5)
-
-    This plugin implements a basic Path Replay Backpropagation (PRB) integrator
-    with the following properties:
-
-    - Emitter sampling (a.k.a. next event estimation).
-
-    - Russian Roulette stopping criterion.
-
-    - No reparameterization. This means that the integrator cannot be used for
-      shape optimization (it will return incorrect/biased gradients for
-      geometric parameters like vertex positions.)
-
-    - Detached sampling. This means that the properties of ideal specular
-      objects (e.g., the IOR of a glass vase) cannot be optimized.
-
-    See ``prb_basic.py`` for an even more reduced implementation that removes
-    the first two features.
-
-    See the papers :cite:`Vicini2021` and :cite:`Zeltner2021MonteCarlo`
-    for details on PRB, attached/detached sampling, and reparameterizations.
-
-    .. tabs::
-
-        .. code-tab:: python
-
-            'type': 'prb',
-            'max_depth': 8
+        See also, from mi.ADIntegrator:
+        - https://github.com/diegoroyo/mitsuba3/blob/v3.3.0-nlos/src/python/python/ad/integrators/common.py
+        * `block_size` (integer):
+            Size of (square) image blocks to render in parallel (in scalar mode).
+            Should be a power of two.
+            (default: 0 i.e. let Mitsuba decide for you)
+        * `max_depth` (integer):
+            Specifies the longest path depth in the generated output image (where -1
+            corresponds to infinity). A value of 1 will only render directly
+            visible light sources. 2 will lead to single-bounce (direct-only)
+            illumination, and so on.
+            (default: 6)
+        * `rr_depth` (integer):
+            Specifies the path depth, at which the implementation will begin to use
+            the *russian roulette* path termination criterion. For example, if set to
+            1, then path generation many randomly cease after encountering directly
+            visible surfaces.
+            (default: 5)
     """
 
     def __init__(self, props: mi.Properties):
         super().__init__(props)
 
         self.filter_depth: int = props.get('filter_depth', -1)
+        self.filter_bounces: int = props.get('filter_bounces', -1)
+        if self.filter_depth != -1 and self.filter_bounces != -1:
+            raise AssertionError(
+                'Only use one of filter_depth or filter_bounces')
+        if self.filter_bounces != -1:
+            self.filter_depth = self.filter_bounces + 1
+
         if self.filter_depth != -1 and self.max_depth != -1:
             if self.filter_depth >= self.max_depth:
                 Log(LogLevel.Warn,
@@ -107,7 +143,6 @@ class TransientNLOSPath(TransientRBIntegrator):
             self.nlos_laser_target: mi.Point3f = si.p
 
         # prepare hidden geometry sampling
-
         self.hidden_geometries = scene.shapes_dr()
         self.hidden_geometries_distribution = []
         for shape in scene.shapes_dr():
@@ -193,9 +228,9 @@ class TransientNLOSPath(TransientRBIntegrator):
 
             Lr_dir = mi.Spectrum(0)
             if self.filter_depth != -1:
-                active_e &= dr.eq(depth + 1, self.filter_depth)
+                active_e &= dr.eq(depth, self.filter_depth)
             if self.discard_direct_paths:
-                active_e &= depth > 1
+                active_e &= depth > 2
             Lr_dir[active_e] = β * mis * bsdf_spec * emitter_spec
 
             effective_weight = 0.0
@@ -418,7 +453,8 @@ class TransientNLOSPath(TransientRBIntegrator):
 
             # Add transient contribution
             effective_weight = 0.0
-            add_transient(Le, effective_weight, distance, ray.wavelengths, active)
+            add_transient(Le, effective_weight, distance,
+                          ray.wavelengths, active)
 
             # ---------------------- Emitter sampling ----------------------
 

@@ -17,10 +17,50 @@ from typing import Tuple
 
 class NLOSCaptureMeter(mi.Sensor):
     """
-    TODO(diego) add docs
+        `nlos_capture_meter` plugin
+        ===========================
+        
+        Attaches to a geometry (sensor should be child of the geometry).
+        Measures uniformly-spaced points on such geometry.
+        It is recommended to use a `rectangle` shape, the UV coordinates work better.
+
+        The `nlos_capture_meter` should `emitter` and `film` children, which acts as the
+        laser for active illumination NLOS and storage for the transient image, respectively.
+        For the film, it is recommended to use `transient_hdr_film`.
+
+        <shape type="rectangle">
+            <sensor type="nlos_capture_meter">
+                <emitter type="projector">
+                    <rgb name="irradiance" value="1.0, 1.0, 1.0"/>
+                    <float name="fov" value="0.2"/>
+                </emitter>
+
+                <film type="transient_hdr_film">
+                    ...
+                </film>
+            </sensor>
+        </shape>
+
+        The `nlos_capture_meter` plugin accepts the following parameters:
+        * `account_first_and_last_bounces` (boolean): if `True`, the first and last bounces are accounted
+            in the computations of the optical path length of the temporal dimension.
+            This makes sense if you think of a NLOS setup.
+            If `False`, the first and last bounces are not accounted (useful!)
+        * `confocal` (boolean): if `True`, the sensor only measures the point where the laser is pointed to.
+            To model multiple illumination points, repeat the `nlos_capture_meter` sensor or
+            render multiple times (see https://github.com/diegoroyo/tal), search for `scan_type`.
+        * `sensor_origin` (point): position of the sensor (NLOS setup) in the world coordinate system
+        * `laser_origin` (point): position of the laser (NLOS setup) in the world coordinate system
+            This overrides the position of the <emitter> child tag.
+        * To specify where the laser should be pointed, use either:
+            * `laser_lookat_pixel` (point): pixel coordinates (x, y, 0) of the film
+                e.g. if the film is 64x64 pixels, the center of the wall is (32, 32, 0)
+            * `laser_lookat_3d` (point): 3D coordinates (x, y, z) in the world coordinate system
+        
+        See also the parameters for `transient_hdr_film`.
     """
 
-    # NOTE(diego): we assume the rays start in a vacuum
+    # TODO(diego): we assume the rays start in a vacuum
     # this is reasonable for NLOS scenes, but this can be changed
     # in the future if we want to support other media
     IOR_BASE = 1
@@ -130,11 +170,10 @@ class NLOSCaptureMeter(mi.Sensor):
                 f'You have defined multiple ({len(scene_emitters)}) emitters in the scene with a NLOS capture meter.')
 
     def set_shape(self, shape: mi.Shape):
-        # NOTE: set_shape is called by the integrator
+        # NOTE: set_shape is called by the integrator (see common.py)
         # super().set_shape(shape)  # sets self.shape
 
         if self.laser_lookat_is_pixel:
-            # NOTE probably this can be made easier
             self.laser_target = ScalarArray3f(dr.ravel(
                 self.shape().sample_position(
                     0.0,
@@ -204,7 +243,7 @@ class NLOSCaptureMeter(mi.Sensor):
         return self.shape().bbox()
 
     def traverse(self, callback: mi.TraversalCallback):
-        # TODO: all the parameters are set as NonDifferentiable by default
+        # NOTE: all the parameters are set as NonDifferentiable by default
         super().traverse(callback)
         callback.put_object("emitter", self.emitter, mi.ParamFlags.NonDifferentiable)
         callback.put_parameter("needs_sample_3", self.needs_sample_3, mi.ParamFlags.NonDifferentiable)
@@ -220,17 +259,14 @@ class NLOSCaptureMeter(mi.Sensor):
         super().parameters_changed(keys)
 
     def to_string(self):
-        # TODO(diego) update with the rest of parameters
-        # m_shape, m_emitter from NLOSCaptureMeter, m_film from Sensor, etc.
         string = f"{type(self).__name__}[\n"
-        string += f"  needs_sample_3 = {self.needs_sample_3},"
         string += f"  account_first_and_last_bounces = {self.account_first_and_last_bounces},"
         string += f"  is_confocal = {self.is_confocal},"
         string += f"  film_size = {self.film_size},"
         string += f"  laser_origin = {self.laser_origin},"
-        string += f"  laser_lookat = {self.laser_lookat},"
         string += f"  laser_target = {self.laser_target},"
-        string += f"  laser_bounce_opl = {self.laser_bounce_opl},"
+        string += f"  emitter = {self.emitter},"
+        string += f"  film = {self.film()},"
         string += f"]"
         return string
 

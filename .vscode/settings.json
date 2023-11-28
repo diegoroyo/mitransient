@@ -7,4 +7,5 @@
     "python.analysis.extraPaths": [
         "ext/mitsuba3/build/python"
     ],
+    "editor.formatOnSave": true,
 }

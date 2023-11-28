@@ -4,9 +4,37 @@ from mitransient.render.transient_block import TransientBlock
 
 
 class TransientHDRFilm(mi.Film):
+    """
+        `transient_hdr_film` plugin
+        ===========================
+
+        Mitsuba 3 Transient's equivalent to Mitsuba 3's HDRFilm
+
+        Stores two image blocks simultaneously:
+        * self.steady: Accumulates all samples (sum over all the time dimension)
+        * self.transient: Accumulates samples separating them in time bins (histogram)
+
+        The `transient_hdr_film` plugin accepts the following parameters:
+        * `temporal_bins` (integer): number of bins in the time dimension (histogram representation)
+        * `bin_width_opl` (float): width of each bin in the time dimension (histogram representation)
+        * `start_opl` (float): start of the time dimension (histogram representation)
+
+        See also, from mi.Film:
+        - https://github.com/diegoroyo/mitsuba3/blob/master/src/render/film.cpp
+        - https://mitsuba.readthedocs.io/en/latest/src/generated/plugins_films.html
+        * `width` (integer)
+        * `height` (integer)
+        * `crop_width` (integer)
+        * `crop_height` (integer)
+        * `crop_offset_x` (integer)
+        * `crop_offset_y` (integer)
+        * `sample_border` (bool)
+        * `rfilter` (rfilter)
+    """
+
     def __init__(self, props):
         super().__init__(props)
-
+        # NOTE: Also inherits properties from mi.Film (see documentation for this class above)
         self.temporal_bins = props.get('temporal_bins', 2048)
         self.bin_width_opl = props.get('bin_width_opl', 0.003)
         self.start_opl = props.get('start_opl', 0)
@@ -15,6 +43,16 @@ class TransientHDRFilm(mi.Film):
         return self.start_opl + self.bin_width_opl * self.temporal_bins
 
     def add_transient_data(self, spec, extra_weight, distance, wavelengths, active, pos, ray_weight):
+        """
+        Add a path's contribution to the film
+        * spec: Spectrum / contribution of the path
+        * extra_weight: WIP. Hidden Geometry Rejection Sampling stuff.
+        * distance: distance traveled by the path (opl)
+        * wavelengths: for spectral rendering, wavelengths sampled
+        * active: mask
+        * pos: pixel position
+        * ray_weight: weight of the ray given by the sensor
+        """
         idd = (distance - self.start_opl) / self.bin_width_opl
         coords = mi.Vector3f(pos.x, pos.y, idd)
         mask = (idd >= 0) & (idd < self.temporal_bins)
@@ -22,6 +60,7 @@ class TransientHDRFilm(mi.Film):
             coords, wavelengths, spec * ray_weight, mi.Float(1.0), 0.0, active & mask)
 
     def prepare(self, aovs):
+        """ Called before the rendering starts (stuff related to steady-state rendering) """
         # NOTE could be done with mi.load_dict where type='hdrfilm' and the rest of the properties
         props = mi.Properties('hdrfilm')
         props['width'] = self.size().x
@@ -36,6 +75,7 @@ class TransientHDRFilm(mi.Film):
         self.steady.prepare(aovs)
 
     def prepare_transient(self, size, channel_count, rfilter):
+        """ Called before the rendering starts (stuff related to transient rendering) """
         self.transient = TransientBlock(
             size=size,
             channel_count=channel_count,
