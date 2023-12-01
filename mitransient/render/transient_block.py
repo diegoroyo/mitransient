@@ -1,6 +1,7 @@
 import drjit as dr
 import numpy as np
 
+from mitsuba import Log, LogLevel
 from mitsuba import Float, UInt32, TensorXf, Int32, Mask, ReconstructionFilter
 from mitsuba import is_monochromatic, is_spectral
 from mitsuba.math import RayEpsilon, linear_to_srgb  # type: ignore
@@ -16,6 +17,7 @@ class TransientBlock:
         - https://github.com/diegoroyo/mitsuba3/blob/master/include/mitsuba/render/imageblock.h
         See `transient_hdr_film` plugin for more information.
     """
+
     def __init__(self,
                  size: np.ndarray,
                  channel_count: UInt32,
@@ -32,6 +34,10 @@ class TransientBlock:
         self.m_normalize = normalize
         self.m_rfilter = None
         self.m_data = None
+
+        if is_spectral:
+            raise NotImplementedError(
+                'Spectral rendering is not supported yet by Transient Mitsuba 3')
 
         self.set_size(size)
         self.configure_rfilter(rfilter, border)
@@ -104,22 +110,21 @@ class TransientBlock:
         from mitsuba import unpolarized_spectrum
         spec_u = unpolarized_spectrum(value)
 
-        # TODO make this work for N-D spectra
+        # FIXME when spectral rendering is supported, this can be useful
         # values = list()
         # for i in range(len(spec_u)):
         #     values.append(spec_u[i])
         # values.append(alpha)
         # values.append(weight)
+        # if is_spectral:
+        #     from mitsuba import spectrum_to_srgb
+        #     rgb = spectrum_to_srgb(spec_u, wavelengths, active)
 
-        if is_spectral:
-            from mitsuba import spectrum_to_srgb
-            rgb = spectrum_to_srgb(spec_u, wavelengths, active)
-        elif is_monochromatic:
-            rgb = spec_u.x
+        if is_monochromatic:
+            values = [spec_u, alpha, weight]
         else:
-            rgb = spec_u
+            values = [spec_u[0], spec_u[1], spec_u[2], alpha, weight]
 
-        values = [rgb[0], rgb[1], rgb[2], alpha, weight]
         return self.put_(pos, values, active)
 
     def put_(self, pos_, value, active):
@@ -165,8 +170,7 @@ class TransientBlock:
                 base_index = UInt32(0)
                 for j in range(len(self.m_rfilter)):
                     index = UInt32(n[j])[0]
-                    factor *= dr.hsum(self.m_weights[base_index[0]
-                                      :base_index[0]+index])
+                    factor *= dr.hsum(self.m_weights[base_index[0]:base_index[0]+index])
                     base_index += UInt32(n[j])
 
                 factor = dr.rcp(factor)
@@ -251,7 +255,10 @@ class TransientBlock:
         res = TensorXf(values, list(res.shape[0:-1]) + [target_ch])
         crop_size = tuple([np.s_[:] if bi == 0 else np.s_[bi:-bi]
                           for bi in self.m_original_border_size])
-        return res[crop_size]
+        if is_monochromatic:
+            crop_size = *crop_size, np.s_[np.newaxis]
+        res = res[crop_size]
+        return res
 
     def __str__(self):
         # TODO update
