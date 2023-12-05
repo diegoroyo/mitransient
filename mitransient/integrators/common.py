@@ -91,13 +91,13 @@ class TransientADIntegrator(ADIntegrator):
 
         # It is not possible to render more than 2^32 samples
         # in a single pass (32-bit integer)
-        spp_per_pass = int((2**32 - 1) / dr.prod(film_size))
+        # We reduce it even further, to 2^26, to make the progress
+        # bar update more frequently at the cost of more overhead
+        # to create the kernels/etc (measured ~5% overhead)
+        spp_per_pass = int((2**26 - 1) / dr.prod(film_size))
         if spp_per_pass == 0:
             raise Exception(
-                "The total number of Monte Carlo samples required for one sample "
-                "of this rendering task (%i) exceeds 2^32 = 4294967296. Please use "
-                "a smaller film size."
-                % (film_size))
+                "Your film is too big. Please make it smaller.")
 
         # Split into max-size jobs (maybe add reminder at the end)
         needs_remainder = spp % spp_per_pass != 0
@@ -117,9 +117,9 @@ class TransientADIntegrator(ADIntegrator):
             sampler_clone.set_sample_count(spp_per_pass_i)
             sampler_clone.set_samples_per_wavefront(spp_per_pass_i)
             sampler_clone.seed(seeds[i], dr.prod(film_size) * spp_per_pass_i)
-            return sampler_clone
+            return sampler_clone, spp_per_pass_i
 
-        return [(sampler_per_pass(i), spp_per_pass) for i in range(num_passes)]
+        return [sampler_per_pass(i) for i in range(num_passes)]
 
     def prepare(self,
                 sensor: mi.Sensor,
@@ -166,9 +166,7 @@ class TransientADIntegrator(ADIntegrator):
             sensor = scene.sensors()[sensor]
 
         from mitransient.sensors.nloscapturemeter import NLOSCaptureMeter
-        is_nlos = False
         if isinstance(sensor, NLOSCaptureMeter):
-            is_nlos = True
             if self.camera_unwarp:
                 raise AssertionError(
                     'camera_unwarp is not supported for NLOSCaptureMeter. '
@@ -237,7 +235,8 @@ class TransientADIntegrator(ADIntegrator):
                seed: int = 0,
                spp: int = 0,
                develop: bool = True,
-               evaluate: bool = True) -> mi.TensorXf:
+               evaluate: bool = True,
+               progress_callback: function = None) -> mi.TensorXf:
 
         if not develop:
             raise Exception("develop=True must be specified when "
@@ -263,7 +262,7 @@ class TransientADIntegrator(ADIntegrator):
                 total_spp += spp
             film.transient.set_base_weight(total_spp)
 
-            for sampler, spp in prepare_result:
+            for i, (sampler, spp) in enumerate(prepare_result):
                 # Generate a set of rays starting at the sensor
                 ray, ray_weight, pos, _ = self.sample_rays(
                     scene, sensor, sampler)
@@ -305,6 +304,7 @@ class TransientADIntegrator(ADIntegrator):
 
                 # Perform the ray_weight division and return an image tensor
                 film.steady.put_block(block)
+                progress_callback((i + 1) / len(prepare_result))
 
             self.primal_image = film.steady.develop()
             transient_image = film.transient.develop()
