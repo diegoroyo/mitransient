@@ -315,6 +315,9 @@ class TransientNLOSPath(TransientADIntegrator):
             self, scene: mi.Scene, sampler: mi.Sampler, bsdf: mi.BSDF, bsdf_ctx: mi.BSDFContext, si: mi.SurfaceInteraction3f,
             _: mi.Float, sample2: mi.Point2f, active: mi.Mask) -> Tuple[mi.BSDFSample3f, mi.Spectrum]:
 
+        if not self.hg_sampling:
+            return dr.zeros(mi.BSDFSample3f), 0.0
+
         # first attempt at sampling a visible position
         active_original = mi.Mask(active)
         ps_hg: mi.PositionSample3f = self._sample_hidden_geometry_position(
