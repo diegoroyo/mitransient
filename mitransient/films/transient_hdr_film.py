@@ -1,5 +1,6 @@
 import mitsuba as mi
 
+from mitsuba import is_monochromatic, is_spectral
 from mitransient.render.transient_block import TransientBlock
 
 
@@ -70,6 +71,10 @@ class TransientHDRFilm(mi.Film):
         props['crop_offset_x'] = self.crop_offset().x
         props['crop_offset_y'] = self.crop_offset().y
         props['sample_border'] = self.sample_border()
+        # FIXME if spectral model is activated, we should use specfilm instead of hdrfilm
+        # see variable is_spectral imported above, and
+        # https://mitsuba.readthedocs.io/en/latest/src/generated/plugins_films.html
+        props['pixel_format'] = 'luminance' if is_monochromatic else 'rgb'
         props['rfilter'] = self.rfilter()
         self.steady = mi.PluginManager.instance().create_object(props)
         self.steady.prepare(aovs)
@@ -84,9 +89,12 @@ class TransientHDRFilm(mi.Film):
     def traverse(self, callback):
         # TODO: all the parameters are set as NonDifferentiable by default
         super().traverse(callback)
-        callback.put_parameter('temporal_bins', self.temporal_bins, mi.ParamFlags.NonDifferentiable)
-        callback.put_parameter('bin_width_opl', self.bin_width_opl, mi.ParamFlags.NonDifferentiable)
-        callback.put_parameter('start_opl', self.start_opl, mi.ParamFlags.NonDifferentiable)
+        callback.put_parameter(
+            'temporal_bins', self.temporal_bins, mi.ParamFlags.NonDifferentiable)
+        callback.put_parameter(
+            'bin_width_opl', self.bin_width_opl, mi.ParamFlags.NonDifferentiable)
+        callback.put_parameter('start_opl', self.start_opl,
+                               mi.ParamFlags.NonDifferentiable)
 
     def parameters_changed(self, keys):
         super().parameters_changed(keys)

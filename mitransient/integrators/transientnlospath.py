@@ -144,16 +144,25 @@ class TransientNLOSPath(TransientADIntegrator):
 
         # prepare hidden geometry sampling
         self.hidden_geometries = scene.shapes_dr()
-        self.hidden_geometries_distribution = []
-        for shape in scene.shapes_dr():
-            is_relay_wall = shape.sensor() == sensor
-            if not self.hg_sampling_includes_relay_wall and is_relay_wall:
-                self.hidden_geometries_distribution.append(0)
-                continue
-            self.hidden_geometries_distribution.append(shape.surface_area()[0])
+        if self.hg_sampling:
+            self.hidden_geometries_distribution = []
+            for shape in scene.shapes_dr():
+                is_relay_wall = shape.sensor() == sensor
+                if not self.hg_sampling_includes_relay_wall and is_relay_wall:
+                    self.hidden_geometries_distribution.append(0)
+                    continue
+                self.hidden_geometries_distribution.append(
+                    shape.surface_area()[0])
 
-        self.hidden_geometries_distribution = mi.DiscreteDistribution(
-            self.hidden_geometries_distribution)
+            if len(self.hidden_geometries_distribution) == 0:
+                raise AssertionError('Hidden geometry sampling is activated, '
+                                     'but there are no hidden geometries in the scene!')
+            if sum(self.hidden_geometries_distribution) < dr.epsilon(mi.Float):
+                raise AssertionError('Hidden geometry sampling is activated, '
+                                     'but the hidden geometry in the scene has zero surface area?')
+
+            self.hidden_geometries_distribution = mi.DiscreteDistribution(
+                self.hidden_geometries_distribution)
 
     def _sample_hidden_geometry_position(
             self, ref: mi.Interaction3f,

@@ -19,7 +19,7 @@ class NLOSCaptureMeter(mi.Sensor):
     """
         `nlos_capture_meter` plugin
         ===========================
-        
+
         Attaches to a geometry (sensor should be child of the geometry).
         Measures uniformly-spaced points on such geometry.
         It is recommended to use a `rectangle` shape, the UV coordinates work better.
@@ -56,7 +56,7 @@ class NLOSCaptureMeter(mi.Sensor):
             * `laser_lookat_pixel` (point): pixel coordinates (x, y, 0) of the film
                 e.g. if the film is 64x64 pixels, the center of the wall is (32, 32, 0)
             * `laser_lookat_3d` (point): 3D coordinates (x, y, z) in the world coordinate system
-        
+
         See also the parameters for `transient_hdr_film`.
     """
 
@@ -111,15 +111,15 @@ class NLOSCaptureMeter(mi.Sensor):
             'laser_lookat_pixel', ScalarArray3f(-1))
         laser_lookat3_3d = props.get('laser_lookat_3d', ScalarArray3f(0))
         self.laser_lookat_is_pixel: bool = \
-            laser_lookat3_pixel.x > 0.0 and laser_lookat3_pixel.y > 0.0
+            laser_lookat3_pixel.x >= 0.0 and laser_lookat3_pixel.y >= 0.0
         if self.laser_lookat_is_pixel:
             film_width, film_height = self.film_size
             if laser_lookat3_pixel.x < 0.0 or film_width < laser_lookat3_pixel.x:
-                Log(LogLevel.Warn, 'Laser lookat pixel (X postiion) is out of bounds')
+                Log(LogLevel.Warn, 'Laser lookat pixel (X position) is out of bounds')
             if laser_lookat3_pixel.y < 0.0 or film_height < laser_lookat3_pixel.y:
-                Log(LogLevel.Warn, 'Laser lookat pixel (Y postiion) is out of bounds')
+                Log(LogLevel.Warn, 'Laser lookat pixel (Y position) is out of bounds')
             if dr.abs(laser_lookat3_pixel.z) > dr.epsilon(Float):
-                Log(LogLevel.Warn, 'Laser lookat pixel (Z postiion) should be zero')
+                Log(LogLevel.Warn, 'Laser lookat pixel (Z position) should be zero')
             self.laser_lookat: ScalarArray3f = laser_lookat3_pixel
         else:
             self.laser_lookat: ScalarArray3f = laser_lookat3_3d
@@ -245,15 +245,24 @@ class NLOSCaptureMeter(mi.Sensor):
     def traverse(self, callback: mi.TraversalCallback):
         # NOTE: all the parameters are set as NonDifferentiable by default
         super().traverse(callback)
-        callback.put_object("emitter", self.emitter, mi.ParamFlags.NonDifferentiable)
-        callback.put_parameter("needs_sample_3", self.needs_sample_3, mi.ParamFlags.NonDifferentiable)
-        callback.put_parameter("account_first_and_last_bounces", self.account_first_and_last_bounces, mi.ParamFlags.NonDifferentiable)
-        callback.put_parameter("is_confocal", self.is_confocal, mi.ParamFlags.NonDifferentiable)
-        callback.put_parameter("film_size", self.film_size, mi.ParamFlags.NonDifferentiable)
-        callback.put_parameter("laser_origin", self.laser_origin, mi.ParamFlags.NonDifferentiable)
-        callback.put_parameter("laser_lookat", self.laser_lookat, mi.ParamFlags.NonDifferentiable)
-        callback.put_parameter("laser_target", self.laser_target, mi.ParamFlags.NonDifferentiable)
-        callback.put_parameter("laser_bounce_opl", self.laser_bounce_opl, mi.ParamFlags.NonDifferentiable)
+        callback.put_object("emitter", self.emitter,
+                            mi.ParamFlags.NonDifferentiable)
+        callback.put_parameter(
+            "needs_sample_3", self.needs_sample_3, mi.ParamFlags.NonDifferentiable)
+        callback.put_parameter("account_first_and_last_bounces",
+                               self.account_first_and_last_bounces, mi.ParamFlags.NonDifferentiable)
+        callback.put_parameter(
+            "is_confocal", self.is_confocal, mi.ParamFlags.NonDifferentiable)
+        callback.put_parameter("film_size", self.film_size,
+                               mi.ParamFlags.NonDifferentiable)
+        callback.put_parameter(
+            "laser_origin", self.laser_origin, mi.ParamFlags.NonDifferentiable)
+        callback.put_parameter(
+            "laser_lookat", self.laser_lookat, mi.ParamFlags.NonDifferentiable)
+        callback.put_parameter(
+            "laser_target", self.laser_target, mi.ParamFlags.NonDifferentiable)
+        callback.put_parameter(
+            "laser_bounce_opl", self.laser_bounce_opl, mi.ParamFlags.NonDifferentiable)
 
     def parameters_changed(self, keys):
         super().parameters_changed(keys)
