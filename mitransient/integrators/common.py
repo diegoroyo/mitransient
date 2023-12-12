@@ -304,7 +304,8 @@ class TransientADIntegrator(ADIntegrator):
 
                 # Perform the ray_weight division and return an image tensor
                 film.steady.put_block(block)
-                progress_callback((i + 1) / len(prepare_result))
+                if progress_callback:
+                    progress_callback((i + 1) / len(prepare_result))
 
             self.primal_image = film.steady.develop()
             transient_image = film.transient.develop()

@@ -54,7 +54,7 @@
             <boolean name="account_first_and_last_bounces" value="false"/>
             <point name="sensor_origin" x="-0.5" y="0.0" z="0.25"/>
             <point name="laser_origin" x="-0.5" y="0.0" z="0.25"/>
-            <point name="laser_lookat_pixel" x="31.5" y="31.5" z="0"/>
+            <point name="laser_lookat_pixel" x="32" y="32" z="0"/>
             <film type="transient_hdr_film">
                 <integer name="width" value="64"/>
                 <integer name="height" value="64"/>
@@ -63,6 +63,7 @@
                 <!-- <boolean name="auto_detect_bins" value="false"/> -->
                 <float name="bin_width_opl" value="0.006"/>
                 <float name="start_opl" value="1.85"/>
+                <rfilter type="box"/>
             </film>
         </sensor>
     </shape>

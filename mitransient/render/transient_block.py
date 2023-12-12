@@ -139,8 +139,12 @@ class TransientBlock:
         pos = pos_ - (offset - (border_size + border_offset) + 0.5)
         # pos = pos_ - (self.m_offset - border_size)
 
-        # if dr.any(rfilter_radius > (0.5 + RayEpsilon))[0]:
-        if np.any(self.rfilter_radius > (0.5 + RayEpsilon)):
+        if dr.any(self.rfilter_radius > (0.5 + RayEpsilon)):
+            # FIXME this is probably affected by the same bug as the
+            # non-filter part of the code
+            print('WARN: Using a reconstruction filter with a radius '
+                  'larger than 0.5 needs to be tested')
+
             # Determine the affected range of pixels
             lo = dr.maximum(dr.ceil(pos - rfilter_radius), 0)
             hi = dr.minimum(dr.floor(pos + rfilter_radius),
@@ -170,7 +174,8 @@ class TransientBlock:
                 base_index = UInt32(0)
                 for j in range(len(self.m_rfilter)):
                     index = UInt32(n[j])[0]
-                    factor *= dr.hsum(self.m_weights[base_index[0]:base_index[0]+index])
+                    factor *= dr.hsum(self.m_weights[base_index[0]
+                                      :base_index[0]+index])
                     base_index += UInt32(n[j])
 
                 factor = dr.rcp(factor)
@@ -212,7 +217,7 @@ class TransientBlock:
                 if j == len(n):
                     break
         else:
-            lo = dr.ceil(pos - 0.5)
+            lo = dr.ceil(pos)
             offset = UInt32(0)
 
             for j in range(len(self.m_size)-1, -1, -1):
