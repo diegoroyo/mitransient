@@ -440,6 +440,24 @@ class TransientNLOSPath(TransientADIntegrator):
             # Get the BSDF, potentially computes texture-space differentials
             bsdf = si.bsdf(ray)
 
+            # ---------------------- Direct emission ----------------------
+
+            # Compute MIS weight for emitter sample from previous bounce
+            ds = mi.DirectionSample3f(scene, si=si, ref=prev_si)
+
+            mis = mis_weight(
+                prev_bsdf_pdf,
+                scene.pdf_emitter_direction(prev_si, ds, ~prev_bsdf_delta)
+            )
+
+            with dr.resume_grad(when=not primal):
+                Le = β * mis * ds.emitter.eval(si)
+
+            # Add transient contribution
+            effective_weight = 0.0
+            add_transient(Le, effective_weight, distance,
+                          ray.wavelengths, active)
+
             # ---------------------- Emitter sampling ----------------------
 
             # Should we continue tracing to reach one more vertex?
