@@ -252,6 +252,8 @@ class TransientBlock:
         weight += self.base_weight
         values = dr.gather(Float, res.array, values_idx)
 
+        # dr.printf_async('values: %f\n', float(values[0]))
+        # dr.printf_async('weight: %f\n', float(weight[0]))
         values = (values / weight) & (weight > 0.0)
 
         if gamma:

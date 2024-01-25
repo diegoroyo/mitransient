@@ -222,9 +222,10 @@ class NLOSCaptureMeter(mi.Sensor):
         if not self.account_first_and_last_bounces:
             time -= self.laser_bounce_opl + sensor_distance * self.IOR_BASE
 
+        # NOTE: removed * dr.pi because there is no need to account for this
         return (
             mi.RayDifferential3f(origin, direction, time, wavelengths),
-            mi.unpolarized_spectrum(wav_weight) * dr.pi
+            mi.unpolarized_spectrum(wav_weight)  # * dr.pi
         )
 
     def pdf_direction(self,

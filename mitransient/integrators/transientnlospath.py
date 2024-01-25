@@ -2,7 +2,6 @@ from __future__ import annotations  # Delayed parsing of type annotations
 
 import drjit as dr
 import mitsuba as mi
-
 from mitransient.integrators.common import TransientADIntegrator, mis_weight
 
 from mitsuba import Log, LogLevel
@@ -233,14 +232,12 @@ class TransientNLOSPath(TransientADIntegrator):
             bsdf_spec, bsdf_pdf = bsdf.eval_pdf(
                 ctx=bsdf_ctx, si=si, wo=wo, active=active_e)
 
-            mis = dr.select(ds.delta, 1.0, mis_weight(ds.pdf, bsdf_pdf))
-
             Lr_dir = mi.Spectrum(0)
             if self.filter_depth != -1:
                 active_e &= dr.eq(depth, self.filter_depth)
             if self.discard_direct_paths:
                 active_e &= depth > 2
-            Lr_dir[active_e] = β * mis * bsdf_spec * emitter_spec
+            Lr_dir[active_e] = β * bsdf_spec * emitter_spec
 
             effective_weight = 0.0
             add_transient(Lr_dir, effective_weight, distance + ds.dist * η,
@@ -272,10 +269,7 @@ class TransientNLOSPath(TransientADIntegrator):
         d = self.nlos_laser_target - si.p
         distance_laser = dr.norm(d)
         d /= distance_laser
-        ray_bsdf = mi.Ray3f(o=si.p, d=d,
-                            maxt=distance_laser * (1.0 - ShadowEpsilon),
-                            time=si.time,
-                            wavelengths=si.wavelengths)
+        ray_bsdf = si.spawn_ray_to(self.nlos_laser_target)
         active_e &= ~scene.ray_test(ray_bsdf, active_e)
 
         # 2. Evaluate BSDF to desired direction
@@ -288,20 +282,15 @@ class TransientNLOSPath(TransientADIntegrator):
             ray_bsdf, active_e)
         active_e &= si_bsdf.is_valid()
         active_e &= dr.any(mi.depolarizer(bsdf_spec) > dr.epsilon(mi.Float))
+
         wl = si_bsdf.to_local(-d)
         active_e &= mi.Frame3f.cos_theta(wl) > 0.0
-
-        # NOTE(diego): as points are not randomly chosen,
-        # we need to account for d^2 and cos term because of
-        # the solid angle projection of si.p to
-        # nlos_laser_target.
-        # This is like a point light, but the extra cos term
-        # exists as it is not a point light that emits in all
-        # directions :^)
-        # The incident cos term at
-        # nlos_laser_target will be taken into account by
-        # emitter_nee_sample's bsdf
-        bsdf_spec *= dr.sqr(dr.rcp(distance_laser)) * mi.Frame3f.cos_theta(wl)
+        pdf_ls = mi.Float(1.0)  # always hit the same point :)
+        # NOTE(diego): convert from area probability to solid angle probability
+        #              (similar to sampling an area light)
+        #              divide by pdf
+        pdf_ls *= dr.sqr(distance_laser) / mi.Frame3f.cos_theta(wl)
+        bsdf_spec /= pdf_ls
 
         bsdf_next = si_bsdf.bsdf(ray=ray_bsdf)
 
@@ -319,7 +308,6 @@ class TransientNLOSPath(TransientADIntegrator):
             return dr.zeros(mi.BSDFSample3f), 0.0
 
         # first attempt at sampling a visible position
-        active_original = mi.Mask(active)
         ps_hg: mi.PositionSample3f = self._sample_hidden_geometry_position(
             ref=si, sample2=sample2, active=active)
         active &= dr.neq(ps_hg.pdf, 0.0)
@@ -353,7 +341,9 @@ class TransientNLOSPath(TransientADIntegrator):
 
         wg = si_hg.to_local(-d)
         travel_dist = dr.norm(si_hg.p - si.p)
-        bsdf_spec *= dr.sqr(dr.rcp(travel_dist)) * mi.Frame3f.cos_theta(wg)
+        # NOTE(diego): convert from area probability to solid angle probability
+        #              (similar to sampling an area light)
+        ps_hg.pdf *= dr.sqr(travel_dist) / mi.Frame3f.cos_theta(wg)
 
         # discard low travel dist, produces high variance
         # the intergator will use bsdf sampling instead
@@ -450,24 +440,6 @@ class TransientNLOSPath(TransientADIntegrator):
             # Get the BSDF, potentially computes texture-space differentials
             bsdf = si.bsdf(ray)
 
-            # ---------------------- Direct emission ----------------------
-
-            # Compute MIS weight for emitter sample from previous bounce
-            ds = mi.DirectionSample3f(scene, si=si, ref=prev_si)
-
-            mis = mis_weight(
-                prev_bsdf_pdf,
-                scene.pdf_emitter_direction(prev_si, ds, ~prev_bsdf_delta)
-            )
-
-            with dr.resume_grad(when=not primal):
-                Le = β * mis * ds.emitter.eval(si)
-
-            # Add transient contribution
-            effective_weight = 0.0
-            add_transient(Le, effective_weight, distance,
-                          ray.wavelengths, active)
-
             # ---------------------- Emitter sampling ----------------------
 
             # Should we continue tracing to reach one more vertex?
@@ -504,22 +476,18 @@ class TransientNLOSPath(TransientADIntegrator):
                 scene, sampler, bsdf,
                 bsdf_ctx, si, sampler.next_1d(), sampler.next_2d(), active_hg)
 
-            hg_failed = mi.Mask(False)
-            # hg_failed = dr.all(mi.depolarizer(bsdf_weight_hg)
-            #                    < dr.epsilon(mi.Float))
-
-            active_nhg = active_next & (~do_hg_sample | hg_failed)
-
+            active_nhg = active_next & (~do_hg_sample)
             bsdf_sample_nhg, bsdf_weight_nhg = bsdf.sample(
                 bsdf_ctx, si, sampler.next_1d(), sampler.next_2d(), active_nhg)
+
             bsdf_sample = dr.select(
-                active_nhg, bsdf_sample_nhg, bsdf_sample_hg)
+                do_hg_sample, bsdf_sample_hg, bsdf_sample_nhg)
             bsdf_weight = dr.select(
-                active_nhg, bsdf_weight_nhg, bsdf_weight_hg)
+                do_hg_sample, bsdf_weight_hg, bsdf_weight_nhg)
 
             # ---- Update loop variables based on current interaction -----
 
-            L = (L + Le + Lr_dir) if primal else (L - Le - Lr_dir)
+            L = (L + Lr_dir) if primal else (L - Lr_dir)
             ray = si.spawn_ray(si.to_world(bsdf_sample.wo))
             η *= bsdf_sample.eta
             β *= bsdf_weight / pdf_bsdf_method
@@ -579,7 +547,7 @@ class TransientNLOSPath(TransientADIntegrator):
                         dr.replace_grad(1, inv_bsdf_val_det * bsdf_val)
 
                     # Differentiable Monte Carlo estimate of all contributions
-                    Lo = Le + Lr_dir + Lr_ind
+                    Lo = Lr_dir + Lr_ind
 
                     if dr.flag(dr.JitFlag.VCallRecord) and not dr.grad_enabled(Lo):
                         raise Exception(

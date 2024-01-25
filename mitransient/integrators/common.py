@@ -7,7 +7,7 @@ import gc
 
 from typing import Union, Any, Callable, Optional, Tuple
 
-from mitsuba.ad.integrators.common import ADIntegrator, RBIntegrator, mis_weight, _ReparamWrapper  # type: ignore
+from mitsuba.ad.integrators.common import ADIntegrator  # type: ignore
 
 
 class TransientADIntegrator(ADIntegrator):
@@ -34,7 +34,7 @@ class TransientADIntegrator(ADIntegrator):
         self.gaussian_stddev = props.get('gaussian_stddev', 2.0)
 
     def to_string(self):
-        # TODO add other parameters
+        # TODO this should go in transientpath, transientnlospath, transient_prb_volpath.py
         return f'{type(self).__name__}[max_depth = {self.max_depth},' \
                f' rr_depth = { self.rr_depth }]'
 
@@ -254,7 +254,7 @@ class TransientADIntegrator(ADIntegrator):
                 sensor=sensor,
                 seed=seed,
                 spp=spp,
-                aovs=self.aovs()
+                aovs=self.aov_names()
             )
 
             total_spp = 0
@@ -264,7 +264,7 @@ class TransientADIntegrator(ADIntegrator):
 
             for i, (sampler, spp) in enumerate(prepare_result):
                 # Generate a set of rays starting at the sensor
-                ray, ray_weight, pos, _ = self.sample_rays(
+                ray, ray_weight, pos = self.sample_rays(
                     scene, sensor, sampler)
 
                 # Launch the Monte Carlo sampling process in primal mode
@@ -363,3 +363,14 @@ class TransientADIntegrator(ADIntegrator):
         raise Exception('ADIntegrator does not provide the sample() method. '
                         'It should be implemented by subclasses that '
                         'specialize the abstract ADIntegrator interface.')
+
+
+def mis_weight(pdf_a, pdf_b):
+    """
+    Compute the Multiple Importance Sampling (MIS) weight given the densities
+    of two sampling strategies according to the power heuristic.
+    """
+    a2 = dr.sqr(pdf_a)
+    b2 = dr.sqr(pdf_b)
+    w = a2 / (a2 + b2)
+    return dr.detach(dr.select(dr.isfinite(w), w, 0))
