@@ -225,9 +225,9 @@ class TransientADIntegrator(ADIntegrator):
         '''
         Return a lambda function for saving transient samples
         '''
-        return lambda spec, extra_weight, distance, wavelengths, active: \
+        return lambda spec, distance, wavelengths, active: \
             self._film.add_transient_data(
-                spec, extra_weight, distance, wavelengths, active, pos, ray_weight)
+                spec, distance, wavelengths, active, pos, ray_weight)
 
     def render(self: mi.SamplingIntegrator,
                scene: mi.Scene,

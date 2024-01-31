@@ -43,7 +43,7 @@ class TransientHDRFilm(mi.Film):
     def end_opl(self):
         return self.start_opl + self.bin_width_opl * self.temporal_bins
 
-    def add_transient_data(self, spec, extra_weight, distance, wavelengths, active, pos, ray_weight):
+    def add_transient_data(self, spec, distance, wavelengths, active, pos, ray_weight):
         """
         Add a path's contribution to the film
         * spec: Spectrum / contribution of the path

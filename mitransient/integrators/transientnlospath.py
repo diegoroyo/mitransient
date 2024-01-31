@@ -211,7 +211,7 @@ class TransientNLOSPath(TransientADIntegrator):
             self, mode: dr.ADMode, scene: mi.Scene, sampler: mi.Sampler,
             si: mi.SurfaceInteraction3f, bsdf: mi.BSDF, bsdf_ctx: mi.BSDFContext,
             β: mi.Spectrum, distance: mi.Float, η: mi.Float, depth: mi.UInt,
-            extra_weight: mi.Float, active_e: mi.Mask, add_transient) -> mi.Spectrum:
+            active_e: mi.Mask, add_transient) -> mi.Spectrum:
         ds, emitter_spec = scene.sample_emitter_direction(
             ref=si, sample=sampler.next_2d(active_e), test_visibility=True, active=active_e)
         active_e &= dr.neq(ds.pdf, 0.0)
@@ -239,8 +239,7 @@ class TransientNLOSPath(TransientADIntegrator):
                 active_e &= depth > 2
             Lr_dir[active_e] = β * bsdf_spec * emitter_spec
 
-            effective_weight = 0.0
-            add_transient(Lr_dir, effective_weight, distance + ds.dist * η,
+            add_transient(Lr_dir, distance + ds.dist * η,
                           si.wavelengths, active_e)
 
         return Lr_dir
@@ -249,7 +248,7 @@ class TransientNLOSPath(TransientADIntegrator):
             self, mode: dr.ADMode, scene: mi.Scene, sampler: mi.Sampler,
             si: mi.SurfaceInteraction3f, bsdf: mi.BSDF, bsdf_ctx: mi.BSDFContext,
             β: mi.Spectrum, distance: mi.Float, η: mi.Float, depth: mi.UInt,
-            extra_weight: mi.Float, active_e: mi.Mask, add_transient) -> mi.Spectrum:
+            active_e: mi.Mask, add_transient) -> mi.Spectrum:
         """
         NLOS scenes only have one laser emitter - standard
         emitter sampling techniques do not apply as most
@@ -298,7 +297,7 @@ class TransientNLOSPath(TransientADIntegrator):
         return self.emitter_nee_sample(
             mode=mode, scene=scene, sampler=sampler, si=si_bsdf,
             bsdf=bsdf_next, bsdf_ctx=bsdf_ctx, β=β * bsdf_spec, distance=distance + distance_laser * η, η=η,
-            depth=depth+1, extra_weight=extra_weight, active_e=active_e, add_transient=add_transient)
+            depth=depth+1, active_e=active_e, add_transient=add_transient)
 
     def hidden_geometry_sample(
             self, scene: mi.Scene, sampler: mi.Sampler, bsdf: mi.BSDF, bsdf_ctx: mi.BSDFContext, si: mi.SurfaceInteraction3f,
@@ -307,59 +306,63 @@ class TransientNLOSPath(TransientADIntegrator):
         if not self.hg_sampling:
             return dr.zeros(mi.BSDFSample3f), 0.0
 
-        # first attempt at sampling a visible position
-        ps_hg: mi.PositionSample3f = self._sample_hidden_geometry_position(
-            ref=si, sample2=sample2, active=active)
-        active &= dr.neq(ps_hg.pdf, 0.0)
-        # check visibility
-        d = ps_hg.p - si.p
-        dist = dr.norm(d)
-        d /= dist
-        ray_hg = si.spawn_ray(d)
-        si_hg: mi.SurfaceInteraction3f = scene.ray_intersect(ray_hg, active)
-        active &= si_hg.is_valid() & (dr.dot(si.n, d) > 0.0)
+        # repeat HG sampling until we find a visible position (or reach max positions)
+        ps_hg: mi.PositionSample3f = dr.zeros(mi.PositionSample3f)
+        pdf_hg: mi.Float = mi.Float(0)
+        cos_theta_i = mi.Float(0)
+        cos_theta_g = mi.Float(0)
+        d = mi.Vector3f(0)
 
-        # compute the PDF of the position sample (num_intersections)
-        si_test = mi.SurfaceInteraction3f(dr.detach(si_hg))
-        active_test = mi.Mask(active)
-        num_intersections = mi.UInt(0)
-        loop = mi.Loop(name='Hidden geometry pdf calculation',
-                       state=lambda: (num_intersections, active_test, si_test))
-        loop.set_max_iterations(100)
-        while loop(active_test):
-            num_intersections[active_test] += 1
-            ray_test = si_test.spawn_ray(d)
-            si_test: mi.SurfaceInteraction3f = scene.ray_intersect(
-                ray_test, active_test)
-            active_test &= \
-                (si_test.t > 2 * dr.epsilon(mi.Float)) & si_test.is_valid()
-        active[num_intersections >= 100] = False
+        self.hgs_do_rejection = False
+        retry_rs = mi.Mask(active)
+        iters_rs = mi.UInt32(0)
+        max_rs_iterations = 5 if self.hgs_do_rejection else 1
+        loop_rs = mi.Loop(name='Hidden geometry rejection sampling',
+                          state=lambda: (retry_rs, sample2, sampler, ps_hg, pdf_hg, si, d, cos_theta_i, cos_theta_g, iters_rs))
+        loop_rs.set_max_iterations(max_rs_iterations)
+        while loop_rs(retry_rs):
+            iters_rs[retry_rs] += 1
+            sample2 = mi.Point2f(
+                dr.select(retry_rs, sampler.next_2d(retry_rs), sample2))
+            ps_hg = dr.select(
+                retry_rs,
+                self._sample_hidden_geometry_position(
+                    ref=si, sample2=sample2, active=retry_rs),
+                ps_hg)
+            successful_retries = retry_rs & dr.neq(ps_hg.pdf, 0.0)
+            # check visibility
+            d = mi.Vector3f(ps_hg.p - si.p)
+            dist = dr.norm(d)
+            d /= dist
+            cos_theta_i = dr.dot(si.n, d)
+            cos_theta_g = dr.dot(ps_hg.n, -d)
+            pdf_hg = dr.select(
+                retry_rs,
+                pdf_hg + ps_hg.pdf * dr.sqr(dist) / dr.abs(cos_theta_g),
+                pdf_hg
+            )
+            successful_retries &= (cos_theta_i > dr.epsilon(mi.Float)) & \
+                (cos_theta_g > dr.epsilon(mi.Float))
+            retry_rs &= ~successful_retries
+            retry_rs &= iters_rs < max_rs_iterations
+        active &= (cos_theta_i > dr.epsilon(mi.Float)) & \
+            (cos_theta_g > dr.epsilon(mi.Float))
 
         wo = si.to_local(d)
         bsdf_spec = bsdf.eval(ctx=bsdf_ctx, si=si, wo=wo, active=active)
         bsdf_spec = si.to_world_mueller(bsdf_spec, -wo, si.wi)
 
-        wg = si_hg.to_local(-d)
-        travel_dist = dr.norm(si_hg.p - si.p)
-        # NOTE(diego): convert from area probability to solid angle probability
-        #              (similar to sampling an area light)
-        ps_hg.pdf *= dr.sqr(travel_dist) / mi.Frame3f.cos_theta(wg)
-
-        # discard low travel dist, produces high variance
-        # the intergator will use bsdf sampling instead
-        active &= travel_dist > 0.5
-        active &= dr.any(mi.depolarizer(bsdf_spec) > dr.epsilon(mi.Float))
-
         bs: mi.BSDFSample3f = dr.zeros(mi.BSDFSample3f)
         bs.wo = wo
-        bs.pdf = ps_hg.pdf * num_intersections
+        bs.pdf = pdf_hg
         bs.eta = 1.0
         bs.sampled_type = mi.BSDFFlags.Reflection
         bs.sampled_component = 0
+        active &= bs.pdf > dr.epsilon(mi.Float)
 
         bsdf_spec /= bs.pdf
 
-        return bs, dr.select(active & (bs.pdf > dr.epsilon(mi.Float)), bsdf_spec, 0.0)
+        return bs, dr.select(active, bsdf_spec, 0.0)
 
     def sample(self,
                mode: dr.ADMode,
@@ -454,8 +457,7 @@ class TransientNLOSPath(TransientADIntegrator):
                 Le = β * mis * ds.emitter.eval(si)
 
             # Add transient contribution
-            effective_weight = 0.0
-            add_transient(Le, effective_weight, distance,
+            add_transient(Le, distance,
                           ray.wavelengths, active)
 
             # ---------------------- Emitter sampling ----------------------
@@ -472,7 +474,7 @@ class TransientNLOSPath(TransientADIntegrator):
                 mode, scene, sampler,
                 si, bsdf, bsdf_ctx,
                 β, distance, η, depth,
-                0.0, active_e, add_transient)
+                active_e, add_transient)
 
             # ------------------ Detached BSDF sampling -------------------
 
