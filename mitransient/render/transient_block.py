@@ -262,9 +262,9 @@ class TransientBlock:
         res = TensorXf(values, list(res.shape[0:-1]) + [target_ch])
         crop_size = tuple([np.s_[:] if bi == 0 else np.s_[bi:-bi]
                           for bi in self.m_original_border_size])
-        if is_monochromatic:
-            crop_size = *crop_size, np.s_[np.newaxis]
-        res = res[crop_size]
+        # use np.array to slice the tensor
+        # if the size of a dimension is 1, it keeps the dimension
+        res = TensorXf(np.array(res)[crop_size])
         return res
 
     def __str__(self):
