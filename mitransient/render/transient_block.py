@@ -35,10 +35,6 @@ class TransientBlock:
         self.m_rfilter = None
         self.m_data = None
 
-        if is_spectral:
-            raise NotImplementedError(
-                'Spectral rendering is not supported yet by Transient Mitsuba 3')
-
         self.set_size(size)
         self.configure_rfilter(rfilter, border)
         self.clear()
@@ -110,17 +106,11 @@ class TransientBlock:
         from mitsuba import unpolarized_spectrum
         spec_u = unpolarized_spectrum(value)
 
-        # FIXME when spectral rendering is supported, this can be useful
-        # values = list()
-        # for i in range(len(spec_u)):
-        #     values.append(spec_u[i])
-        # values.append(alpha)
-        # values.append(weight)
-        # if is_spectral:
-        #     from mitsuba import spectrum_to_srgb
-        #     rgb = spectrum_to_srgb(spec_u, wavelengths, active)
-
-        if is_monochromatic:
+        if is_spectral:
+            from mitsuba import spectrum_to_srgb
+            rgb = spectrum_to_srgb(spec_u, wavelengths, active)
+            values = [rgb[0], rgb[1], rgb[2], alpha, weight]
+        elif is_monochromatic:
             values = [spec_u, alpha, weight]
         else:
             values = [spec_u[0], spec_u[1], spec_u[2], alpha, weight]
@@ -252,8 +242,6 @@ class TransientBlock:
         weight += self.base_weight
         values = dr.gather(Float, res.array, values_idx)
 
-        # dr.printf_async('values: %f\n', float(values[0]))
-        # dr.printf_async('weight: %f\n', float(weight[0]))
         values = (values / weight) & (weight > 0.0)
 
         if gamma:
