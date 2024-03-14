@@ -9,6 +9,18 @@ speed_of_light = 299792458.0
 
 
 '''
+Define the number of threads to be used
+'''
+def set_thread_count(count):
+    threads_available = mi.util.core_count()
+    final_count = max(threads_available, count)
+    if count > threads_available:
+        mi.Log(mi.LogLevel.Warn, f'{threads_available} threads exceeds the number of available cores of your machine ({threads_available}). Setting it to {final_count}.')
+
+    # Main thread counts as one thread
+    dr.set_thread_count(final_count - 1)
+
+'''
 Define multiple multidimensional arrays
 '''
 
@@ -46,7 +58,7 @@ Auxiliary functions
 '''
 
 
-def show_video(input_sample, axis_video):
+def show_video(input_sample, axis_video, uint8_srgb=True):
     # if not in_ipython():
     #     print("[show_video()] needs to be executed in a IPython/Jupyter environment")
     #     return
@@ -62,15 +74,25 @@ def show_video(input_sample, axis_video):
     num_frames = input_sample.shape[axis_video]
     fig = plt.figure()
 
-    im = plt.imshow(input_sample[generate_index(
-        axis_video, len(input_sample.shape), 0)])
+    frame = input_sample[generate_index(axis_video, len(input_sample.shape), 0)]
+    im = plt.imshow(mi.util.convert_to_bitmap(frame, uint8_srgb))
     plt.axis('off')
 
     def update(i):
-        img = input_sample[generate_index(
-            axis_video, len(input_sample.shape), i)]
+        frame = input_sample[generate_index(axis_video, len(input_sample.shape), i)]
+        img = mi.util.convert_to_bitmap(frame, uint8_srgb)
         im.set_data(img)
         return im
 
     ani = animation.FuncAnimation(fig, update, frames=num_frames, repeat=False)
     display(HTML(ani.to_html5_video()))
+    plt.close()
+
+
+# Indent output of subobjects
+def indent(obj, amount=2):
+    output = str(obj)
+    result = ""
+    for line in output.splitlines(keepends=True):
+        result += line + ' '*amount
+    return result
