@@ -147,7 +147,7 @@ class TransientPath(TransientADIntegrator):
                 Le = β * mis * ds.emitter.eval(si)
 
             # Add transient contribution
-            add_transient(Le, 0.0, distance, ray.wavelengths, active)
+            add_transient(Le, distance, ray.wavelengths, active)
 
             # ---------------------- Emitter sampling ----------------------
 
@@ -182,7 +182,7 @@ class TransientPath(TransientADIntegrator):
                 Lr_dir = β * mis_em * bsdf_value_em * em_weight
 
             # Add contribution direct emitter sampling
-            add_transient(Lr_dir, 0.0, distance + ds.dist *
+            add_transient(Lr_dir, distance + ds.dist *
                           η, ray.wavelengths, active)
 
             # ------------------ Detached BSDF sampling -------------------
