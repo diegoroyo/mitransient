@@ -79,8 +79,12 @@ class TransientHDRFilm(mi.Film):
         self.steady = mi.PluginManager.instance().create_object(props)
         self.steady.prepare(aovs)
 
-    def prepare_transient(self, size, channel_count, rfilter):
-        """ Called before the rendering starts (stuff related to transient rendering) """
+    def prepare_transient(self, size, rfilter):
+        """
+            Called before the rendering starts (stuff related to transient rendering)
+            This function also allocates the needed number of channels depending on the variant
+        """
+        channel_count = 3 if is_monochromatic else 5
         self.transient = TransientBlock(
             size=size,
             channel_count=channel_count,
