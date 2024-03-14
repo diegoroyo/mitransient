@@ -27,8 +27,14 @@
         </transform>
     </shape>
 
+    <!-- Laser emitter -->
+    <emitter type="projector">
+        <rgb name="irradiance" value="1.0, 1.0, 1.0"/>
+        <float name="fov" value="0.2"/>
+    </emitter>
+
     <!-- relay_wall (RELAY WALL) -->
-    <shape type="rectangle">
+    <shape type="rectangle" id="relay_wall">
         <bsdf type="diffuse">
             <rgb name="reflectance" value="1.0, 1.0, 1.0"/>
         </bsdf>
@@ -45,10 +51,10 @@
                 <integer name="seed" value="0"/>
             </sampler>
 
-            <emitter type="projector">
+            <!-- <emitter type="projector">
                 <rgb name="irradiance" value="1.0, 1.0, 1.0"/>
                 <float name="fov" value="0.2"/>
-            </emitter>
+            </emitter> -->
 
             <boolean name="confocal" value="false"/>
             <boolean name="account_first_and_last_bounces" value="false"/>
