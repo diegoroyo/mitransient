@@ -182,14 +182,6 @@ class TransientADIntegrator(ADIntegrator):
             raise AssertionError(
                 'The film of the sensor must be of type transient_hdr_film')
 
-        # TODO fix, here we manually call set_scene and set_shape, even though it should be called by
-        # https://github.com/mitsuba-renderer/mitsuba3/blob/ff9cf94323703885068779b15be36345a2eadb89/src/render/shape.cpp#L553
-        # the virtual function call does not reach child class defined in mitransient
-        sensor.set_scene(scene)
-        for shape in scene.shapes():
-            if shape.is_sensor():
-                sensor.set_shape(shape)
-
         # Create the transient block responsible for storing the time contribution
         crop_size = film.crop_size()
         temporal_bins = film.temporal_bins
@@ -204,6 +196,9 @@ class TransientADIntegrator(ADIntegrator):
             return f
 
         def get_filters(sensor):
+            '''
+            Selecting the temporal reconstruction filter.
+            '''
             if self.temporal_filter == 'box':
                 time_filter = load_filter('box')
             elif self.temporal_filter == 'gaussian':
@@ -217,7 +212,6 @@ class TransientADIntegrator(ADIntegrator):
         filters = get_filters(sensor)
         film.prepare_transient(
             size=size,
-            channel_count=len(mi.Spectrum()) + 2,
             rfilter=filters)
         self._film = film
 

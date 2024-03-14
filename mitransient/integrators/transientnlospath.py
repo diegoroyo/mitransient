@@ -131,40 +131,58 @@ class TransientNLOSPath(TransientADIntegrator):
         if isinstance(sensor, int):
             sensor = scene.sensors()[sensor]
 
+        scene_emitters = scene.emitters()
+        if len(scene_emitters) > 1:
+            Log(LogLevel.Error,
+                f'You have defined multiple ({len(scene_emitters)}) emitters in the scene with a NLOS capture meter. You should have only 1.')
+
+        if self.hg_sampling:
+            # NOTE (Miguel) : Improved hidden geometry sampling via vectorization.
+            # There is a bug that does not allow this currently. Uncomment it after nanobind upgrade
+            # ------------------------------------------------------------------------------------
+                # valid_object = dr.neq(scene.shapes_dr(), mi.ShapePtr(sensor.shape())) | self.hg_sampling_includes_relay_wall
+
+                # # surface_areas = scene.shapes_dr().surface_area()
+                # surface_areas = scene.shapes_dr().surface_area()
+                # pdf_hidden_area = dr.gather(mi.Float,
+                #                             surface_areas,
+                #                             dr.arange(mi.UInt, dr.width(scene.shapes_dr())),
+                #                             valid_object)
+
+                # self.hidden_geometries_distribution = mi.DiscreteDistribution(pdf_hidden_area)
+            # ------------------------------------------------------------------------------------
+            surface_areas = []
+            for shape in scene.shapes():
+                surface_areas.append(
+                    0.0 if (shape == sensor.shape() and not self.hg_sampling_includes_relay_wall) else shape.surface_area()[0]
+                )
+
+            if len(surface_areas) == 0:
+                raise AssertionError('Hidden geometry sampling is activated, '
+                                     'but there are no hidden geometries in the scene!')
+            if sum(surface_areas) < dr.epsilon(mi.Float):
+                raise AssertionError('Hidden geometry sampling is activated, '
+                                     'but the hidden geometry in the scene has zero surface area?')
+
+            self.hidden_geometries_distribution = mi.DiscreteDistribution(surface_areas)
+
+        # prepare laser sampling by precomputing the laser focusing point in the geometry
         if self.laser_sampling:
-            trafo: mi.Transform4f = sensor.emitter.world_transform()
+            # This integrator expects only one emitter per scene
+            trafo: mi.Transform4f = scene.emitters()[0].world_transform()
             laser_origin: mi.Point3f = trafo.translation()
             laser_dir: mi.Vector3f = trafo.transform_affine(
                 mi.Vector3f(0, 0, 1))
-            si = scene.ray_intersect(mi.Ray3f(laser_origin, laser_dir))
+
+            laser_ray = mi.Ray3f(laser_origin, laser_dir, dr.largest(mi.Float), 0.0, [])
+            si = scene.ray_intersect(laser_ray)
+
             assert dr.all(
                 si.is_valid()), 'The emitter is not pointing at the scene!'
             self.nlos_laser_target: mi.Point3f = si.p
 
-        # prepare hidden geometry sampling
-        self.hidden_geometries = scene.shapes_dr()
-        if self.hg_sampling:
-            self.hidden_geometries_distribution = []
-            for shape in scene.shapes_dr():
-                is_relay_wall = shape.sensor() == sensor
-                if not self.hg_sampling_includes_relay_wall and is_relay_wall:
-                    self.hidden_geometries_distribution.append(0)
-                    continue
-                self.hidden_geometries_distribution.append(
-                    shape.surface_area()[0])
-
-            if len(self.hidden_geometries_distribution) == 0:
-                raise AssertionError('Hidden geometry sampling is activated, '
-                                     'but there are no hidden geometries in the scene!')
-            if sum(self.hidden_geometries_distribution) < dr.epsilon(mi.Float):
-                raise AssertionError('Hidden geometry sampling is activated, '
-                                     'but the hidden geometry in the scene has zero surface area?')
-
-            self.hidden_geometries_distribution = mi.DiscreteDistribution(
-                self.hidden_geometries_distribution)
-
     def _sample_hidden_geometry_position(
-            self, ref: mi.Interaction3f,
+            self, ref: mi.Interaction3f, scene: mi.Scene,
             sample2: mi.Point2f, active: mi.Mask) -> mi.PositionSample3f:
         """
         For non-line of sight scenes, sample a point in the hidden
@@ -201,7 +219,7 @@ class TransientNLOSPath(TransientADIntegrator):
         sample2.x = new_sample
 
         shape: mi.ShapePtr = dr.gather(
-            mi.ShapePtr, self.hidden_geometries, index, active)
+            mi.ShapePtr, scene.shapes_dr(), index, active)
         ps = shape.sample_position(ref.time, sample2, active)
         ps.pdf *= shape_pdf
 
@@ -327,7 +345,7 @@ class TransientNLOSPath(TransientADIntegrator):
             ps_hg = dr.select(
                 retry_rs,
                 self._sample_hidden_geometry_position(
-                    ref=si, sample2=sample2, active=retry_rs),
+                    ref=si, scene=scene, sample2=sample2, active=retry_rs),
                 ps_hg)
             successful_retries = retry_rs & dr.neq(ps_hg.pdf, 0.0)
             # check visibility
