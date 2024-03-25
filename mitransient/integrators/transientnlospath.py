@@ -206,12 +206,12 @@ class TransientNLOSPath(TransientADIntegrator):
         Position sampling record
         """
 
-        if len(self.hidden_geometries) == 0:
-            return dr.zeros(mi.PositionSample3f)
+        # if len(self.hidden_geometries) == 0:
+        #     return dr.zeros(mi.PositionSample3f)
 
-        if len(self.hidden_geometries) == 1:
-            return self.hidden_geometries[0].sample_position(
-                ref.time, sample2, active)
+        # if len(self.hidden_geometries) == 1:
+        #     return self.hidden_geometries[0].sample_position(
+        #         ref.time, sample2, active)
 
         index, new_sample, shape_pdf = \
             self.hidden_geometries_distribution.sample_reuse_pmf(

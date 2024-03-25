@@ -12,13 +12,13 @@ from mitsuba.ad.integrators.common import ADIntegrator  # type: ignore
 
 class TransientADIntegrator(ADIntegrator):
     """
-        Abstract base class for transient integrators in Transient Mitsuba 3
+    Abstract base class for transient integrators in Transient Mitsuba 3
 
-        The automatic differentiation (AD) part is not supported at the moment,
-        should be implemented in the render_forward and render_backward functions
+    The automatic differentiation (AD) part is not supported at the moment,
+    should be implemented in the render_forward and render_backward functions
 
-        For further information:
-        - https://github.com/diegoroyo/mitsuba3/blob/v3.3.0-nlos/src/python/python/ad/integrators/common.py
+    For further information:
+    - https://github.com/diegoroyo/mitsuba3/blob/v3.3.0-nlos/src/python/python/ad/integrators/common.py
     """
 
     def __init__(self, props=mi.Properties()):
@@ -28,21 +28,21 @@ class TransientADIntegrator(ADIntegrator):
 
         # NOTE temporal_filter can take: box, gaussian, or an empty string
         # (which sets it to use the same temporal filter same as the film's rfilter)
-        self.temporal_filter = props.get('temporal_filter', '')
+        self.temporal_filter = props.get("temporal_filter", "")
         # FIXME these parameters can be set in other places, probably
-        self.camera_unwarp = props.get('camera_unwarp', False)
-        self.gaussian_stddev = props.get('gaussian_stddev', 2.0)
+        self.camera_unwarp = props.get("camera_unwarp", False)
+        self.gaussian_stddev = props.get("gaussian_stddev", 0.5)
 
     def to_string(self):
         # TODO this should go in transientpath, transientnlospath, transient_prb_volpath.py
-        return f'{type(self).__name__}[max_depth = {self.max_depth},' \
-               f' rr_depth = { self.rr_depth }]'
+        return (
+            f"{type(self).__name__}[max_depth = {self.max_depth},"
+            f" rr_depth = { self.rr_depth }]"
+        )
 
-    def _prepare_los(self,
-                     sensor: mi.Sensor,
-                     seed: int = 0,
-                     spp: int = 0,
-                     aovs: list = []):
+    def _prepare_los(
+        self, sensor: mi.Sensor, seed: int = 0, spp: int = 0, aovs: list = []
+    ):
 
         film = sensor.film()
         sampler = sensor.sampler().clone()
@@ -65,18 +65,17 @@ class TransientADIntegrator(ADIntegrator):
                 "The total number of Monte Carlo samples required by this "
                 "rendering task (%i) exceeds 2^32 = 4294967296. Please use "
                 "fewer samples per pixel or render using multiple passes."
-                % wavefront_size)
+                % wavefront_size
+            )
 
         sampler.seed(seed, wavefront_size)
         film.prepare(aovs)
 
         return sampler, spp
 
-    def _prepare_nlos(self,
-                      sensor: mi.Sensor,
-                      seed: int = 0,
-                      spp: int = 0,
-                      aovs: list = []):
+    def _prepare_nlos(
+        self, sensor: mi.Sensor, seed: int = 0, spp: int = 0, aovs: list = []
+    ):
 
         film = sensor.film()
         sampler = sensor.sampler().clone()
@@ -96,8 +95,7 @@ class TransientADIntegrator(ADIntegrator):
         # to create the kernels/etc (measured ~5% overhead)
         spp_per_pass = int((2**26 - 1) / dr.prod(film_size))
         if spp_per_pass == 0:
-            raise Exception(
-                "Your film is too big. Please make it smaller.")
+            raise Exception("Your film is too big. Please make it smaller.")
 
         # Split into max-size jobs (maybe add reminder at the end)
         needs_remainder = spp % spp_per_pass != 0
@@ -121,11 +119,7 @@ class TransientADIntegrator(ADIntegrator):
 
         return [sampler_per_pass(i) for i in range(num_passes)]
 
-    def prepare(self,
-                sensor: mi.Sensor,
-                seed: int = 0,
-                spp: int = 0,
-                aovs: list = []):
+    def prepare(self, sensor: mi.Sensor, seed: int = 0, spp: int = 0, aovs: list = []):
         """
         Given a sensor and a desired number of samples per pixel, this function
         computes the necessary number of Monte Carlo samples and then suitably
@@ -151,36 +145,37 @@ class TransientADIntegrator(ADIntegrator):
             specification takes precedence if ``spp=0``.
         """
         from mitransient.sensors.nloscapturemeter import NLOSCaptureMeter
+
         if isinstance(sensor, NLOSCaptureMeter):
             return self._prepare_nlos(sensor, seed, spp, aovs)
         else:
             return [self._prepare_los(sensor, seed, spp, aovs)]
 
     def prepare_transient(self, scene: mi.Scene, sensor: mi.Sensor):
-        '''
+        """
         Prepare the integrator to perform a transient simulation
-        '''
+        """
         import numpy as np
 
         if isinstance(sensor, int):
             sensor = scene.sensors()[sensor]
 
         from mitransient.sensors.nloscapturemeter import NLOSCaptureMeter
+
         if isinstance(sensor, NLOSCaptureMeter):
             if self.camera_unwarp:
                 raise AssertionError(
-                    'camera_unwarp is not supported for NLOSCaptureMeter. '
-                    'Use account_first_and_last_bounces in the NLOSCaptureMeter plugin instead.')
-            if self.temporal_filter != 'box':
-                self.temporal_filter = 'box'
-                mi.Log(mi.LogLevel.Warn,
-                       'Setting temporal_filter to box because you are using a NLOSCaptureMeter')
+                    "camera_unwarp is not supported for NLOSCaptureMeter. "
+                    "Use account_first_and_last_bounces in the NLOSCaptureMeter plugin instead."
+                )
 
         film = sensor.film()
         from mitransient.films.transient_hdr_film import TransientHDRFilm
+
         if not isinstance(film, TransientHDRFilm):
             raise AssertionError(
-                'The film of the sensor must be of type transient_hdr_film')
+                "The film of the sensor must be of type transient_hdr_film"
+            )
 
         # Create the transient block responsible for storing the time contribution
         crop_size = film.crop_size()
@@ -188,53 +183,57 @@ class TransientADIntegrator(ADIntegrator):
         size = np.array([crop_size.x, crop_size.y, temporal_bins])
 
         def load_filter(name, **kargs):
-            '''
+            """
             Shorthand for loading an specific reconstruction kernel
-            '''
-            kargs['type'] = name
+            """
+            kargs["type"] = name
             f = mi.load_dict(kargs)
             return f
 
         def get_filters(sensor):
-            '''
+            """
             Selecting the temporal reconstruction filter.
-            '''
-            if self.temporal_filter == 'box':
-                time_filter = load_filter('box')
-            elif self.temporal_filter == 'gaussian':
+            """
+            if self.temporal_filter == "box":
+                time_filter = load_filter("box")
+            elif self.temporal_filter == "gaussian":
                 stddev = max(self.gaussian_stddev, 0.5)
-                time_filter = load_filter('gaussian', stddev=stddev)
+                time_filter = load_filter("gaussian", stddev=stddev)
             else:
                 time_filter = sensor.film().rfilter()
 
             return [sensor.film().rfilter(), sensor.film().rfilter(), time_filter]
 
         filters = get_filters(sensor)
-        film.prepare_transient(
-            size=size,
-            rfilter=filters)
+        film.prepare_transient(size=size, rfilter=filters)
         self._film = film
 
-    def add_transient_f(self, pos, ray_weight):
-        '''
-        Return a lambda function for saving transient samples
-        '''
-        return lambda spec, distance, wavelengths, active: \
-            self._film.add_transient_data(
-                spec, distance, wavelengths, active, pos, ray_weight)
+    def add_transient_f(self, pos, ray_weight, sample_scale):
+        """
+        Return a lambda function for saving transient samples.
+        It pre-multiplies the sample scale.
+        """
+        return (
+            lambda spec, distance, wavelengths, active: self._film.add_transient_data(
+                spec * sample_scale, distance, wavelengths, active, pos, ray_weight
+            )
+        )
 
-    def render(self: mi.SamplingIntegrator,
-               scene: mi.Scene,
-               sensor: Union[int, mi.Sensor] = 0,
-               seed: int = 0,
-               spp: int = 0,
-               develop: bool = True,
-               evaluate: bool = True,
-               progress_callback: function = None) -> mi.TensorXf:
+    def render(
+        self: mi.SamplingIntegrator,
+        scene: mi.Scene,
+        sensor: Union[int, mi.Sensor] = 0,
+        seed: int = 0,
+        spp: int = 0,
+        develop: bool = True,
+        evaluate: bool = True,
+        progress_callback: function = None,
+    ) -> mi.TensorXf:
 
         if not develop:
-            raise Exception("develop=True must be specified when "
-                            "invoking AD integrators")
+            raise Exception(
+                "develop=True must be specified when " "invoking AD integrators"
+            )
 
         if isinstance(sensor, int):
             sensor = scene.sensors()[sensor]
@@ -245,21 +244,16 @@ class TransientADIntegrator(ADIntegrator):
         with dr.suspend_grad():
             # Prepare the film and sample generator for rendering
             prepare_result = self.prepare(
-                sensor=sensor,
-                seed=seed,
-                spp=spp,
-                aovs=self.aov_names()
+                sensor=sensor, seed=seed, spp=spp, aovs=self.aov_names()
             )
 
             total_spp = 0
             for sampler, spp in prepare_result:
                 total_spp += spp
-            film.transient.set_base_weight(total_spp)
 
             for i, (sampler, spp) in enumerate(prepare_result):
                 # Generate a set of rays starting at the sensor
-                ray, ray_weight, pos = self.sample_rays(
-                    scene, sensor, sampler)
+                ray, ray_weight, pos = self.sample_rays(scene, sensor, sampler)
 
                 # Launch the Monte Carlo sampling process in primal mode
                 L, valid, state = self.sample(
@@ -273,7 +267,9 @@ class TransientADIntegrator(ADIntegrator):
                     reparam=None,
                     active=mi.Bool(True),
                     max_distance=self._film.end_opl(),
-                    add_transient=self.add_transient_f(pos, ray_weight)
+                    add_transient=self.add_transient_f(
+                        pos=pos, ray_weight=ray_weight, sample_scale=1.0 / total_spp
+                    ),
                 )
 
                 # Prepare an ImageBlock as specified by the film
@@ -285,8 +281,12 @@ class TransientADIntegrator(ADIntegrator):
                 # Accumulate into the image block
                 alpha = dr.select(valid, mi.Float(1), mi.Float(0))
                 if mi.has_flag(film.steady.flags(), mi.FilmFlags.Special):
-                    aovs = film.steady.prepare_sample(L * ray_weight, ray.wavelengths,
-                                                      block.channel_count(), alpha=alpha)
+                    aovs = film.steady.prepare_sample(
+                        L * ray_weight,
+                        ray.wavelengths,
+                        block.channel_count(),
+                        alpha=alpha,
+                    )
                     block.put(pos, aovs)
                     del aovs
                 else:
@@ -306,41 +306,49 @@ class TransientADIntegrator(ADIntegrator):
 
             return self.primal_image, transient_image
 
-    def render_forward(self: mi.SamplingIntegrator,
-                       scene: mi.Scene,
-                       params: Any,
-                       sensor: Union[int, mi.Sensor] = 0,
-                       seed: int = 0,
-                       spp: int = 0) -> mi.TensorXf:
+    def render_forward(
+        self: mi.SamplingIntegrator,
+        scene: mi.Scene,
+        params: Any,
+        sensor: Union[int, mi.Sensor] = 0,
+        seed: int = 0,
+        spp: int = 0,
+    ) -> mi.TensorXf:
         # TODO implement render_forward (either here or move this function to RBIntegrator)
         raise NotImplementedError(
-            "Check https://github.com/mitsuba-renderer/mitsuba3/blob/1e513ef94db0534f54a884f2aeab7204f6f1e3ed/src/python/python/ad/integrators/common.py")
+            "Check https://github.com/mitsuba-renderer/mitsuba3/blob/1e513ef94db0534f54a884f2aeab7204f6f1e3ed/src/python/python/ad/integrators/common.py"
+        )
 
-    def render_backward(self: mi.SamplingIntegrator,
-                        scene: mi.Scene,
-                        params: Any,
-                        grad_in: mi.TensorXf,
-                        sensor: Union[int, mi.Sensor] = 0,
-                        seed: int = 0,
-                        spp: int = 0) -> None:
+    def render_backward(
+        self: mi.SamplingIntegrator,
+        scene: mi.Scene,
+        params: Any,
+        grad_in: mi.TensorXf,
+        sensor: Union[int, mi.Sensor] = 0,
+        seed: int = 0,
+        spp: int = 0,
+    ) -> None:
         # TODO implement render_backward (either here or move this function to RBIntegrator)
         raise NotImplementedError(
-            "Check https://github.com/mitsuba-renderer/mitsuba3/blob/1e513ef94db0534f54a884f2aeab7204f6f1e3ed/src/python/python/ad/integrators/common.py")
+            "Check https://github.com/mitsuba-renderer/mitsuba3/blob/1e513ef94db0534f54a884f2aeab7204f6f1e3ed/src/python/python/ad/integrators/common.py"
+        )
 
     # NOTE(diego): only change is the addition of the add_transient argument
-    def sample(self,
-               mode: dr.ADMode,
-               scene: mi.Scene,
-               sampler: mi.Sampler,
-               ray: mi.Ray3f,
-               depth: mi.UInt32,
-               δL: Optional[mi.Spectrum],
-               state_in: Any,
-               reparam: Optional[
-                   Callable[[mi.Ray3f, mi.UInt32, mi.Bool],
-                            Tuple[mi.Vector3f, mi.Float]]],
-               active: mi.Bool,
-               add_transient) -> Tuple[mi.Spectrum, mi.Bool]:
+    def sample(
+        self,
+        mode: dr.ADMode,
+        scene: mi.Scene,
+        sampler: mi.Sampler,
+        ray: mi.Ray3f,
+        depth: mi.UInt32,
+        δL: Optional[mi.Spectrum],
+        state_in: Any,
+        reparam: Optional[
+            Callable[[mi.Ray3f, mi.UInt32, mi.Bool], Tuple[mi.Vector3f, mi.Float]]
+        ],
+        active: mi.Bool,
+        add_transient,
+    ) -> Tuple[mi.Spectrum, mi.Bool]:
         """
         This function does the main work of differentiable rendering and
         remains unimplemented here. It is provided by subclasses of the
@@ -354,9 +362,11 @@ class TransientADIntegrator(ADIntegrator):
         - https://github.com/diegoroyo/mitsuba3/blob/61c7cd1cff1937b2a041f1eacd90205b8e7e8c4a/src/python/python/ad/integrators/common.py#L489
         """
 
-        raise Exception('ADIntegrator does not provide the sample() method. '
-                        'It should be implemented by subclasses that '
-                        'specialize the abstract ADIntegrator interface.')
+        raise Exception(
+            "ADIntegrator does not provide the sample() method. "
+            "It should be implemented by subclasses that "
+            "specialize the abstract ADIntegrator interface."
+        )
 
 
 def mis_weight(pdf_a, pdf_b):
