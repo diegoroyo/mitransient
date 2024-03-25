@@ -177,7 +177,7 @@ class NLOSCaptureMeter(NLOSSensor):
             "is_confocal", self.is_confocal, mi.ParamFlags.NonDifferentiable)
         callback.put_parameter(
             "laser_bounce_opl", self.laser_bounce_opl, mi.ParamFlags.NonDifferentiable)
-        callback.put_paramter(
+        callback.put_parameter(
             "confocal_pixel", self.confocal_pixel, mi.ParamFlags.NonDifferentiable)
 
     def parameters_changed(self, keys):
