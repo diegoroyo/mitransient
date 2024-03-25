@@ -1,5 +1,6 @@
 import drjit as dr
 import mitsuba as mi
+import numpy as np
 
 '''
 Constants
@@ -89,10 +90,25 @@ def show_video(input_sample, axis_video, uint8_srgb=True):
     plt.close()
 
 
+def save_frames(data, axis_video, folder):
+    import os
+    os.makedirs(folder, exist_ok=True)
+
+    def generate_index(axis_video, dims, index):
+        return tuple([np.s_[:] if dim != axis_video else np.s_[index] for dim in range(dims)])
+
+    num_frames = data.shape[axis_video]
+    for i in range(num_frames):
+        mi.Bitmap(data[generate_index(axis_video, len(data.shape), i)]).write(f'{folder}/{i:03d}.exr')
+
 # Indent output of subobjects
 def indent(obj, amount=2):
     output = str(obj)
     result = ""
-    for line in output.splitlines(keepends=True):
-        result += line + ' '*amount
+    lines = output.splitlines(keepends=True)
+    if len(lines) == 1:
+        result += lines[0]
+    else:
+        for line in lines:
+            result += line + ' '*amount
     return result
