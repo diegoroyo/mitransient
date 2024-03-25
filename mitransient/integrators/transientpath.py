@@ -58,6 +58,11 @@ class TransientPath(TransientADIntegrator):
             visible surfaces.
             (default: 5)
     """
+    def __init__(self, props: mi.Properties):
+        super().__init__(props)
+
+    def prepare_transient(self, scene: mi.Scene, sensor: mi.Sensor):
+        super().prepare_transient(scene, sensor)
 
     def sample(self,
                mode: dr.ADMode,
@@ -93,7 +98,7 @@ class TransientPath(TransientADIntegrator):
         β = mi.Spectrum(1)                            # Path throughput weight
         η = mi.Float(1)                               # Index of refraction
         active = mi.Bool(active)                      # Active SIMD lanes
-        distance = mi.Float(0)                        # Distance of the path
+        distance = mi.Float(0.0)                      # Distance of the path
 
         # Variables caching information from the previous bounce
         prev_si = dr.zeros(mi.SurfaceInteraction3f)
