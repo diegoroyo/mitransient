@@ -1,6 +1,6 @@
 <scene version="3.3.0">
     <default name="spp" value="256"/>
-    <default name="res" value="512"/>
+    <default name="res" value="400"/>
     <default name="integrator" value="transient_path"/>
 
     <integrator type='$integrator'>
@@ -26,10 +26,9 @@
             <integer name="width"  value="$res"/>
             <integer name="height" value="$res"/>
             <integer name="temporal_bins" value="400"/>
-            <float name="start_opl" value="150"/>  <!-- 15 105 -->
+            <float name="start_opl" value="1000"/>  <!-- 15 105 -->
             <float name="bin_width_opl" value="6.5"/>  <!-- 15 105 -->
             <rfilter type="box">
-              <!-- <float name="stddev" value="1.0"/> -->
             </rfilter>
         </film>
     </sensor>
