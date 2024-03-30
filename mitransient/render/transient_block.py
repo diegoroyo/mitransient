@@ -126,7 +126,8 @@ class TransientBlock(Object):
         if self.m_compensate:
             pass
         else:
-            dr.scatter_reduce(dr.ReduceOp.Add, self.m_data.array, value, index, active)
+            dr.scatter_reduce(
+                dr.ReduceOp.Add, self.m_data.array, value, index, active)
 
     def put_(self, pos, value, active):
         rfilter_radius = np.array([f.radius() for f in self.m_rfilter])
@@ -139,7 +140,7 @@ class TransientBlock(Object):
 
             offset = UInt32(0)
             for j in range(len(self.m_size)):
-                offset += UInt32(p[j]) * np.prod(self.m_size[j + 1 :])
+                offset += UInt32(p[j]) * np.prod(self.m_size[j + 1:])
                 active &= (p[j] >= 0) & (p[j] < self.m_size[j])
 
             offset *= self.m_channel_count
@@ -162,7 +163,8 @@ class TransientBlock(Object):
             for j in range(len(self.m_rfilter)):
                 for i in range(count[j]):
                     index = np.uint32(base_index + i)
-                    filter_weights[index] = self.m_rfilter[j].eval(rel_f[j], active)
+                    filter_weights[index] = self.m_rfilter[j].eval(
+                        rel_f[j], active)
                     rel_f[j] += 1.0
                 base_index += count[j]
 
@@ -184,8 +186,9 @@ class TransientBlock(Object):
                     for i in range(count[dim]):
                         w_filter = filter_weights[index_filter + i]
                         new_pos = UInt32(pos_i[dim]) + i
-                        dim_index = new_pos * np.prod(self.m_size[dim + 1 :])
-                        current_active = (new_pos >= 0) & (new_pos < shape_data[dim])
+                        dim_index = new_pos * np.prod(self.m_size[dim + 1:])
+                        current_active = (new_pos >= 0) & (
+                            new_pos < shape_data[dim])
                         step_dimension(
                             weight * w_filter,
                             index + dim_index,

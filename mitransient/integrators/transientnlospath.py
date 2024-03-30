@@ -140,21 +140,22 @@ class TransientNLOSPath(TransientADIntegrator):
             # NOTE (Miguel) : Improved hidden geometry sampling via vectorization.
             # There is a bug that does not allow this currently. Uncomment it after nanobind upgrade
             # ------------------------------------------------------------------------------------
-                # valid_object = dr.neq(scene.shapes_dr(), mi.ShapePtr(sensor.shape())) | self.hg_sampling_includes_relay_wall
+            # valid_object = dr.neq(scene.shapes_dr(), mi.ShapePtr(sensor.shape())) | self.hg_sampling_includes_relay_wall
 
-                # # surface_areas = scene.shapes_dr().surface_area()
-                # surface_areas = scene.shapes_dr().surface_area()
-                # pdf_hidden_area = dr.gather(mi.Float,
-                #                             surface_areas,
-                #                             dr.arange(mi.UInt, dr.width(scene.shapes_dr())),
-                #                             valid_object)
+            # # surface_areas = scene.shapes_dr().surface_area()
+            # surface_areas = scene.shapes_dr().surface_area()
+            # pdf_hidden_area = dr.gather(mi.Float,
+            #                             surface_areas,
+            #                             dr.arange(mi.UInt, dr.width(scene.shapes_dr())),
+            #                             valid_object)
 
-                # self.hidden_geometries_distribution = mi.DiscreteDistribution(pdf_hidden_area)
+            # self.hidden_geometries_distribution = mi.DiscreteDistribution(pdf_hidden_area)
             # ------------------------------------------------------------------------------------
             surface_areas = []
             for shape in scene.shapes():
                 surface_areas.append(
-                    0.0 if (shape == sensor.shape() and not self.hg_sampling_includes_relay_wall) else shape.surface_area()[0]
+                    0.0 if (shape == sensor.shape(
+                    ) and not self.hg_sampling_includes_relay_wall) else shape.surface_area()[0]
                 )
 
             if len(surface_areas) == 0:
@@ -164,7 +165,8 @@ class TransientNLOSPath(TransientADIntegrator):
                 raise AssertionError('Hidden geometry sampling is activated, '
                                      'but the hidden geometry in the scene has zero surface area?')
 
-            self.hidden_geometries_distribution = mi.DiscreteDistribution(surface_areas)
+            self.hidden_geometries_distribution = mi.DiscreteDistribution(
+                surface_areas)
 
         # prepare laser sampling by precomputing the laser focusing point in the geometry
         if self.laser_sampling:
@@ -174,7 +176,8 @@ class TransientNLOSPath(TransientADIntegrator):
             laser_dir: mi.Vector3f = trafo.transform_affine(
                 mi.Vector3f(0, 0, 1))
 
-            laser_ray = mi.Ray3f(laser_origin, laser_dir, dr.largest(mi.Float), 0.0, [])
+            laser_ray = mi.Ray3f(laser_origin, laser_dir,
+                                 dr.largest(mi.Float), 0.0, [])
             si = scene.ray_intersect(laser_ray)
 
             assert dr.all(

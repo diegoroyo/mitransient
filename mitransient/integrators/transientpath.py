@@ -58,6 +58,7 @@ class TransientPath(TransientADIntegrator):
             visible surfaces.
             (default: 5)
     """
+
     def __init__(self, props: mi.Properties):
         super().__init__(props)
 

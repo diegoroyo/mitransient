@@ -12,14 +12,18 @@ speed_of_light = 299792458.0
 '''
 Define the number of threads to be used
 '''
+
+
 def set_thread_count(count):
     threads_available = mi.util.core_count()
     final_count = max(threads_available, count)
     if count > threads_available:
-        mi.Log(mi.LogLevel.Warn, f'{threads_available} threads exceeds the number of available cores of your machine ({threads_available}). Setting it to {final_count}.')
+        mi.Log(mi.LogLevel.Warn,
+               f'{threads_available} threads exceeds the number of available cores of your machine ({threads_available}). Setting it to {final_count}.')
 
     # Main thread counts as one thread
     dr.set_thread_count(final_count - 1)
+
 
 '''
 Define multiple multidimensional arrays
@@ -75,12 +79,14 @@ def show_video(input_sample, axis_video, uint8_srgb=True):
     num_frames = input_sample.shape[axis_video]
     fig = plt.figure()
 
-    frame = input_sample[generate_index(axis_video, len(input_sample.shape), 0)]
+    frame = input_sample[generate_index(
+        axis_video, len(input_sample.shape), 0)]
     im = plt.imshow(mi.util.convert_to_bitmap(frame, uint8_srgb))
     plt.axis('off')
 
     def update(i):
-        frame = input_sample[generate_index(axis_video, len(input_sample.shape), i)]
+        frame = input_sample[generate_index(
+            axis_video, len(input_sample.shape), i)]
         img = mi.util.convert_to_bitmap(frame, uint8_srgb)
         im.set_data(img)
         return im
@@ -99,9 +105,12 @@ def save_frames(data, axis_video, folder):
 
     num_frames = data.shape[axis_video]
     for i in range(num_frames):
-        mi.Bitmap(data[generate_index(axis_video, len(data.shape), i)]).write(f'{folder}/{i:03d}.exr')
+        mi.Bitmap(data[generate_index(axis_video, len(data.shape), i)]).write(
+            f'{folder}/{i:03d}.exr')
 
 # Indent output of subobjects
+
+
 def indent(obj, amount=2):
     output = str(obj)
     result = ""

@@ -344,7 +344,8 @@ class TransientADIntegrator(ADIntegrator):
         δL: Optional[mi.Spectrum],
         state_in: Any,
         reparam: Optional[
-            Callable[[mi.Ray3f, mi.UInt32, mi.Bool], Tuple[mi.Vector3f, mi.Float]]
+            Callable[[mi.Ray3f, mi.UInt32, mi.Bool],
+                     Tuple[mi.Vector3f, mi.Float]]
         ],
         active: mi.Bool,
         add_transient,

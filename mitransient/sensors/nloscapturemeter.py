@@ -11,6 +11,7 @@ from typing import Tuple
 from .nlossensor import NLOSSensor
 from ..utils import indent
 
+
 class NLOSCaptureMeter(NLOSSensor):
     """
         `nlos_capture_meter` plugin
@@ -79,13 +80,14 @@ class NLOSCaptureMeter(NLOSSensor):
         self.laser_bounce_opl = mi.Float(0)
 
         # Confocal setup pixel if desired by the user (default -1, no confocal)
-        self.confocal_pixel = props.get('confocal_pixel', mi.ScalarPoint2f(-1, -1))
+        self.confocal_pixel = props.get(
+            'confocal_pixel', mi.ScalarPoint2f(-1, -1))
         self.is_confocal: bool = self.confocal_pixel.x >= 0 and self.confocal_pixel.y >= 0
 
         film_size: ScalarVector2u = self.film().size()
         if self.is_confocal and film_size.x != 1 and film_size.y != 1:
             Log(LogLevel.Error,
-                    f"Confocal configuration requires a film with size [1,1] instead of {film_size}")
+                f"Confocal configuration requires a film with size [1,1] instead of {film_size}")
 
         dr.make_opaque(self.laser_bounce_opl, self.confocal_pixel)
 
@@ -117,7 +119,8 @@ class NLOSCaptureMeter(NLOSSensor):
             # instead of continuous samples over the whole shape,
             # discretize samples so they only land on the center of the film's
             # "pixels"
-            grid_sample = self._pixel_to_sample(dr.floor(sample * film_size) + 0.5)
+            grid_sample = self._pixel_to_sample(
+                dr.floor(sample * film_size) + 0.5)
             target = self.shape().sample_position(
                 time, grid_sample, active
             ).p  # sampled position of PositionSample3f

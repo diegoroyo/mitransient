@@ -65,7 +65,8 @@ class TransientHDRFilm(mi.Film):
             wavelengths=wavelengths,
             value=spec * ray_weight,
             alpha=mi.Float(0.0),
-            weight=mi.Float(0.0), # value should have the sample scale already multiplied
+            # value should have the sample scale already multiplied
+            weight=mi.Float(0.0),
             active=active & mask,
         )
 
