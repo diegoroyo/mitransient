@@ -37,7 +37,11 @@
 
 # Introduction
 
-This library adds support to [Mitsuba 3](https://github.com/mitsuba-renderer/mitsuba3) for doing transient simulations, and especially non-line-of-sight (NLOS) data capture simulations. For now, it is based on a [custom fork of Mitsuba 3](https://github.com/diegoroyo/mitsuba3), as the transient extension requires new Python interfaces for some Mitsuba 3 classes.
+This library adds support to [Mitsuba 3](https://github.com/mitsuba-renderer/mitsuba3) for doing transient simulations, and especially non-line-of-sight (NLOS) data capture simulations.
+
+## Quick start:
+
+* [Installation](#installation)
 
 
 ## What is transient rendering?
@@ -53,12 +57,12 @@ For example, path tracing algorithms integrate over multiple paths that connect 
 * **Cross-platform:** Mitsuba 3 has been tested on Linux (x86_64), macOS (aarch64, x86_64), and Windows (x86_64).
 * **Easy interface** to convert your algorithms for the transient domain.
 * **Temporal domain** filtering.
-<!-- * **Python only** library for doing transient rendering in both CPU and GPU. -->
-<!-- * **Several integrators already implemented** including path tracing and volumetric path-tracing. -->
+* **Python only** library for doing transient rendering in both CPU and GPU.
+* **Several integrators already implemented** including path tracing (also adapted for NLOS scenes) and volumetric path-tracing.
 
 ### Roadmap
 
-**Note: this section is probably outdated... (last update: Nov. 2023)*
+**Last update: Apr. 2024*
 
 - [ ] Importance sampling of the temporal domain
 - [ ] Differentiable transient rendering
@@ -73,19 +77,25 @@ For example, path tracing algorithms integrate over multiple paths that connect 
 # Requirements
 
 - `Python >= 3.8`
-- `Mitsuba3 == 3.3.0` (included in this repo)
+- `Mitsuba3 >= 3.5.0`
 - (optional) For computation on the GPU: `Nvidia driver >= 495.89`
 - (optional) For vectorized / parallel computation on the CPU: `LLVM >= 11.1`
 
 
 # Installation
 
-<!-- We provide the package via PyPI. Installing Mitsuba 3 transient this way is as simple as running
+We provide the package via PyPI. To install `mitsuba3-transient-nlos` you need to run:
 
 ```bash
 pip install mitransient
-``` -->
+```
 
+If you have installed Mitsuba 3 via `pip` you will only have access to the `llvm_ad_rgb` and `cuda_ad_rgb` variants. If you want to use other variants (e.g. NLOS simulations can greatly benefit from the `llvm_mono` variant), then we recommend that you compile Mitsuba 3 youself, enabling such variants. [Here's more info](https://mitsuba.readthedocs.io/en/latest/src/developer_guide/compiling.html).
+
+## Old installation instructions (incl. Mitsuba 3 fork)
+
+<details>
+<summary>See details</summary>
 _NOTE: These instructions have been tested on Linux and Windows 11 (Powershell), but can be adapted to MacOS probably (hopefully) without many problems_
 
 After cloning the repo, navigate to the root folder and execute the following commands to build the custom version of Mitsuba 3
@@ -170,8 +180,9 @@ After cloning the repo, navigate to the root folder and execute the following co
       python -m pip install .
       ```
 
+</details>
 
-At this point you should be able to `import mitsuba` and `import mitransient` in your Python code (careful about setting the correct `PATH` environment variable, check the `examples` folder).
+At this point you should be able to `import mitsuba` and `import mitransient` in your Python code (careful about setting the correct `PATH` environment variable if you have compiled Mitsuba 3 yourself, check the `examples` folder).
 
 If it works, you're all set!
 

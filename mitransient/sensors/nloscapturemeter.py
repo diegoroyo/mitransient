@@ -21,17 +21,11 @@ class NLOSCaptureMeter(NLOSSensor):
         Measures uniformly-spaced points on such geometry.
         It is recommended to use a `rectangle` shape, the UV coordinates work better.
 
-        The `nlos_capture_meter` should `emitter` and `film` children, which acts as the
-        laser for active illumination NLOS and storage for the transient image, respectively.
-        For the film, it is recommended to use `transient_hdr_film`.
+        The `nlos_capture_meter` should have a `film` children, which acts as the
+        storage for the transient image. It is recommended to use `transient_hdr_film`.
 
         <shape type="rectangle">
             <sensor type="nlos_capture_meter">
-                <emitter type="projector">
-                    <rgb name="irradiance" value="1.0, 1.0, 1.0"/>
-                    <float name="fov" value="0.2"/>
-                </emitter>
-
                 <film type="transient_hdr_film">
                     ...
                 </film>
@@ -47,12 +41,6 @@ class NLOSCaptureMeter(NLOSSensor):
             To model multiple illumination points, repeat the `nlos_capture_meter` sensor or
             render multiple times (see https://github.com/diegoroyo/tal), search for `scan_type`.
         * `sensor_origin` (point): position of the sensor (NLOS setup) in the world coordinate system
-        * `laser_origin` (point): position of the laser (NLOS setup) in the world coordinate system
-            This overrides the position of the <emitter> child tag.
-        * To specify where the laser should be pointed, use either:
-            * `laser_lookat_pixel` (point): pixel coordinates (x, y, 0) of the film
-                e.g. if the film is 64x64 pixels, the center of the wall is (32, 32, 0)
-            * `laser_lookat_3d` (point): 3D coordinates (x, y, z) in the world coordinate system
 
         See also the parameters for `transient_hdr_film`.
     """

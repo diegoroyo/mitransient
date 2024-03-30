@@ -4,5 +4,5 @@
 
 # TODO add mitsuba3 build commands here for ext folder?
 
-source ext/mitsuba3/build/setpath.sh
+source ../mitsuba3-transient-nlos/ext/mitsuba3/build/setpath.sh
 python3 -m pip install .
