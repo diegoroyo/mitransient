@@ -33,14 +33,22 @@ class NLOSCaptureMeter(NLOSSensor):
         </shape>
 
         The `nlos_capture_meter` plugin accepts the following parameters:
+
         * `account_first_and_last_bounces` (boolean): if `True`, the first and last bounces are accounted
             in the computations of the optical path length of the temporal dimension.
             This makes sense if you think of a NLOS setup.
             If `False`, the first and last bounces are not accounted (useful!)
-        * `confocal` (boolean): if `True`, the sensor only measures the point where the laser is pointed to.
-            To model multiple illumination points, repeat the `nlos_capture_meter` sensor or
-            render multiple times (see https://github.com/diegoroyo/tal), search for `scan_type`.
+
         * `sensor_origin` (point): position of the sensor (NLOS setup) in the world coordinate system
+
+        * `original_film_{width|height}` (integer): special for confocal captures, you can ignore
+            if you use one illumination point or an exhaustive pattern.
+            If you want to simulate a confocal NLOS setup with NxM, you should use a 1x1 film instead of NxM,
+            and point the laser to the point that you want to capture. Then you should repeat the capture
+            NxM times.
+            We strongly recommend using TAL (see https://github.com/diegoroyo/tal), and
+            set `scan_type: confocal` in the tal render YAML configuration file, which will
+            handle all this automatically.
 
         See also the parameters for `transient_hdr_film`.
     """
