@@ -3,7 +3,7 @@ from __future__ import annotations  # Delayed parsing of type annotations
 import drjit as dr
 import mitsuba as mi
 
-from mitsuba import Log, LogLevel, is_spectral, Transform4f, ScalarVector2u
+from mitsuba import Log, LogLevel, is_spectral, Transform4f, ScalarVector2u, ScalarVector2f
 from drjit.scalar import Array3f as ScalarArray3f  # type: ignore
 
 from typing import Tuple
@@ -66,29 +66,30 @@ class NLOSCaptureMeter(NLOSSensor):
         # Should be provided by the user if needed
         # see mitransient.nlos.focus_emitter_at_relay_wall
         self.laser_bounce_opl = mi.Float(0)
+        self.laser_target = mi.Point3f(0)
 
-        # Confocal setup pixel if desired by the user (default -1, no confocal)
-        self.confocal_pixel = props.get(
-            'confocal_pixel', mi.ScalarPoint2f(-1, -1))
-        self.is_confocal: bool = self.confocal_pixel.x >= 0 and self.confocal_pixel.y >= 0
+        # Get the film size. Depends on if the capture is confocal or not
+        self.original_film_width = props.get('original_film_width', None)
+        self.original_film_height = props.get('original_film_height', None)
+        if self.original_film_width is None or self.original_film_height is None:
+            self.film_size: ScalarVector2f = ScalarVector2f(self.film().size())
+            self.is_confocal = False
+        else:
+            self.film_size: ScalarVector2f = ScalarVector2f(
+                self.original_film_width, self.original_film_height)
+            self.is_confocal = True
+            if self.film().size().x != 1 or self.film().size().y != 1:
+                Log(LogLevel.Error,
+                    f"Confocal configuration requires a film with size [1,1] instead of {self.film().size()}")
 
-        film_size: ScalarVector2u = self.film().size()
-        if self.is_confocal and film_size.x != 1 and film_size.y != 1:
-            Log(LogLevel.Error,
-                f"Confocal configuration requires a film with size [1,1] instead of {film_size}")
-
-        dr.make_opaque(self.laser_bounce_opl, self.confocal_pixel)
+        dr.make_opaque(self.laser_bounce_opl,
+                       self.laser_target, self.film_size)
 
     def _sensor_origin(self) -> ScalarArray3f:
         return self.world_transform.translation()
 
     def _pixel_to_sample(self, pixel: mi.Point2f) -> mi.Point2f:
-        # film_width, film_height = self.film_size
-        # return mi.Point2f(
-        #     pixel.x / film_width,
-        #     pixel.y / film_height)
-        film_size = self.film().size()
-        return pixel / mi.Point2f(film_size)
+        return pixel / self.film_size
 
     def _sample_direction(self,
                           time: mi.Float,
@@ -98,17 +99,13 @@ class NLOSCaptureMeter(NLOSSensor):
 
         if self.is_confocal:
             # Confocal sample always center of the pixel
-            grid_sample = self._pixel_to_sample(self.confocal_pixel + 0.5)
-            target = self.shape().sample_position(
-                time, grid_sample, active
-            ).p
+            target = self.laser_target
         else:
-            film_size = self.film().size()
             # instead of continuous samples over the whole shape,
             # discretize samples so they only land on the center of the film's
             # "pixels"
             grid_sample = self._pixel_to_sample(
-                dr.floor(sample * film_size) + 0.5)
+                dr.floor(sample * self.film_size) + 0.5)
             target = self.shape().sample_position(
                 time, grid_sample, active
             ).p  # sampled position of PositionSample3f
@@ -159,7 +156,6 @@ class NLOSCaptureMeter(NLOSSensor):
         return self.shape().bbox()
 
     def traverse(self, callback: mi.TraversalCallback):
-        # NOTE: all the parameters are set as NonDifferentiable by default
         super().traverse(callback)
         callback.put_parameter(
             "needs_sample_3", self.needs_sample_3, mi.ParamFlags.NonDifferentiable)
@@ -170,7 +166,7 @@ class NLOSCaptureMeter(NLOSSensor):
         callback.put_parameter(
             "laser_bounce_opl", self.laser_bounce_opl, mi.ParamFlags.NonDifferentiable)
         callback.put_parameter(
-            "confocal_pixel", self.confocal_pixel, mi.ParamFlags.NonDifferentiable)
+            "laser_target", self.laser_target, mi.ParamFlags.NonDifferentiable)
 
     def parameters_changed(self, keys):
         super().parameters_changed(keys)
@@ -181,7 +177,7 @@ class NLOSCaptureMeter(NLOSSensor):
         string += f"  account_first_and_last_bounces = {self.account_first_and_last_bounces}, \n"
         string += f"  is_confocal = {self.is_confocal}, \n"
         if self.is_confocal:
-            string += f"  confocal_pixel = {self.confocal_pixel}, \n"
+            string += f"  laser_target = {self.laser_target}, \n"
         string += f"  film = { indent(self.film()) }, \n"
         string += f"]"
         return string
