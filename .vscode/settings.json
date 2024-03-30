@@ -7,6 +7,9 @@
     "python.analysis.extraPaths": [
         "ext/mitsuba3/build/python"
     ],
+    "python.analysis.diagnosticSeverityOverrides": {
+        "reportMissingImports": "none"
+    },
     "editor.formatOnSave": true,
     "cmake.configureOnOpen": false,
 }

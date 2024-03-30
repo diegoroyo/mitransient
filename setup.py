@@ -1,4 +1,5 @@
 from setuptools import setup, find_packages
+from mitransient.version import __version__, __mi_version__
 
 # read the contents of your README file (https://packaging.python.org/en/latest/guides/making-a-pypi-friendly-readme/)
 from pathlib import Path

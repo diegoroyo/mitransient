@@ -39,6 +39,9 @@ class Version:
 
 
 def check_compatibility():
+    import os
+    os.environ.setdefault('MI_DEFAULT_VARIANT', 'llvm_ad_rgb')
+
     import mitsuba as mi
 
     mitransient_version = Version(__version__)

@@ -191,6 +191,10 @@ As of November 2023, `mitsuba3-transient-nlos` implements the following plugins 
 * `sensor`:
   * [`nlos_capture_meter`](https://github.com/diegoroyo/mitsuba3-transient-nlos/blob/main/mitransient/sensors/nloscapturemeter.py): Can be attached to one of the scene's geometries, and measures uniformly-spaced points on such geometry (e.g. relay wall).
 
+# Testing
+
+Our test suite can be ran using `pytest` on the root folder of the repo.
+
 # About
 
 This project was created by [Miguel Crespo](https://mcrespo.me) and expanded by [Diego Royo](https://diego.contact) and [Jorge García](https://jgarciapueyo.github.io/).
