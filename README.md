@@ -42,6 +42,8 @@ This library adds support to [Mitsuba 3](https://github.com/mitsuba-renderer/mit
 ## Quick start:
 
 * [Installation](#installation)
+* [Usage](#usage) / [Documentation and examples](https://github.com/diegoroyo/mitsuba3-transient-nlos/tree/main/examples)
+* [License and citation](#license)
 
 
 ## What is transient rendering?
@@ -182,6 +184,8 @@ After cloning the repo, navigate to the root folder and execute the following co
 
 </details>
 
+## After installation
+
 At this point you should be able to `import mitsuba` and `import mitransient` in your Python code (careful about setting the correct `PATH` environment variable if you have compiled Mitsuba 3 yourself, check the `examples` folder).
 
 If it works, you're all set!
@@ -202,12 +206,36 @@ As of November 2023, `mitsuba3-transient-nlos` implements the following plugins 
 * `sensor`:
   * [`nlos_capture_meter`](https://github.com/diegoroyo/mitsuba3-transient-nlos/blob/main/mitransient/sensors/nloscapturemeter.py): Can be attached to one of the scene's geometries, and measures uniformly-spaced points on such geometry (e.g. relay wall).
 
-# Testing
+## Testing
 
 Our test suite can be ran using `pytest` on the root folder of the repo.
 
-# About
+# License and citation
 
 This project was created by [Miguel Crespo](https://mcrespo.me) and expanded by [Diego Royo](https://diego.contact) and [Jorge García](https://jgarciapueyo.github.io/).
 
-If you use Mitsuba 3 in academic projects, please contact the authors. For now the code should be private.
+If you are using our code for transient NLOS simulations, we would be grateful if you cited [our publication](https://doi.org/10.1016/j.cag.2022.07.003):
+
+```bibtex
+@article{royo2022non,
+    title = {Non-line-of-sight transient rendering},
+    journal = {Computers & Graphics},
+    year = {2022},
+    issn = {0097-8493},
+    doi = {https://doi.org/10.1016/j.cag.2022.07.003},
+    url = {https://www.sciencedirect.com/science/article/pii/S0097849322001200},
+    author = {Diego Royo and Jorge García and Adolfo Muñoz and Adrian Jarabo}
+```
+
+Otherwise you can cite this repository as:
+
+```bibtex
+@misc{mitsuba3transient,
+  author = {Royo, Diego and Garcia, Jorge and Crespo, Miguel},
+  title = {Mitsuba 3 Transient},
+  year = {2023},
+  publisher = {GitHub},
+  journal = {GitHub repository},
+  howpublished = {\url{https://github.com/diegoroyo/mitsuba3-transient-nlos}}
+}
+```
