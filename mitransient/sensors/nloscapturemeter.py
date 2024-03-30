@@ -75,6 +75,7 @@ class NLOSCaptureMeter(NLOSSensor):
 
         # Distance between the laser origin and the focusing point
         # Should be provided by the user if needed
+        # see mitransient.nlos.focus_emitter_at_relay_wall
         self.laser_bounce_opl = mi.Float(0)
 
         # Confocal setup pixel if desired by the user (default -1, no confocal)
