@@ -6,16 +6,12 @@ from pathlib import Path
 this_directory = Path(__file__).parent
 readme = (this_directory / "README.md").read_text()
 
-# Read version information
-with open('mitransient/version.py') as f:
-    exec(f.read())
-
 setup(
     name='mitransient',
     version=__version__,
-    description='Transient + NLOS Mitsuba 3',
+    description='Transient rendering extensions for Mitsuba 3',
     url='https://github.com/diegoroyo/mitsuba3-transient-nlos',
-    author='Miguel Crespo, Diego Royo, Jorge García',
+    author='Diego Royo, Miguel Crespo, Jorge García',
     author_email='droyo@unizar.es',
     license='BSD',
     packages=find_packages(),

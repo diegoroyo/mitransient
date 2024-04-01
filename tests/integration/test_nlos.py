@@ -14,7 +14,7 @@ def Z():
     from mitsuba import ScalarTransform4f as T
     return {
         'type': 'obj',
-        'filename': 'examples/nlos/Z.obj',
+        'filename': 'examples/transient-nlos/Z.obj',
         'bsdf': {
             'type': 'diffuse',
             'reflectance': {

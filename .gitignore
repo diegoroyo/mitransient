@@ -1,4 +1,5 @@
 notebooks/transientFrames/**
+scripts/pypi_publish.sh
 
 .vscode
 scenes/old/test/t-compare-with-mitsuba2/tal_Z/

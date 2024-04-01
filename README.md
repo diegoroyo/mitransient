@@ -186,11 +186,21 @@ After cloning the repo, navigate to the root folder and execute the following co
 
 ## After installation
 
-At this point you should be able to `import mitsuba` and `import mitransient` in your Python code (careful about setting the correct `PATH` environment variable if you have compiled Mitsuba 3 yourself, check the `examples` folder).
+At this point you should be able to `import mitsuba` and `import mitransient` in your Python code (careful about setting the correct `PATH` environment variable if you have compiled Mitsuba 3 yourself, see the section below).
 
 If it works, you're all set!
 
 For NLOS data capture simulations, see https://github.com/diegoroyo/tal. `tal` is a toolkit that allows you to create and simulate NLOS scenes with an easier shell interface instead of directly from Python.
+
+### If you use your own Mitsuba 3
+
+To `import mitsuba` in Python from your own installation, you can use the `setpath.sh` specified [in the official tutorial](https://mitsuba.readthedocs.io/en/latest/src/developer_guide/compiling.html). If you don't want to `setpath.sh` everytime, you can link your build of the `mitsuba` Python packages to your Python installs directory:
+
+```bash
+ln -s <mitsuba-path>/mitsuba3/build/python/mitsuba <your-python-installation>/lib/python3.11/site-packages
+```
+
+Then you should be able to `import mitsuba` without using `setpath.sh`.
 
 # Usage
 
