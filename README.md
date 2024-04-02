@@ -194,13 +194,19 @@ For NLOS data capture simulations, see https://github.com/diegoroyo/tal. `tal` i
 
 ### If you use your own Mitsuba 3
 
-To `import mitsuba` in Python from your own installation, you can use the `setpath.sh` specified [in the official tutorial](https://mitsuba.readthedocs.io/en/latest/src/developer_guide/compiling.html). If you don't want to `setpath.sh` everytime, you can link your build of the `mitsuba` Python packages to your Python installs directory:
+If you have opted for using a custom (non-default installation through `pip`) of Mitsuba 3, you have several options for it. The idea here is to be able to control which version of Mitsuba will be loaded on demand.
 
-```bash
-ln -s <mitsuba-path>/mitsuba3/build/python/mitsuba <your-python-installation>/lib/python3.11/site-packages
+* One solution is to directly execute `setpath.sh` provided after the compilation of the Mitsuba 3 repo [(More info)](https://mitsuba.readthedocs.io/en/latest/src/developer_guide/compiling.html). This shell script (on Linux) will modify the `PATH` and `PYTHONPATH` variables to load first this version of Mitsuba.
+* Another solution following the previous one is to directly set yourself the `PYTHONPATH` environment variable as you wish.
+* Another solution for having a custom version globally available is by using `pip install .--editable`. This will create a symlink copy of the package files inside the corresponding `site-packages` folder and will be listed as a package installed of `pip` and will be available as other packages installed. If you recompile them, you will still have the newest version directly for use. Please follow these instructions:
+  * Go to `<mitsuba-path>/mitsuba3/build/python/drjit` and execute `pip install . --editable`.
+  * Go to `<mitsuba-path>/mitsuba3/build/python/mitsuba` and execute `pip install . --editable`.
+* If you are a user of Jupyter Notebooks, the easiest solution will be to add the following snippet of code to modify on-site the PYTHON PATH for that specific notebook:
+```python
+import sys
+sys.path.insert(0, '<mitsuba-path>/mitsuba3/build/python')
+import mitsuba as mi
 ```
-
-Then you should be able to `import mitsuba` without using `setpath.sh`.
 
 # Usage
 
