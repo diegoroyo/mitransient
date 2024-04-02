@@ -1,10 +1,13 @@
 from setuptools import setup, find_packages
-from mitransient.version import __version__, __mi_version__
 
 # read the contents of your README file (https://packaging.python.org/en/latest/guides/making-a-pypi-friendly-readme/)
 from pathlib import Path
 this_directory = Path(__file__).parent
 readme = (this_directory / "README.md").read_text()
+
+# Read version information without loading all the library
+with open('mitransient/version.py') as f:
+    exec(f.read())
 
 setup(
     name='mitransient',
