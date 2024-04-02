@@ -41,11 +41,7 @@ def get_class(name):
 def get_module(class_):
     return get_class(class_.__module__)
 
-if mi.variant() is None:
-    # e.g. pip installation does not set mi.variant()
-    # does not matter as it does not use Array variants
-    pass
-elif mi.variant().startswith('scalar'):
+if mi.variant().startswith('scalar'):
     ArrayXf = dr.scalar.ArrayXf
     ArrayXu = dr.scalar.ArrayXu
     ArrayXi = dr.scalar.ArrayXi
@@ -112,8 +108,6 @@ def save_frames(data, axis_video, folder):
             f'{folder}/{i:03d}.exr')
 
 # Indent output of subobjects
-
-
 def indent(obj, amount=2):
     output = str(obj)
     result = ""
