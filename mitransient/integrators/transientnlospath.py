@@ -336,13 +336,12 @@ class TransientNLOSPath(TransientADIntegrator):
 
         self.hgs_do_rejection = False
         retry_rs = mi.Mask(active)
-        iters_rs = mi.UInt32(0)
+        iters_rs = 0
         max_rs_iterations = 5 if self.hgs_do_rejection else 1
         loop_rs = mi.Loop(name='Hidden geometry rejection sampling',
-                          state=lambda: (retry_rs, sample2, sampler, ps_hg, pdf_hg, si, d, cos_theta_i, cos_theta_g, iters_rs))
+                          state=lambda: (retry_rs, sample2, sampler, ps_hg, pdf_hg, si, d, cos_theta_i, cos_theta_g))
         loop_rs.set_max_iterations(max_rs_iterations)
         while loop_rs(retry_rs):
-            iters_rs[retry_rs] += 1
             sample2 = mi.Point2f(
                 dr.select(retry_rs, sampler.next_2d(retry_rs), sample2))
             ps_hg = dr.select(
@@ -365,6 +364,7 @@ class TransientNLOSPath(TransientADIntegrator):
             successful_retries &= (cos_theta_i > dr.epsilon(mi.Float)) & \
                 (cos_theta_g > dr.epsilon(mi.Float))
             retry_rs &= ~successful_retries
+            iters_rs += 1
             retry_rs &= iters_rs < max_rs_iterations
         active &= (cos_theta_i > dr.epsilon(mi.Float)) & \
             (cos_theta_g > dr.epsilon(mi.Float))
