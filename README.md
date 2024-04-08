@@ -92,7 +92,7 @@ We provide the package via PyPI. To install `mitsuba3-transient-nlos` you need t
 pip install mitransient
 ```
 
-If you have installed Mitsuba 3 via `pip` you will only have access to the `llvm_ad_rgb` and `cuda_ad_rgb` variants. If you want to use other variants (e.g. NLOS simulations can greatly benefit from the `llvm_mono` variant), then we recommend that you compile Mitsuba 3 youself, enabling such variants. [Here's more info](https://mitsuba.readthedocs.io/en/latest/src/developer_guide/compiling.html).
+If you have installed Mitsuba 3 via `pip` you will only have access to the `llvm_ad_rgb` and `cuda_ad_rgb` variants. If you want to use other variants (e.g. NLOS simulations can greatly benefit from the `llvm_mono` variant), then we recommend that you compile Mitsuba 3 youself, enabling the following variants: `["scalar_mono", "llvm_mono", "llvm_ad_mono", "cuda_mono", "cuda_ad_mono", "scalar_rgb", "llvm_rgb", "llvm_ad_rgb", "cuda_rgb", "cuda_ad_rgb"]`. [Here's more info](https://mitsuba.readthedocs.io/en/latest/src/developer_guide/compiling.html).
 
 ## Old installation instructions (incl. Mitsuba 3 fork)
 
