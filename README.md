@@ -28,12 +28,10 @@
 
 <div align="center" style="flex: auto;">
   <div align="center" style="display:inline-block; margin-left: 0.5rem; margin-right: 0.5rem; margin-bottom: 0.75rem">
-    <span style="writing-mode: vertical-rl; margin: auto; font-variant-caps: petite-caps;"> Cornell box </span>
     <img style="margin-right: 0.25rem" src=".images/cornell-box.png" width="200rem" height="200rem"/>
     <img style="margin-right: 0.25rem" src=".images/cornell-box.gif" width="200rem" height="200rem"/>
   </div>
   <div align="center" style="display:inline-block; margin-left: 0.5rem; margin-right: 0.5rem; margin-bottom: 0.75rem">
-  <span style="writing-mode: vertical-rl; margin: auto; font-variant-caps: petite-caps;"> Nlos Z </span>
     <img style="margin-right: 0.25rem" src=".images/nlos-Z.png" width="200rem" height="200rem"/>
     <img style="margin-right: 0.25rem" src=".images/nlos-Z.gif" width="200rem" height="200rem"/>
   </div>
