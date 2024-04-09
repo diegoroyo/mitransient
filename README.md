@@ -26,43 +26,79 @@
 
 <br />
 
-<div align="center">
-  <img src=".images/cornell-box.png" width="200" height="200"/>
-  <img src=".images/cornell-box.gif" width="200" height="200"/>
-  <img src=".images/nlos-Z.png" width="200" height="200"/>
-  <img src=".images/nlos-Z.gif" width="200" height="200"/>
+<div align="center" style="flex: auto;">
+  <div align="center" style="display:inline-block; margin-left: 0.5rem; margin-right: 0.5rem; margin-bottom: 0.75rem">
+    <span style="writing-mode: vertical-rl; margin: auto; font-variant-caps: petite-caps;"> Cornell box </span>
+    <img style="margin-right: 0.25rem" src=".images/cornell-box.png" width="200rem" height="200rem"/>
+    <img style="margin-right: 0.25rem" src=".images/cornell-box.gif" width="200rem" height="200rem"/>
+  </div>
+  <div align="center" style="display:inline-block; margin-left: 0.5rem; margin-right: 0.5rem; margin-bottom: 0.75rem">
+  <span style="writing-mode: vertical-rl; margin: auto; font-variant-caps: petite-caps;"> Nlos Z </span>
+    <img style="margin-right: 0.25rem" src=".images/nlos-Z.png" width="200rem" height="200rem"/>
+    <img style="margin-right: 0.25rem" src=".images/nlos-Z.gif" width="200rem" height="200rem"/>
+  </div>
 </div>
 
 <br />
 
-# Introduction
+# Overview
 
-This library adds support to [Mitsuba 3](https://github.com/mitsuba-renderer/mitsuba3) for doing transient simulations, and especially non-line-of-sight (NLOS) data capture simulations.
+This library adds support to [Mitsuba 3](https://github.com/mitsuba-renderer/mitsuba3) for doing transient simulations, with amazing support for non-line-of-sight (NLOS) data capture simulations.
 
-## Quick start:
-
-* [Installation](#installation)
-* [Usage](#usage) / [Documentation and examples](https://github.com/diegoroyo/mitsuba3-transient-nlos/tree/main/examples)
-* [License and citation](#license)
-
-
-## What is transient rendering?
-
-Conventional rendering is referred as steady state, where the light propagation speed is assumed to be infinite. In contrast, transient rendering breaks this assumtion allowing to simulate light in motion (see the teaser image for a visual example).
-
-For example, path tracing algorithms integrate over multiple paths that connect a light source with the camera. For a known path, transient path tracing uses the *very complex* formula of `time = distance / speed` (see [[Two New Sciences by Galileo]](https://en.wikipedia.org/wiki/Two_New_Sciences)) to compute the `time` when each photon arrives to the camera from the path's `distance` and light's `speed`. This adds a new `time` dimension to the captured images (i.e. it's a video now). The simulations now take new parameters as input: when to start recording the video, how long is each time step (framerate), and how many frames to record.
-
-*Note: note that the `time` values we need to compute are very small (e.g. light takes only ~3.33 * 10^-9 seconds to travel 1 meter), `time` is usually measured in optical path distance. See [Wikipedia](https://en.wikipedia.org/wiki/Optical_path_length) for more information. TL;DR `opl = distance * refractive_index`*
-
-# Main features
-
+### Main features
 * **Cross-platform:** Mitsuba 3 has been tested on Linux (x86_64), macOS (aarch64, x86_64), and Windows (x86_64).
 * **Easy interface** to convert your algorithms for the transient domain.
 * **Temporal domain** filtering.
-* **Python only** library for doing transient rendering in both CPU and GPU.
-* **Several integrators already implemented** including path tracing (also adapted for NLOS scenes) and volumetric path-tracing.
+* **Python-only** library for doing transient rendering in both CPU and GPU.
+* **Several integrators have already been implemented** including path tracing (also adapted for NLOS scenes) and volumetric path-tracing.
 
-### Roadmap
+<br>
+
+> **ℹ️ Check out our examples about how to use our library!** <br>
+> Featuring [General Usage](https://github.com/diegoroyo/mitsuba3-transient-nlos/tree/main/examples), [Line-of-sight transient rendering](https://github.com/diegoroyo/mitsuba3-transient-nlos/blob/main/examples/transient/render_cbox_diffuse.ipynb), and [Non-line-of-sight transient rendering](https://github.com/diegoroyo/mitsuba3-transient-nlos/blob/main/examples/transient-nlos/mitsuba3-transient-nlos.ipynb)
+
+<br>
+
+# License and citation
+
+This project was created by [Miguel Crespo](https://mcrespo.me) and expanded by [Diego Royo](https://diego.contact) and [Jorge García](https://jgarciapueyo.github.io/).
+
+If you use our code in your project, please consider citing us using the following:
+
+```bibtex
+@misc{mitsuba3transient,
+	title        = {Transient Mitsuba 3},
+	author       = {Royo, Diego and Crespo, Miguel and Garcia, Jorge},
+	year         = 2023,
+	journal      = {GitHub repository},
+	publisher    = {GitHub},
+	howpublished = {\url{https://github.com/diegoroyo/mitsuba3-transient-nlos}}
+}
+```
+
+Additionally, the NLOS features were re-implemented from our publication [Non-line-of-sight transient rendering](https://doi.org/10.1016/j.cag.2022.07.003). Please also consider citing us if you use them:
+
+```bibtex
+@article{royo2022non,
+	title        = {Non-line-of-sight transient rendering},
+	author       = {Diego Royo and Jorge García and Adolfo Muñoz and Adrian Jarabo},
+	year         = 2022,
+	journal      = {Computers & Graphics},
+	doi          = {https://doi.org/10.1016/j.cag.2022.07.003},
+	issn         = {0097-8493},
+	url          = {https://www.sciencedirect.com/science/article/pii/S0097849322001200}
+}
+```
+
+# What is transient rendering?
+
+Conventional rendering is referred to as steady state, where the light propagation speed is assumed to be infinite. In contrast, transient rendering breaks this assumption allowing us to simulate light in motion (see the teaser image for a visual example).
+
+For example, path tracing algorithms integrate over multiple paths that connect a light source with the camera. For a known path, transient path tracing uses the *very complex* formula of `time = distance / speed` (see [[Two New Sciences by Galileo]](https://en.wikipedia.org/wiki/Two_New_Sciences)) to compute the `time` when each photon arrives at the camera from the path's `distance` and light's `speed`. This adds a new `time` dimension to the captured images (i.e. it's a video now). The simulations now take new parameters as input: when to start recording the video, how long is each time step (framerate), and how many frames to record.
+
+*Note: note that the `time` values we need to compute are very small (e.g. light takes only ~3.33 * 10^-9 seconds to travel 1 meter), `time` is usually measured in optical path distance. See [Wikipedia](https://en.wikipedia.org/wiki/Optical_path_length) for more information. TL;DR `opl = distance * refractive_index`*
+
+# Roadmap
 
 **Last update: Apr. 2024*
 
@@ -76,13 +112,6 @@ For example, path tracing algorithms integrate over multiple paths that connect 
   - [ ] `auto_detect_bins`
   - [ ] Faster implementation of exhaustive scanning
 
-# Requirements
-
-- `Python >= 3.8`
-- `Mitsuba3 >= 3.5.0`
-- (optional) For computation on the GPU: `Nvidia driver >= 495.89`
-- (optional) For vectorized / parallel computation on the CPU: `LLVM >= 11.1`
-
 
 # Installation
 
@@ -92,7 +121,14 @@ We provide the package via PyPI. To install `mitsuba3-transient-nlos` you need t
 pip install mitransient
 ```
 
-If you have installed Mitsuba 3 via `pip` you will only have access to the `llvm_ad_rgb` and `cuda_ad_rgb` variants. If you want to use other variants (e.g. NLOS simulations can greatly benefit from the `llvm_mono` variant), then we recommend that you compile Mitsuba 3 youself, enabling such variants. [Here's more info](https://mitsuba.readthedocs.io/en/latest/src/developer_guide/compiling.html).
+If you have installed Mitsuba 3 via `pip` you will only have access to the `llvm_ad_rgb` and `cuda_ad_rgb` variants. If you want to use other variants (e.g. NLOS simulations can greatly benefit from the `llvm_mono` variant), then we recommend that you compile Mitsuba 3 yourself, enabling such variants. [Here's more info](https://mitsuba.readthedocs.io/en/latest/src/developer_guide/compiling.html).
+
+## Requirements
+
+- `Python >= 3.8`
+- `Mitsuba3 >= 3.5.0`
+- (optional) For computation on the GPU: `Nvidia driver >= 495.89`
+- (optional) For vectorized / parallel computation on the CPU: `LLVM >= 11.1`
 
 ## Old installation instructions (incl. Mitsuba 3 fork)
 
@@ -128,17 +164,17 @@ After cloning the repo, navigate to the root folder and execute the following co
           -DPython_EXECUTABLE=<path-to-python-executable> \
           ..
       ```
-  
+
     * Step 1.1: You should see a message that a file was created on "build/mitsuba.conf". Open the file and look for "enabled" variants. Docs: https://mitsuba.readthedocs.io/en/latest/src/key_topics/variants.html
       * Recommended variants: `"scalar_mono", "llvm_mono", "llvm_ad_mono", "cuda_mono", "cuda_ad_mono", "scalar_rgb", "llvm_rgb", "llvm_ad_rgb", "cuda_rgb", "cuda_ad_rgb"`.
       * IMPORTANT: At least one *_ad_* variant needs to be specified.
-  
+
     * Step 1.2: Re-run the cmake command to read the updated mitsuba.conf and compile the code with ninja
       ```bash
       cmake <same arguments as before> ..
       ninja  # This will take some time
       ```
-  
+
   * Step 2: Install `mitsuba3-transient-nlos` (a.k.a. `mitransient` Python library)
     ```bash
     cd ../../..  # go back to initial mitsuba3-transient-nlos folder
@@ -157,18 +193,18 @@ After cloning the repo, navigate to the root folder and execute the following co
       # Specifically ask for the 64 bit version of Visual Studio to be safe
       cmake -G "Visual Studio 17 2022" -A x64 -B build
       ```
-  
+
     * Step 1.1: You should see a message that a file was created on "build/mitsuba.conf". Open the file and look for "enabled" variants. Docs: https://mitsuba.readthedocs.io/en/latest/src/key_topics/variants.html
       * Recommended variants: `"scalar_mono", "llvm_mono", "llvm_ad_mono", "cuda_mono", "cuda_ad_mono", "scalar_rgb", "llvm_rgb", "llvm_ad_rgb", "cuda_rgb", "cuda_ad_rgb"`.
       * IMPORTANT: At least one *_ad_* variant needs to be specified.
-  
-    * Step 1.2: Re-run the cmake command to read the updated mitsuba.conf and compile the code with Visual Studio. 
+
+    * Step 1.2: Re-run the cmake command to read the updated mitsuba.conf and compile the code with Visual Studio.
       ```powershell
       cmake <same arguments as before>
       # You can build from terminal with this, if you don't like opening Visual Studio
       cmake --build build --config Release  # this will take some time
       ```
-  
+
   * Step 2: Install `mitsuba3-transient-nlos` (a.k.a. `mitransient` Python library)
     * Step 2.1: You will need to edit your environment variables in Windows manually
       ```
@@ -224,34 +260,4 @@ As of November 2023, `mitsuba3-transient-nlos` implements the following plugins 
 
 ## Testing
 
-Our test suite can be ran using `pytest` on the root folder of the repo.
-
-# License and citation
-
-This project was created by [Miguel Crespo](https://mcrespo.me) and expanded by [Diego Royo](https://diego.contact) and [Jorge García](https://jgarciapueyo.github.io/).
-
-If you are using our code for transient NLOS simulations, we would be grateful if you cited [our publication](https://doi.org/10.1016/j.cag.2022.07.003):
-
-```bibtex
-@article{royo2022non,
-    title = {Non-line-of-sight transient rendering},
-    journal = {Computers & Graphics},
-    year = {2022},
-    issn = {0097-8493},
-    doi = {https://doi.org/10.1016/j.cag.2022.07.003},
-    url = {https://www.sciencedirect.com/science/article/pii/S0097849322001200},
-    author = {Diego Royo and Jorge García and Adolfo Muñoz and Adrian Jarabo}
-```
-
-Otherwise you can cite this repository as:
-
-```bibtex
-@misc{mitsuba3transient,
-  author = {Royo, Diego and Garcia, Jorge and Crespo, Miguel},
-  title = {Mitsuba 3 Transient},
-  year = {2023},
-  publisher = {GitHub},
-  journal = {GitHub repository},
-  howpublished = {\url{https://github.com/diegoroyo/mitsuba3-transient-nlos}}
-}
-```
+Our test suite can be run using `pytest` on the root folder of the repo.
