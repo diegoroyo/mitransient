@@ -27,13 +27,13 @@
 <br />
 
 <div align="center" style="flex: auto;">
-  <div align="center" style="display:inline-block; margin-left: 0.5rem; margin-right: 0.5rem; margin-bottom: 0.75rem">
-    <img style="margin-right: 0.25rem" src=".images/cornell-box.png" width="200rem" height="200rem"/>
-    <img style="margin-right: 0.25rem" src=".images/cornell-box.gif" width="200rem" height="200rem"/>
+  <div align="center" style="display:inline-block; margin-left: 0.25rem; margin-right: 0.25rem; margin-bottom: 0.75rem">
+    <img style="margin-right: 0.15rem" src=".images/cornell-box.png" width="150rem" height="150rem"/>
+    <img style="margin-right: 0.15rem" src=".images/cornell-box.gif" width="150rem" height="150rem"/>
   </div>
-  <div align="center" style="display:inline-block; margin-left: 0.5rem; margin-right: 0.5rem; margin-bottom: 0.75rem">
-    <img style="margin-right: 0.25rem" src=".images/nlos-Z.png" width="200rem" height="200rem"/>
-    <img style="margin-right: 0.25rem" src=".images/nlos-Z.gif" width="200rem" height="200rem"/>
+  <div align="center" style="display:inline-block; margin-left: 0.25rem; margin-right: 0.25rem; margin-bottom: 0.75rem">
+    <img style="margin-right: 0.15rem" src=".images/nlos-Z.png" width="150rem" height="150rem"/>
+    <img style="margin-right: 0.15rem" src=".images/nlos-Z.gif" width="150rem" height="150rem"/>
   </div>
 </div>
 
