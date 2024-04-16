@@ -1,0 +1,31 @@
+cff-version: 1.2.0
+title: Transient Mitsuba 3
+message: >-
+  If you use this software, please cite it using the
+  metadata from this file.
+type: software
+authors:
+  - given-names: Miguel
+    family-names: Crespo
+  - given-names: Diego
+    family-names: Royo
+  - given-names: Jorge
+    family-names: Garcia
+identifiers:
+  - type: doi
+    value: temporal
+    description: Zenodo
+repository-code: 'https://github.com/diegoroyo/mitsuba3-transient-nlos'
+url: 'https://github.com/diegoroyo/mitsuba3-transient-nlos'
+repository-artifact: 'https://pypi.org/project/mitransient/'
+abstract: >-
+  This library adds support to Mitsuba 3 for doing transient
+  simulations, with amazing support for non-line-of-sight
+  (NLOS) data capture simulations.
+keywords:
+  - transient
+  - nlos
+  - mitsuba
+  - physically-based rendering
+  - differentiable rendering
+license: BSD-4-Clause
