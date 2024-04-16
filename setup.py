@@ -14,7 +14,7 @@ setup(
     version=__version__,
     description='Transient rendering extensions for Mitsuba 3',
     url='https://github.com/diegoroyo/mitsuba3-transient-nlos',
-    author='Diego Royo, Miguel Crespo, Jorge García',
+    author='Miguel Crespo, Diego Royo, Jorge García',
     author_email='droyo@unizar.es',
     license='BSD',
     packages=find_packages(),

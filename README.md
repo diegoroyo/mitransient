@@ -13,24 +13,15 @@
     &nbsp;&nbsp;&nbsp;&nbsp;
     <a href="https://jgarciapueyo.github.io/"><strong>Jorge García</strong></a>
   </p>
-
-  <!-- <p align="center">
-    <a href='' style='padding-left: 0.5rem;'>
-      <img src='https://img.shields.io/badge/Docs-passing-green?style=flat-square' alt='Project Page'>
-    </a>
-    <a href='' style='padding-left: 0.5rem;'>
-      <img src='https://img.shields.io/badge/Project-Page-blue?style=flat-square' alt='Project Page'>
-    </a>
-  </p> -->
 </p>
 
 <br />
 
 <div align="center">
-  <img src=".images/cornell-box.png" width="200" height="200"/>
-  <img src=".images/cornell-box.gif" width="200" height="200"/>
-  <img src=".images/nlos-Z.png" width="200" height="200"/>
-  <img src=".images/nlos-Z.gif" width="200" height="200"/>
+  <img src="https://github.com/diegoroyo/mitsuba3-transient-nlos/raw/master/.images/cornell-box.png" width="200" height="200"/>
+  <img src="https://github.com/diegoroyo/mitsuba3-transient-nlos/raw/master/.images/cornell-box.gif" width="200" height="200"/>
+  <img src="https://github.com/diegoroyo/mitsuba3-transient-nlos/raw/master/.images/nlos-Z.png" width="200" height="200"/>
+  <img src="https://github.com/diegoroyo/mitsuba3-transient-nlos/raw/master/.images/nlos-Z.gif" width="200" height="200"/>
 </div>
 
 <br />
@@ -62,7 +53,7 @@ If you use our code in your project, please consider citing us using the followi
 ```bibtex
 @misc{mitsuba3transient,
 	title        = {Transient Mitsuba 3},
-	author       = {Royo, Diego and Crespo, Miguel and Garcia, Jorge},
+	author       = {Crespo, Miguel and Royo, Diego and Garcia, Jorge},
 	year         = 2023,
 	journal      = {GitHub repository},
 	publisher    = {GitHub},
@@ -115,7 +106,7 @@ We provide the package via PyPI. To install `mitsuba3-transient-nlos` you need t
 pip install mitransient
 ```
 
-If you have installed Mitsuba 3 via `pip` you will only have access to the `llvm_ad_rgb` and `cuda_ad_rgb` variants. If you want to use other variants (e.g. NLOS simulations can greatly benefit from the `llvm_mono` variant), then we recommend that you compile Mitsuba 3 yourself, enabling the following variants: `["scalar_mono", "llvm_mono", "llvm_ad_mono", "cuda_mono", "cuda_ad_mono", "scalar_rgb", "llvm_rgb", "llvm_ad_rgb", "cuda_rgb", "cuda_ad_rgb"]`. [Here's more info](https://mitsuba.readthedocs.io/en/latest/src/developer_guide/compiling.html).
+If you have installed Mitsuba 3 via `pip` you will only have access to the `llvm_ad_rgb` and `cuda_ad_rgb` variants. If you want to use other variants (e.g. NLOS simulations can greatly benefit from the `llvm_mono` variant which only propagates one wavelength), then we recommend that you compile Mitsuba 3 yourself [following this tutorial](https://mitsuba.readthedocs.io/en/latest/src/developer_guide/compiling.html) and enable the following variants: `["scalar_mono", "llvm_mono", "llvm_ad_mono", "cuda_mono", "cuda_ad_mono", "scalar_rgb", "llvm_rgb", "llvm_ad_rgb", "cuda_rgb", "cuda_ad_rgb"]`.
 
 ## Requirements
 
@@ -216,22 +207,20 @@ After cloning the repo, navigate to the root folder and execute the following co
 
 ## After installation
 
-At this point you should be able to `import mitsuba` and `import mitransient` in your Python code (careful about setting the correct `PATH` environment variable if you have compiled Mitsuba 3 yourself, see the section below).
-
-If it works, you're all set!
+At this point, you should be able to `import mitsuba` and `import mitransient` in your Python code (careful about setting the correct `PATH` environment variable if you have compiled Mitsuba 3 yourself, see the section below).
 
 For NLOS data capture simulations, see https://github.com/diegoroyo/tal. `tal` is a toolkit that allows you to create and simulate NLOS scenes with an easier shell interface instead of directly from Python.
 
 ### If you use your own Mitsuba 3
 
-If you have opted for using a custom (non-default installation through `pip`) of Mitsuba 3, you have several options for it. The idea here is to be able to control which version of Mitsuba will be loaded on demand.
+If you have opted for using a custom (non-default installation through `pip`) Mitsuba 3, you have several options for it. The idea here is to be able to control which version of Mitsuba will be loaded on demand.
 
-* One solution is to directly execute `setpath.sh` provided after the compilation of the Mitsuba 3 repo [(More info)](https://mitsuba.readthedocs.io/en/latest/src/developer_guide/compiling.html). This shell script (on Linux) will modify the `PATH` and `PYTHONPATH` variables to load first this version of Mitsuba.
+* One solution is to directly execute `setpath.sh` provided after the compilation of the Mitsuba 3 repo [(More info)](https://mitsuba.readthedocs.io/en/latest/src/developer_guide/compiling.html). This shell script will modify the `PATH` and `PYTHONPATH` variables to load first this version of Mitsuba.
 * Another solution following the previous one is to directly set yourself the `PYTHONPATH` environment variable as you wish.
-* Another solution for having a custom version globally available is by using `pip install .--editable`. This will create a symlink copy of the package files inside the corresponding `site-packages` folder and will be listed as a package installed of `pip` and will be available as other packages installed. If you recompile them, you will still have the newest version directly for use. Please follow these instructions:
+* Another solution for having a custom version globally available is by using `pip install . --editable`. This will create a symlink copy of the package files inside the corresponding `site-packages` folder and will be listed as a package installed of `pip` and will be available as other packages installed. If you recompile them, you will still have the newest version directly to use. Please follow these instructions:
   * Go to `<mitsuba-path>/mitsuba3/build/python/drjit` and execute `pip install . --editable`.
   * Go to `<mitsuba-path>/mitsuba3/build/python/mitsuba` and execute `pip install . --editable`.
-* If you are a user of Jupyter Notebooks, the easiest solution will be to add the following snippet of code to modify on-site the PYTHON PATH for that specific notebook:
+* If you are a user of Jupyter Notebooks, the easiest solution will be to add the following snippet of code to modify the notebook's `PYTHONPATH`:
 ```python
 import sys
 sys.path.insert(0, '<mitsuba-path>/mitsuba3/build/python')
@@ -240,7 +229,7 @@ import mitsuba as mi
 
 # Usage
 
-Check out the `examples` folder for practical usage.
+> **ℹ️ Check out the `examples` folder for practical usage!** <br>
 
 As of November 2023, `mitsuba3-transient-nlos` implements the following plugins which can be used in scene XML files. To view a description of their parameters, click on the name of your desired plugin.
 * `film`:
