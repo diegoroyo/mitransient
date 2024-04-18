@@ -5,10 +5,10 @@ message: >-
   metadata from this file.
 type: software
 authors:
-  - given-names: Miguel
-    family-names: Crespo
   - given-names: Diego
     family-names: Royo
+  - given-names: Miguel
+    family-names: Crespo
   - given-names: Jorge
     family-names: Garcia
 identifiers:

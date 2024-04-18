@@ -53,7 +53,7 @@ If you use our code in your project, please consider citing us using the followi
 ```bibtex
 @misc{mitsuba3transient,
 	title        = {Transient Mitsuba 3},
-	author       = {Crespo, Miguel and Royo, Diego and Garcia, Jorge},
+	author       = {Royo, Diego and Crespo, Miguel and Garcia, Jorge},
 	year         = 2023,
 	journal      = {GitHub repository},
 	publisher    = {GitHub},
