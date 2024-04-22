@@ -7,9 +7,9 @@
   <h1 align="center">Transient Mitsuba 3</h1>
 
   <p align="center">
-    <a href="https://mcrespo.me"><strong>Miguel Crespo</strong></a>
-    &nbsp;&nbsp;&nbsp;&nbsp;
     <a href="https://diego.contact"><strong>Diego Royo</strong></a>
+    &nbsp;&nbsp;&nbsp;&nbsp;
+    <a href="https://mcrespo.me"><strong>Miguel Crespo</strong></a>
     &nbsp;&nbsp;&nbsp;&nbsp;
     <a href="https://jgarciapueyo.github.io/"><strong>Jorge García</strong></a>
   </p>
@@ -18,10 +18,10 @@
 <br />
 
 <div align="center">
-  <img src="https://github.com/diegoroyo/mitsuba3-transient-nlos/raw/master/.images/cornell-box.png" width="200" height="200"/>
-  <img src="https://github.com/diegoroyo/mitsuba3-transient-nlos/raw/master/.images/cornell-box.gif" width="200" height="200"/>
-  <img src="https://github.com/diegoroyo/mitsuba3-transient-nlos/raw/master/.images/nlos-Z.png" width="200" height="200"/>
-  <img src="https://github.com/diegoroyo/mitsuba3-transient-nlos/raw/master/.images/nlos-Z.gif" width="200" height="200"/>
+  <img src="https://raw.githubusercontent.com/diegoroyo/mitsuba3-transient-nlos/main/.images/cornell-box.png" width="200" height="200"/>
+  <img src="https://raw.githubusercontent.com/diegoroyo/mitsuba3-transient-nlos/main/.images/cornell-box.gif" width="200" height="200"/>
+  <img src="https://raw.githubusercontent.com/diegoroyo/mitsuba3-transient-nlos/main/.images/nlos-Z.png" width="200" height="200"/>
+  <img src="https://raw.githubusercontent.com/diegoroyo/mitsuba3-transient-nlos/main/.images/nlos-Z.gif" width="200" height="200"/>
 </div>
 
 <br />
@@ -114,96 +114,6 @@ If you have installed Mitsuba 3 via `pip` you will only have access to the `llvm
 - `Mitsuba3 >= 3.5.0`
 - (optional) For computation on the GPU: `Nvidia driver >= 495.89`
 - (optional) For vectorized / parallel computation on the CPU: `LLVM >= 11.1`
-
-## Old installation instructions (incl. Mitsuba 3 fork)
-
-<details>
-<summary>See details</summary>
-_NOTE: These instructions have been tested on Linux and Windows 11 (Powershell), but can be adapted to MacOS probably (hopefully) without many problems_
-
-After cloning the repo, navigate to the root folder and execute the following commands to build the custom version of Mitsuba 3
-
-*  Step 0: Clone the repo (including the mitsuba3 custom fork submodule)
-  ```bash
-  git clone git@github.com:diegoroyo/mitsuba3-transient-nlos.git mitsuba3-transient-nlos
-  cd mitsuba3-transient-nlos
-  git submodule update --init --recursive
-  ```
-
-## Now the steps are different for Linux and Windows users
-
-### Linux users:
-  * Step 1: Compile mitsuba3 (ext/mitsuba3) from source
-    * This is for Linux. for other OSes, check: https://mitsuba.readthedocs.io/en/latest/src/developer_guide/compiling.html
-      ```bash
-      cd ext/mitsuba3
-      mkdir -p build && cd build
-      ```
-    * You might want to set the C++/C compiler (probably you want this e.g. if `cmake` complains about your version of g++). Always set `C_COMPILER` version to the same version as `CXX_COMPILER` (e.g. if you use `g++-12`, then also set `gcc-12`)
-    * If you have multiple Python versions installed, also set Python_EXECUTABLE to ensure that the program is compiled for your specific version of Python
-      ```bash
-      cmake \
-          -GNinja \
-          -DCMAKE_CXX_COMPILER=<path-to-c++-compiler> \
-          -DCMAKE_C_COMPILER=<path-to-c-compiler> \
-          -DPython_EXECUTABLE=<path-to-python-executable> \
-          ..
-      ```
-
-    * Step 1.1: You should see a message that a file was created on "build/mitsuba.conf". Open the file and look for "enabled" variants. Docs: https://mitsuba.readthedocs.io/en/latest/src/key_topics/variants.html
-      * Recommended variants: `"scalar_mono", "llvm_mono", "llvm_ad_mono", "cuda_mono", "cuda_ad_mono", "scalar_rgb", "llvm_rgb", "llvm_ad_rgb", "cuda_rgb", "cuda_ad_rgb"`.
-      * IMPORTANT: At least one *_ad_* variant needs to be specified.
-
-    * Step 1.2: Re-run the cmake command to read the updated mitsuba.conf and compile the code with ninja
-      ```bash
-      cmake <same arguments as before> ..
-      ninja  # This will take some time
-      ```
-
-  * Step 2: Install `mitsuba3-transient-nlos` (a.k.a. `mitransient` Python library)
-    ```bash
-    cd ../../..  # go back to initial mitsuba3-transient-nlos folder
-    scripts/local_install.sh
-    ```
-
-### Windows users:
-
-  * Step 1: Compile mitsuba3 (ext/mitsuba3) from source
-    ```powershell
-    cd ext/mitsuba3
-    ```
-    * A recent version of Visual Studio 2022 is required. Cmake need to be installed manually
-    * Check that the version of your Python is the correct one when you execute `python`
-      ```powershell
-      # Specifically ask for the 64 bit version of Visual Studio to be safe
-      cmake -G "Visual Studio 17 2022" -A x64 -B build
-      ```
-
-    * Step 1.1: You should see a message that a file was created on "build/mitsuba.conf". Open the file and look for "enabled" variants. Docs: https://mitsuba.readthedocs.io/en/latest/src/key_topics/variants.html
-      * Recommended variants: `"scalar_mono", "llvm_mono", "llvm_ad_mono", "cuda_mono", "cuda_ad_mono", "scalar_rgb", "llvm_rgb", "llvm_ad_rgb", "cuda_rgb", "cuda_ad_rgb"`.
-      * IMPORTANT: At least one *_ad_* variant needs to be specified.
-
-    * Step 1.2: Re-run the cmake command to read the updated mitsuba.conf and compile the code with Visual Studio.
-      ```powershell
-      cmake <same arguments as before>
-      # You can build from terminal with this, if you don't like opening Visual Studio
-      cmake --build build --config Release  # this will take some time
-      ```
-
-  * Step 2: Install `mitsuba3-transient-nlos` (a.k.a. `mitransient` Python library)
-    * Step 2.1: You will need to edit your environment variables in Windows manually
-      ```
-      MITSUBA_DIR = <path-to-the-cloned-repository</mitsuba3-transient-nlos/ext/mitsuba3/build/Release
-      Path = %Path%;%MITSUBA_DIR%
-      PYTHON_PATH = %MITSUBA_DIR%/python
-      ```
-    * Step 2.2: Install `mitsuba3-transient-nlos` (a.k.a. `mitransient` Python library)
-      ```powershell
-      cd ../../  # go back to initial mitsuba3-transient-nlos folder
-      python -m pip install .
-      ```
-
-</details>
 
 ## After installation
 
