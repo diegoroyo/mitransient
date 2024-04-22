@@ -13,7 +13,7 @@ authors:
     family-names: Garcia
 identifiers:
   - type: doi
-    value: temporal
+    value: 10.5281/zenodo.11032518
     description: Zenodo
 repository-code: 'https://github.com/diegoroyo/mitsuba3-transient-nlos'
 url: 'https://github.com/diegoroyo/mitsuba3-transient-nlos'

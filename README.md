@@ -46,7 +46,7 @@ This library adds support to [Mitsuba 3](https://github.com/mitsuba-renderer/mit
 
 # License and citation
 
-This project was created by [Miguel Crespo](https://mcrespo.me) and expanded by [Diego Royo](https://diego.contact) and [Jorge García](https://jgarciapueyo.github.io/).
+This project was created by [Miguel Crespo](https://mcrespo.me) and expanded by [Diego Royo](https://diego.contact) and [Jorge García](https://jgarciapueyo.github.io/). Also see the [original Mitsuba 3 license and contributors](https://github.com/mitsuba-renderer/mitsuba3).
 
 If you use our code in your project, please consider citing us using the following:
 
@@ -56,6 +56,7 @@ If you use our code in your project, please consider citing us using the followi
 	author       = {Royo, Diego and Crespo, Miguel and Garcia, Jorge},
 	year         = 2023,
 	journal      = {GitHub repository},
+	doi          = {https://doi.org/10.5281/zenodo.11032518},
 	publisher    = {GitHub},
 	howpublished = {\url{https://github.com/diegoroyo/mitsuba3-transient-nlos}}
 }
