@@ -27,5 +27,5 @@ from .render import *
 from .films import *
 from .sensors import *
 
-from .utils import show_video, speed_of_light, save_frames
+from .utils import show_video, speed_of_light, save_frames, save_video, tonemap_transient
 from . import nlos

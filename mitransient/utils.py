@@ -61,6 +61,29 @@ else:
 Auxiliary functions
 '''
 
+def tonemap_transient(transient, scaling=1.0):
+    channel_top = np.quantile(np.array(transient), 0.98, axis=(0,1,2))
+    return transient / channel_top[np.newaxis, np.newaxis, np.newaxis, :] * scaling
+
+def save_video(path, transient, axis_video, fps=24, display_video=False):
+    import cv2
+
+    def generate_index(axis_video, dims, index):
+        return tuple([np.s_[:] if dim != axis_video else np.s_[index] for dim in range(dims)])
+
+    size = (transient.shape[1], transient.shape[0])
+    out  = cv2.VideoWriter(path, cv2.VideoWriter_fourcc(*'mp4v'), fps, size)
+
+    for i in range(transient.shape[axis_video]):
+        frame = transient[generate_index(axis_video, len(transient.shape), i)]
+        bitmap = mi.Bitmap(frame).convert(component_format=mi.Struct.Type.UInt8, srgb_gamma=True)
+        out.write(np.array(bitmap)[:,:,::-1])
+
+    out.release()
+
+    if display_video:
+        from IPython.display import Video, display
+        return display(Video(path, embed=True, width=size[0], height=size[1]))
 
 def show_video(input_sample, axis_video, uint8_srgb=True):
     # if not in_ipython():
