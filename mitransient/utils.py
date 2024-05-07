@@ -62,8 +62,8 @@ Auxiliary functions
 '''
 
 def tonemap_transient(transient, scaling=1.0):
-    channel_top = np.quantile(np.array(transient), 0.98, axis=(0,1,2))
-    return transient / channel_top[np.newaxis, np.newaxis, np.newaxis, :] * scaling
+    channel_top = np.quantile(np.array(transient), 0.99)
+    return transient / channel_top * scaling
 
 def save_video(path, transient, axis_video, fps=24, display_video=False):
     import cv2
