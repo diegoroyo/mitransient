@@ -232,8 +232,7 @@ class TransientPRBVolpathIntegrator(TransientADIntegrator):
                 if not is_primal and dr.grad_enabled(contrib):
                     dr.backward(δL * contrib)
 
-                add_transient(contrib, distance + dr.select(si.is_valid(),
-                              ds.dist, 0.0) * η, ray.wavelengths, active_e)
+                add_transient(contrib, distance, ray.wavelengths, active_e)
 
                 active_surface &= si.is_valid()
                 ctx = mi.BSDFContext()
