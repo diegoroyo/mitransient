@@ -41,6 +41,7 @@ def get_class(name):
 def get_module(class_):
     return get_class(class_.__module__)
 
+
 if mi.variant().startswith('scalar'):
     ArrayXf = dr.scalar.ArrayXf
     ArrayXu = dr.scalar.ArrayXu
@@ -61,9 +62,11 @@ else:
 Auxiliary functions
 '''
 
+
 def tonemap_transient(transient, scaling=1.0):
     channel_top = np.quantile(np.array(transient), 0.99)
     return transient / channel_top * scaling
+
 
 def save_video(path, transient, axis_video, fps=24, display_video=False):
     import cv2
@@ -72,18 +75,20 @@ def save_video(path, transient, axis_video, fps=24, display_video=False):
         return tuple([np.s_[:] if dim != axis_video else np.s_[index] for dim in range(dims)])
 
     size = (transient.shape[1], transient.shape[0])
-    out  = cv2.VideoWriter(path, cv2.VideoWriter_fourcc(*'mp4v'), fps, size)
+    out = cv2.VideoWriter(path, cv2.VideoWriter_fourcc(*'mp4v'), fps, size)
 
     for i in range(transient.shape[axis_video]):
         frame = transient[generate_index(axis_video, len(transient.shape), i)]
-        bitmap = mi.Bitmap(frame).convert(component_format=mi.Struct.Type.UInt8, srgb_gamma=True)
-        out.write(np.array(bitmap)[:,:,::-1])
+        bitmap = mi.Bitmap(frame).convert(
+            component_format=mi.Struct.Type.UInt8, srgb_gamma=True)
+        out.write(np.array(bitmap)[:, :, ::-1])
 
     out.release()
 
     if display_video:
         from IPython.display import Video, display
         return display(Video(path, embed=True, width=size[0], height=size[1]))
+
 
 def show_video(input_sample, axis_video, uint8_srgb=True):
     # if not in_ipython():
@@ -130,8 +135,9 @@ def save_frames(data, axis_video, folder):
         mi.Bitmap(data[generate_index(axis_video, len(data.shape), i)]).write(
             f'{folder}/{i:03d}.exr')
 
-# Indent output of subobjects
+
 def indent(obj, amount=2):
+    ''' Indent output of subobjects '''
     output = str(obj)
     result = ""
     lines = output.splitlines(keepends=True)

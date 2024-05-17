@@ -153,7 +153,7 @@ class TransientBlock(Object):
             n = np.ceil(rfilter_radius - 0.5).astype(np.uint32)
             count = 2 * n + 1
 
-            pos_i = dr.floor(pos) - n.astype(np.int)
+            pos_i = dr.floor(pos) - n.astype(np.int32)
             # NOTE: Fixes issue with box filters combined with other filters
             rel_f = pos_i + 0.5 - pos - RayEpsilon
 
