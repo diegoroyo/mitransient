@@ -5,6 +5,8 @@ scripts/pypi_publish.sh
 scenes/old/test/t-compare-with-mitsuba2/tal_Z/
 scenes/**/*.npy
 
+docs/generated
+
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
