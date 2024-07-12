@@ -87,10 +87,10 @@ pygments_dark_style = 'tango'
 # If true, links to the reST sources will be added to the sidebar.
 html_show_sourcelink = False
 
-html_theme_options = {
-    # Disable edit button on read the docs
-    "top_of_page_buttons": [],
-}
+# html_theme_options = {
+#     # Disable edit button on read the docs
+#     "top_of_page_buttons": [],
+# }
 
 # Generate the documentation from the source files
 from docs import generate_plugin_doc
