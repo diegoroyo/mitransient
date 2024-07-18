@@ -15,8 +15,8 @@ identifiers:
   - type: doi
     value: 10.5281/zenodo.11032518
     description: Zenodo
-repository-code: 'https://github.com/diegoroyo/mitsuba3-transient-nlos'
-url: 'https://github.com/diegoroyo/mitsuba3-transient-nlos'
+repository-code: 'https://github.com/diegoroyo/mitransient'
+url: 'https://github.com/diegoroyo/mitransient'
 repository-artifact: 'https://pypi.org/project/mitransient/'
 abstract: >-
   This library adds support to Mitsuba 3 for doing transient

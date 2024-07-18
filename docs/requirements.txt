@@ -4,3 +4,6 @@ nbsphinx==0.8.9
 furo==2022.12.7
 mitsuba==3.5.1
 numpy==2.0.0
+sphinxcontrib-youtube==1.2.0
+sphinx-copybutton==0.5.1
+sphinx-gallery==0.10.1

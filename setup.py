@@ -13,7 +13,7 @@ setup(
     name='mitransient',
     version=__version__,
     description='Transient rendering extensions for Mitsuba 3',
-    url='https://github.com/diegoroyo/mitsuba3-transient-nlos',
+    url='https://github.com/diegoroyo/mitransient',
     author='Diego Royo, Miguel Crespo, Jorge García',
     author_email='droyo@unizar.es',
     license='BSD',

@@ -67,11 +67,17 @@ extensions = []
 extensions.append('sphinx.ext.autodoc')
 extensions.append('sphinx.ext.coverage')
 extensions.append('sphinx.ext.napoleon')
+extensions.append('sphinx.ext.intersphinx')
+extensions.append('sphinxcontrib.youtube')
+extensions.append('sphinx_copybutton')
 extensions.append('nbsphinx')
+nbsphinx_execute = 'never'
+extensions.append('sphinx_gallery.load_style')
 extensions.append('pluginparameters')
 
+
 templates_path = ['_templates']
-exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store']
+exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store', 'src/plugin_reference/section_*.rst']
 
 
 # -- Options for HTML output -------------------------------------------------

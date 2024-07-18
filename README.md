@@ -4,61 +4,62 @@
 
 <!-- PROJECT LOGO -->
 <p align="center">
-  <h1 align="center">Transient Mitsuba 3</h1>
+  <h1 align="center">mitransient</h1>
+  <h3 align="center">Transient light transport in Mitsuba 3</h3>
 
   <p align="center">
     <a href="https://diego.contact"><strong>Diego Royo</strong></a>
     &nbsp;&nbsp;&nbsp;&nbsp;
     <a href="https://mcrespo.me"><strong>Miguel Crespo</strong></a>
     &nbsp;&nbsp;&nbsp;&nbsp;
-    <a href="https://jgarciapueyo.github.io/"><strong>Jorge García</strong></a>
+    <a href="https://jgarciapueyo.github.io/"><strong>Jorge Garcia-Pueyo</strong></a>
   </p>
 </p>
 
 <br />
 
 <div align="center">
-  <img src="https://raw.githubusercontent.com/diegoroyo/mitsuba3-transient-nlos/main/.images/cornell-box.png" width="200" height="200"/>
-  <img src="https://raw.githubusercontent.com/diegoroyo/mitsuba3-transient-nlos/main/.images/cornell-box.gif" width="200" height="200"/>
-  <img src="https://raw.githubusercontent.com/diegoroyo/mitsuba3-transient-nlos/main/.images/nlos-Z.png" width="200" height="200"/>
-  <img src="https://raw.githubusercontent.com/diegoroyo/mitsuba3-transient-nlos/main/.images/nlos-Z.gif" width="200" height="200"/>
+  <img src="https://raw.githubusercontent.com/diegoroyo/mitransient/main/.images/cornell-box.png" width="200" height="200"/>
+  <img src="https://raw.githubusercontent.com/diegoroyo/mitransient/main/.images/cornell-box.gif" width="200" height="200"/>
+  <img src="https://raw.githubusercontent.com/diegoroyo/mitransient/main/.images/nlos-Z.png" width="200" height="200"/>
+  <img src="https://raw.githubusercontent.com/diegoroyo/mitransient/main/.images/nlos-Z.gif" width="200" height="200"/>
 </div>
 
 <br />
 
 # Overview
 
-This library adds support to [Mitsuba 3](https://github.com/mitsuba-renderer/mitsuba3) for doing transient simulations, with amazing support for non-line-of-sight (NLOS) data capture simulations.
+*mitransient* is a library adds support to [Mitsuba 3](https://github.com/mitsuba-renderer/mitsuba3) for doing transient simulations, with amazing support for non-line-of-sight (NLOS) data capture simulations.
 
 ### Main features
-* **Cross-platform:** Mitsuba 3 has been tested on Linux (x86_64), macOS (aarch64, x86_64), and Windows (x86_64).
-* **Easy interface** to convert your algorithms for the transient domain.
-* **Temporal domain** filtering.
+* **Foundation ready to use:** easy interface to convert your algorithms to the transient domain.
 * **Python-only** library for doing transient rendering in both CPU and GPU.
-* **Several integrators have already been implemented** including path tracing (also adapted for NLOS scenes) and volumetric path-tracing.
+* **Several integrators already implemented:** transient pathtracing (also adapted for NLOS scenes) and transient volumetric pathtracing.
+* **Cross-platform:** Mitsuba 3 has been tested on Linux (x86_64), macOS (aarch64, x86_64), and Windows (x86_64).
+* **Temporal domain** filtering.
 
 <br>
 
 > **ℹ️ Check out our examples about how to use our library!** <br>
-> Featuring [General Usage](https://github.com/diegoroyo/mitsuba3-transient-nlos/tree/main/examples), [Line-of-sight transient rendering](https://github.com/diegoroyo/mitsuba3-transient-nlos/blob/main/examples/transient/render_cbox_diffuse.ipynb), and [Non-line-of-sight transient rendering](https://github.com/diegoroyo/mitsuba3-transient-nlos/blob/main/examples/transient-nlos/mitsuba3-transient-nlos.ipynb)
+> Featuring [General Usage](https://github.com/diegoroyo/mitransient/tree/main/examples), [Transient rendering](https://github.com/diegoroyo/mitransient/blob/main/examples/transient/render_cbox_diffuse.ipynb), and [Non-line-of-sight (NLOS) transient rendering](https://github.com/diegoroyo/mitransient/blob/main/examples/transient-nlos/mitsuba3-transient-nlos.ipynb)
 
 <br>
 
 # License and citation
 
-This project was created by [Miguel Crespo](https://mcrespo.me) and expanded by [Diego Royo](https://diego.contact) and [Jorge García](https://jgarciapueyo.github.io/). Also see the [original Mitsuba 3 license and contributors](https://github.com/mitsuba-renderer/mitsuba3).
+This project was created by [Miguel Crespo](https://mcrespo.me) and expanded by [Diego Royo](https://diego.contact) and [Jorge Garcia-Pueyo](https://jgarciapueyo.github.io/). Also see the [original Mitsuba 3 license and contributors](https://github.com/mitsuba-renderer/mitsuba3).
 
 If you use our code in your project, please consider citing us using the following:
 
 ```bibtex
-@misc{mitsuba3transient,
-	title        = {Transient Mitsuba 3},
-	author       = {Royo, Diego and Crespo, Miguel and Garcia, Jorge},
-	year         = 2023,
-	journal      = {GitHub repository},
-	doi          = {https://doi.org/10.5281/zenodo.11032518},
-	publisher    = {GitHub},
-	howpublished = {\url{https://github.com/diegoroyo/mitsuba3-transient-nlos}}
+@misc{mitransient,
+  title        = {mitransient},
+  author       = {Royo, Diego and Crespo, Miguel and Garcia-Pueyo, Jorge},
+  year         = 2023,
+  journal      = {GitHub repository},
+  doi          = {https://doi.org/10.5281/zenodo.11032518},
+  publisher    = {GitHub},
+  howpublished = {\url{https://github.com/diegoroyo/mitransient}}
 }
 ```
 
@@ -84,24 +85,9 @@ For example, path tracing algorithms integrate over multiple paths that connect 
 
 *Note: note that the `time` values we need to compute are very small (e.g. light takes only ~3.33 * 10^-9 seconds to travel 1 meter), `time` is usually measured in optical path distance. See [Wikipedia](https://en.wikipedia.org/wiki/Optical_path_length) for more information. TL;DR `opl = distance * refractive_index`*
 
-# Roadmap
-
-**Last update: Apr. 2024*
-
-- [ ] Importance sampling of the temporal domain
-- [ ] Differentiable transient rendering
-- [ ] Fluorescence BRDF
-- [X] Non-line-of-sight support (NLOS)
-  - [X] `max_depth`
-  - [X] `filter_depth`
-  - [X] `discard_direct_paths`
-  - [ ] `auto_detect_bins`
-  - [ ] Faster implementation of exhaustive scanning
-
-
 # Installation
 
-We provide the package via PyPI. To install `mitsuba3-transient-nlos` you need to run:
+We provide the package via PyPI. To install `mitransient` you need to run:
 
 ```bash
 pip install mitransient
@@ -142,15 +128,35 @@ import mitsuba as mi
 
 > **ℹ️ Check out the `examples` folder for practical usage!** <br>
 
-As of November 2023, `mitsuba3-transient-nlos` implements the following plugins which can be used in scene XML files. To view a description of their parameters, click on the name of your desired plugin.
+You are now prepared to render your first transient scene with mitransient. Running the code below will render the famous Cornell Box scene in transient domain and show a video.
+
+```python
+import mitsuba as mi
+mi.set_variant('scalar_rgb')
+import mitransient as mitr
+
+scene = mi.load_dict(mitr.cornell_box())
+transient_integrator = scene.integrator()
+transient_integrator.prepare_transient(scene, sensor=0)
+img_steady, img_transient = transient_integrator.render(scene)
+
+mitr.utils.show_video(
+      np.moveaxis(img_transient, 0, 1),
+      axis_video=2,
+)
+```
+
+## Plugins implemented
+
+`mitransient` implements the following plugins which can be used in scene XML files. To view a description of their parameters, click on the name of your desired plugin.
 * `film`:
-  * [`transient_hdr_film`](https://github.com/diegoroyo/mitsuba3-transient-nlos/blob/main/mitransient/films/transient_hdr_film.py): Transient equivalent of Mitsuba 3's `hdrfilm` plugin.
+  * [`transient_hdr_film`](https://github.com/diegoroyo/mitransient/blob/main/mitransient/films/transient_hdr_film.py): Transient equivalent of Mitsuba 3's `hdrfilm` plugin.
 * `integrators`:
-  * [`transient_path`](https://github.com/diegoroyo/mitsuba3-transient-nlos/blob/main/mitransient/integrators/transientpath.py): Transient path tracing for line-of-sight scenes. If you want to do NLOS simulations, use `transientnlospath` instead.
-  * [`transient_nlos_path`](https://github.com/diegoroyo/mitsuba3-transient-nlos/blob/main/mitransient/integrators/transientnlospath.py): Transient path tracing with specific sampling routines for NLOS scenes (e.g. laser sampling and hidden geometry sampling of the ["Non-Line-of-Sight Transient Rendering" paper](https://diego.contact/publications/nlos-render)).
-  * [`transient_prbvolpath`](https://github.com/diegoroyo/mitsuba3-transient-nlos/blob/main/mitransient/integrators/transient_prb_volpath.py): Path Replay Backpropagation for volumetric path tracing. Implemented by Miguel Crespo, untested.
+  * [`transient_path`](https://github.com/diegoroyo/mitransient/blob/main/mitransient/integrators/transientpath.py): Transient path tracing for line-of-sight scenes. If you want to do NLOS simulations, use `transientnlospath` instead.
+  * [`transient_nlos_path`](https://github.com/diegoroyo/mitransient/blob/main/mitransient/integrators/transientnlospath.py): Transient path tracing with specific sampling routines for NLOS scenes (e.g. laser sampling and hidden geometry sampling of the ["Non-Line-of-Sight Transient Rendering" paper](https://diego.contact/publications/nlos-render)).
+  * [`transient_prbvolpath`](https://github.com/diegoroyo/mitransient/blob/main/mitransient/integrators/transient_prb_volpath.py): Path Replay Backpropagation for volumetric path tracing. Implemented by Miguel Crespo, untested.
 * `sensor`:
-  * [`nlos_capture_meter`](https://github.com/diegoroyo/mitsuba3-transient-nlos/blob/main/mitransient/sensors/nloscapturemeter.py): Can be attached to one of the scene's geometries, and measures uniformly-spaced points on such geometry (e.g. relay wall).
+  * [`nlos_capture_meter`](https://github.com/diegoroyo/mitransient/blob/main/mitransient/sensors/nloscapturemeter.py): Can be attached to one of the scene's geometries, and measures uniformly-spaced points on such geometry (e.g. relay wall).
 
 ## Testing
 
