@@ -13,16 +13,18 @@ from ..utils import indent
 
 
 class NLOSCaptureMeter(NLOSSensor):
-    """
-        `nlos_capture_meter` plugin
-        ===========================
+    r"""
+    .. _sensor-nlos_capture_meter:
 
-        Attaches to a geometry (sensor should be child of the geometry).
-        Measures uniformly-spaced points on such geometry.
-        It is recommended to use a `rectangle` shape, the UV coordinates work better.
+    NLOS Capture Meter (:monosp:`nlos_capture_meter`)
+    -------------------------------------------------
 
-        The `nlos_capture_meter` should have a `film` children, which acts as the
-        storage for the transient image. It is recommended to use `transient_hdr_film`.
+    Attaches to a geometry (sensor should be child of the geometry). It measures uniformly-spaced points on such geometry.
+    It is recommended to use a `rectangle` shape because the UV coordinates work better.
+
+    The `nlos_capture_meter` should have a `film` children, which acts as the storage for the transient image. It is recommended to use `transient_hdr_film`.
+
+    .. code-block:: python
 
         <shape type="rectangle">
             <sensor type="nlos_capture_meter">
@@ -32,25 +34,28 @@ class NLOSCaptureMeter(NLOSSensor):
             </sensor>
         </shape>
 
-        The `nlos_capture_meter` plugin accepts the following parameters:
+    .. pluginparameters::
+    
+     * - account_first_and_last_bounces
+       - |bool|
+       - if True, the first and last bounces are accounted in the computation of the optical path length of the temporal dimension. This makes sense if you think of a NLOS setup. If False, the first and last bounces are not accounted (useful!)
 
-        * `account_first_and_last_bounces` (boolean): if `True`, the first and last bounces are accounted
-            in the computations of the optical path length of the temporal dimension.
-            This makes sense if you think of a NLOS setup.
-            If `False`, the first and last bounces are not accounted (useful!)
+     * - sensor_origin
+       - |point|
+       - position of the sensor (NLOS setup) in the world coordinate system
 
-        * `sensor_origin` (point): position of the sensor (NLOS setup) in the world coordinate system
+     * - original_film_{width|height}
+       - |int|
+       - special for confocal captures, you can ignore if you use one 
+         illumination point or an exhaustive pattern. If you want to 
+         simulate a confocal NLOS setup with NxM, you should use a 1x1 
+         film instead of NxM, and point the laser to the point that you 
+         want to capture. Then you should repeat the capture NxM times. We
+         strongly recommend using TAL (see https://github.com/diegoroyo/tal), 
+         and set `scan_type: confocal` in the tal render YAML configuration 
+         file, which will handle all this automatically.
 
-        * `original_film_{width|height}` (integer): special for confocal captures, you can ignore
-            if you use one illumination point or an exhaustive pattern.
-            If you want to simulate a confocal NLOS setup with NxM, you should use a 1x1 film instead of NxM,
-            and point the laser to the point that you want to capture. Then you should repeat the capture
-            NxM times.
-            We strongly recommend using TAL (see https://github.com/diegoroyo/tal), and
-            set `scan_type: confocal` in the tal render YAML configuration file, which will
-            handle all this automatically.
-
-        See also the parameters for `transient_hdr_film`.
+    See also the parameters for `transient_hdr_film`.
     """
 
     # TODO(diego): we assume the rays start in a vacuum

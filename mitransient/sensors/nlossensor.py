@@ -3,8 +3,13 @@ import mitsuba as mi
 
 
 class NLOSSensor(mi.Sensor):
-    """
-    This sensor is just the base class for NLOS related sensors.
+    r"""
+    .. _sensor-nlossensor:
+
+    NLOS Sensor
+    -----------
+
+    Abstract base class for NLOS-related sensors in ``mitransient``.
     This allows to query only this type of sensors while using NLOS-related integrators
     """
 

@@ -6,24 +6,36 @@ from mitransient.render.transient_block import TransientBlock
 
 
 class TransientHDRFilm(mi.Film):
-    """
-    `transient_hdr_film` plugin
-    ===========================
+    r"""
+
+    .. film-transient_hdr_film:
+
+    Transient HDR Film (:monosp:`transient_hdr_film`)
+    -------------------------------------------------
 
     Mitsuba 3 Transient's equivalent to Mitsuba 3's HDRFilm
 
     Stores two image blocks simultaneously:
+
     * self.steady: Accumulates all samples (sum over all the time dimension)
     * self.transient: Accumulates samples separating them in time bins (histogram)
 
-    The `transient_hdr_film` plugin accepts the following parameters:
-    * `temporal_bins` (integer): number of bins in the time dimension (histogram representation)
-    * `bin_width_opl` (float): width of each bin in the time dimension (histogram representation)
-    * `start_opl` (float): start of the time dimension (histogram representation)
+    .. pluginparameters::
 
-    See also, from mi.Film:
-    - https://github.com/diegoroyo/mitsuba3/blob/master/src/render/film.cpp
-    - https://mitsuba.readthedocs.io/en/latest/src/generated/plugins_films.html
+     * - temporal_bins
+       - |int|
+       - number of bins in the time dimension (histogram representation)
+    
+     * - bin_width_opl
+       - |float|
+       - width of each bin in the time dimension (histogram representation)
+
+     * - start_opl
+       - |float|
+       - start of the time dimension (histogram representation)
+
+    See also, from `mi.Film <https://mitsuba.readthedocs.io/en/latest/src/generated/plugins_films.html>`_:
+    
     * `width` (integer)
     * `height` (integer)
     * `crop_width` (integer)
