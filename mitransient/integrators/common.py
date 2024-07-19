@@ -11,14 +11,13 @@ from mitsuba.ad.integrators.common import ADIntegrator  # type: ignore
 
 
 class TransientADIntegrator(ADIntegrator):
-    """
-    Abstract base class for transient integrators in Transient Mitsuba 3
+    r"""
+    .. _integrator-transientadintegrator:
 
-    The automatic differentiation (AD) part is not supported at the moment,
-    should be implemented in the render_forward and render_backward functions
-
-    For further information:
-    - https://github.com/diegoroyo/mitsuba3/blob/v3.3.0-nlos/src/python/python/ad/integrators/common.py
+    Transient AD Integrator
+    -----------------------
+    
+    Abstract base class for transient integrators in ``mitransient``.
     """
 
     def __init__(self, props=mi.Properties()):

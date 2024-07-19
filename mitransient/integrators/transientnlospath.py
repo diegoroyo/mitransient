@@ -10,84 +10,91 @@ from typing import Tuple, Optional
 
 
 class TransientNLOSPath(TransientADIntegrator):
-    """
-        `transient_nlos_path` plugin
-        ============================
+    r"""
+    .. _integrator-transient_nlos_path:
 
-        Standard path tracing algorithm which now includes the time dimension,
-        and *contains multiple sampling routines specific to
-        non-line-of-sight (NLOS) scenes*.
-        To render LOS scenes, use the `transient_path` integrator.
-        Choose one or the other depending on if you have a LOS or NLOS scene.
+    Transient NLOS Path (:monosp:`transient_nlos_path`)
+    ---------------------------------------------------
 
-        The `transient_nlos_path` plugin accepts the following parameters:
-        * `filter_bounces` (integer):
-            Only account for paths of specific number of bounces in the result.
-            A value of 1 will only render single-bounce (direct-only) illumination
-            3 will lead to three-bounce (single-corner) illumination in NLOS setups
-            And so on.
-            A value of -1 disables this feature
-            (default: -1 i.e. disabled)
-        * `discard_direct_paths` (boolean):
-            If True, paths with only 1 bounce (direct illuminations) are discarded.
-            If False, this parameter does not have any effect.
-            (default: false)
-        * `nlos_laser_sampling` (boolean):
-            If False, lights are sampled using Next-Event Estimation.
-            If True, lights are sampled using the Laser Sampling technique.
-            See [Royo2022] for more information about Laser Sampling.
-            (default: false)
-        * `nlos_hidden_geometry_sampling` (boolean):
-            If False, ray directions are sampled using material properties.
-            If True, ray directions are sampled using the Hidden Geometry Sampling technique.
-            See [Royo2022] for more information about Hidden Geometry Sampling
-            (default: false)
-        * `nlos_hidden_geometry_sampling_do_rroulette` (boolean):
-            Only relevant when `nlos_hidden_geometry_sampling` is True.
-            If False, always uses the Hidden Geometry Sampling technique
-            to sample new directions.
-            If True, uses Russian Roulette to choose between
-                50% Hidden Geometry Sampling
-                50% Material Sampling
-            See [Royo2022] for more information about Hidden Geometry Sampling
-            (default: false)
-        * `nlos_hidden_geometry_sampling_includes_relay_wall` (boolean):
-            Only relevant when `nlos_hidden_geometry_sampling` is True.
-            If False, points in the relay wall cannot be sampled using the
-            Hidden Geometry Sampling technique.
-            If True, points in the relay wall can be sampled.
-            See [Royo2022] for more information about Hidden Geometry Sampling
-            (default: false)
-        * `temporal_filter` (string): Deprecated.
-            Can be either:
-            - 'box' for a box filter (no parameters)
-            - 'gaussian' for a Gaussian filter (see gaussian_stddev below)
-            - Empty string to use the same filter in the temporal domain as
-              the rfilter used in the spatial domain.
-            IMPORTANT: RECOMMENDED TO SET TO 'box' FOR NLOS SIMULATIONS.
-            (default: empty string)
+    Standard path tracing algorithm which now includes the time dimension,
+    and *contains multiple sampling routines specific to non-line-of-sight (NLOS) 
+    scenes*. To render LOS scenes, use the `transient_path` integrator.
+    Choose one or the other depending on if you have a LOS or NLOS scene.
 
-        [Royo2022] Royo, D., García, J., Muñoz, A., & Jarabo, A. (2022).
-        Non-line-of-sight transient rendering. Computers & Graphics, 107, 84-92.
+    Based on: [Royo2022] Royo, D., García, J., Muñoz, A., & Jarabo, A. (2022).
+    Non-line-of-sight transient rendering. Computers & Graphics, 107, 84-92.
 
-        See also, from mi.ADIntegrator:
-        - https://github.com/diegoroyo/mitsuba3/blob/v3.3.0-nlos/src/python/python/ad/integrators/common.py
-        * `block_size` (integer):
-            Size of (square) image blocks to render in parallel (in scalar mode).
-            Should be a power of two.
-            (default: 0 i.e. let Mitsuba decide for you)
-        * `max_depth` (integer):
-            Specifies the longest path depth in the generated output image (where -1
-            corresponds to infinity). A value of 1 will only render directly
-            visible light sources. 2 will lead to single-bounce (direct-only)
-            illumination, and so on.
-            (default: 6)
-        * `rr_depth` (integer):
-            Specifies the path depth, at which the implementation will begin to use
-            the *russian roulette* path termination criterion. For example, if set to
-            1, then path generation many randomly cease after encountering directly
-            visible surfaces.
-            (default: 5)
+    .. pluginparameters::
+
+     * - filter_bounces
+       - |int|
+       - Only account for paths of specific number of bounces in the result.
+         A value of 1 will only render single-bounce (direct-only) illumination
+         3 will lead to three-bounce (single-corner) illumination in NLOS setups
+         And so on. A value of -1 disables this feature (default: -1 i.e. disabled)
+         
+     * - discard_direct_paths
+       - |bool|
+       - If True, paths with only 1 bounce (direct illuminations) are discarded.
+         If False, this parameter does not have any effect. (default: false)
+     
+     * - nlos_laser_sampling
+       - |bool|
+       - If False, lights are sampled using Next-Event Estimation.
+         If True, lights are sampled using the Laser Sampling technique.
+         See [Royo2022] for more information about Laser Sampling. (default: false)
+     
+     * - nlos_hidden_geometry_sampling
+       - |bool|
+       - If False, ray directions are sampled using material properties. 
+         If True, ray directions are sampled using the Hidden Geometry Sampling technique. 
+         See [Royo2022] for more information about Hidden Geometry Sampling (default: false)
+     
+     * - nlos_hidden_geometry_sampling_do_rroulette
+       - |bool|
+       - Only relevant when `nlos_hidden_geometry_sampling` is True.
+         If False, always uses the Hidden Geometry Sampling technique
+         to sample new directions.
+         If True, uses Russian Roulette to choose between 50% Hidden Geometry Sampling and 
+         50% Material Sampling.
+         See [Royo2022] for more information about Hidden Geometry Sampling (default: false)
+ 
+     * - nlos_hidden_geometry_sampling_includes_relay_wall
+       - |bool|
+       - Only relevant when `nlos_hidden_geometry_sampling` is True.
+         If False, points in the relay wall cannot be sampled using the
+         Hidden Geometry Sampling technique.
+         If True, points in the relay wall can be sampled.
+         See [Royo2022] for more information about Hidden Geometry Sampling (default: false)
+ 
+     * - temporal_filter
+       - |string|
+       - Can be either:
+         - 'box' for a box filter (no parameters)
+         - 'gaussian' for a Gaussian filter (see gaussian_stddev below)
+         - Empty string to use the same filter in the temporal domain as
+         the rfilter used in the spatial domain.
+             
+         IMPORTANT: RECOMMENDED TO SET TO 'box' FOR NLOS SIMULATIONS. (default: empty string)
+
+     * - block_size
+       - |int|
+       - Size of (square) image blocks to render in parallel (in scalar mode).
+         Should be a power of two. (default: 0 i.e. let Mitsuba decide for you)
+     
+     * - max_depth
+       - |int|
+       - Specifies the longest path depth in the generated output image (where -1
+         corresponds to infinity). A value of 1 will only render directly
+         visible light sources. 2 will lead to single-bounce (direct-only)
+         illumination, and so on. (default: 6)
+     
+     * - rr_depth
+       - |int|
+       - Specifies the path depth, at which the implementation will begin to use
+         the *russian roulette* path termination criterion. For example, if set to
+         1, then path generation many randomly cease after encountering directly
+         visible surfaces. (default: 5)
     """
 
     def __init__(self, props: mi.Properties):

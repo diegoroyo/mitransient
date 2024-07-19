@@ -12,7 +12,8 @@ import re
 INTEGRATOR_ORDERING = [
     'transientpath',
     'transient_prb_volpath',
-    'transientnlospath'
+    'transientnlospath',
+    'common'
 ]
 
 FILM_ORDERING = [
@@ -87,6 +88,7 @@ def process(f_documentation, path, ordering):
     
     for file in file_list:
         extract_python(f_documentation, file)
+        f_documentation.write("\n")
 
 
 def process_src(f_documentation, doc_src_dir, section, ordering=None):
@@ -114,7 +116,7 @@ def generate(doc_src_dir, doc_build_dir):
         Path(doc_build_dir).mkdir(parents=True, exist_ok=True)
         with open(os.path.join(doc_build_dir, f'section_{section}.rst'), 'w+', encoding='utf-8') as f:
             process_src(f, doc_src_dir, section, ordering)
-
+            f.write("\n")
     os.chdir(original_wd)
 
 

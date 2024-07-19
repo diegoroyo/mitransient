@@ -9,54 +9,59 @@ from mitransient.integrators.common import TransientADIntegrator, mis_weight
 
 
 class TransientPath(TransientADIntegrator):
-    """
-        `transient_path` plugin
-        =======================
+    r"""
+    .. _integrator-transient_path:
 
-        Standard path tracing algorithm which now includes the time dimension.
-        This can render line-of-sight (LOS) scenes.
-        The `transient_nlos_path` plugin contains different sampling routines
-        specific to NLOS setups.
-        Choose one or the other depending on if you have a LOS or NLOS scene.
+    Transient Path (:monosp:`transient_path`)
+    -----------------------------------------
 
-        The `transient_path` plugin accepts the following parameters:
-        * `camera_unwarp` (bool): Deprecated.
-            If True, does not take into account the distance from the camera origin
-            to the camera ray's first intersection point. This allows you to see
-            the transient video with the events happening in world time.
-            If False, this distance is taken into account, so you see the same thing
-            that you would see with a real-world ultra-fast camera.
-            (default: false)
-        * `temporal_filter` (string): Deprecated.
-            Can be either:
-            - 'box' for a box filter (no parameters)
-            - 'gaussian' for a Gaussian filter (see gaussian_stddev below)
-            - Empty string to use the same filter in the temporal domain as
-              the rfilter used in the spatial domain.
-            (default: empty string)
-        * `gaussian_stddev` (float): Deprecated.
-            When temporal_filter == 'gaussian', this marks the standard deviation
-            of the Gaussian filter.
-            (default: 2.0)
+    Standard path tracing algorithm which now includes the time dimension.
+    This can render line-of-sight (LOS) scenes. The `transient_nlos_path` 
+    plugin contains different sampling routines specific to NLOS setups.
+    Choose one or the other depending on if you have a LOS or NLOS scene.
 
-        See also, from mi.ADIntegrator:
-        - https://github.com/diegoroyo/mitsuba3/blob/v3.3.0-nlos/src/python/python/ad/integrators/common.py
-        * `block_size` (integer):
-            Size of (square) image blocks to render in parallel (in scalar mode).
-            Should be a power of two.
-            (default: 0 i.e. let Mitsuba decide for you)
-        * `max_depth` (integer):
-            Specifies the longest path depth in the generated output image (where -1
-            corresponds to infinity). A value of 1 will only render directly
-            visible light sources. 2 will lead to single-bounce (direct-only)
-            illumination, and so on.
-            (default: 6)
-        * `rr_depth` (integer):
-            Specifies the path depth, at which the implementation will begin to use
-            the *russian roulette* path termination criterion. For example, if set to
-            1, then path generation many randomly cease after encountering directly
-            visible surfaces.
-            (default: 5)
+    .. pluginparameters::
+    
+     * - camera_unwarp
+       - |bool|
+       - If True, does not take into account the distance from the camera origin 
+         to the camera ray's first intersection point. This allows you to see 
+         the transient video with the events happening in world time. If False, 
+         this distance is taken into account, so you see the same thing that you 
+         would see with a real-world ultra-fast camera. (default: false)
+
+     * - temporal_filter
+       - |string|
+       - Can be either:
+         - 'box' for a box filter (no parameters)
+         - 'gaussian' for a Gaussian filter (see gaussian_stddev below)
+         - Empty string to use the same filter in the temporal domain as 
+         the rfilter used in the spatial domain.
+         (default: empty string)
+     
+     * - gaussian_stddev
+       - |float|
+       - When temporal_filter == 'gaussian', this marks the standard deviation 
+         of the Gaussian filter. (default: 2.0)
+          
+     * - block_size
+       - |int|
+       - Size of (square) image blocks to render in parallel (in scalar mode).
+         Should be a power of two. (default: 0 i.e. let Mitsuba decide for you)
+     
+     * - max_depth
+       - |int|
+       - Specifies the longest path depth in the generated output image (where -1
+         corresponds to infinity). A value of 1 will only render directly
+         visible light sources. 2 will lead to single-bounce (direct-only)
+         illumination, and so on. (default: 6)
+     
+     * - rr_depth
+       - |int|
+       - Specifies the path depth, at which the implementation will begin to use
+         the *russian roulette* path termination criterion. For example, if set to
+         1, then path generation many randomly cease after encountering directly
+         visible surfaces. (default: 5)
     """
 
     def __init__(self, props: mi.Properties):
