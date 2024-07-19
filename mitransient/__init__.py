@@ -1,6 +1,4 @@
-'''
-Check that Mitsuba 3 has a defined variant before executing
-'''
+# Check that Mitsuba 3 has a defined variant before executing
 try:
     import mitsuba as mi
 
@@ -13,19 +11,16 @@ try:
 except ImportError:
     raise RuntimeError(f'This library heavily depends on Mitsuba 3. Please install it before using it.')
 
-'''
-Check that the installed Mitsuba version is compatible
-'''
+# Check that the installed Mitsuba version is compatible
 from .version import check_compatibility, __version__
 check_compatibility()
 
-'''
-Import all the subpackages of MiTransient
-'''
+# Import all the subpackages of mitransient
 from .integrators import *
 from .render import *
 from .films import *
 from .sensors import *
 
-from .utils import show_video, speed_of_light, save_frames, save_video, tonemap_transient
+from .utils import speed_of_light
 from . import nlos
+from . import visualization as vis

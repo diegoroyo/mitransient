@@ -1,20 +1,13 @@
 import drjit as dr
 import mitsuba as mi
-import numpy as np
 
-'''
-Constants
-'''
 
 speed_of_light = 299792458.0
-
-
-'''
-Define the number of threads to be used
-'''
+"""Speed of light in meters/second"""
 
 
 def set_thread_count(count):
+    """Define the number of threads to be used"""
     threads_available = mi.util.core_count()
     final_count = max(threads_available, count)
     if count > threads_available:
@@ -25,11 +18,20 @@ def set_thread_count(count):
     dr.set_thread_count(final_count - 1)
 
 
-'''
-Define multiple multidimensional arrays
-'''
+def indent(obj, amount=2):
+    """Indent output of subobjects"""
+    output = str(obj)
+    result = ""
+    lines = output.splitlines(keepends=True)
+    if len(lines) == 1:
+        result += lines[0]
+    else:
+        for line in lines:
+            result += line + ' '*amount
+    return result
 
 
+# Define multiple multidimensional arrays
 def get_class(name):
     name = name.split('.')
     value = __import__(".".join(name[:-1]))
@@ -56,94 +58,3 @@ else:
     Array2f = get_module(mi.Float).Array2f
     Array2u = get_module(mi.Float).Array2u
     Array3f = get_module(mi.Float).Array3f
-
-
-'''
-Auxiliary functions
-'''
-
-
-def tonemap_transient(transient, scaling=1.0):
-    channel_top = np.quantile(np.array(transient), 0.99)
-    return transient / channel_top * scaling
-
-
-def save_video(path, transient, axis_video, fps=24, display_video=False):
-    import cv2
-
-    def generate_index(axis_video, dims, index):
-        return tuple([np.s_[:] if dim != axis_video else np.s_[index] for dim in range(dims)])
-
-    size = (transient.shape[1], transient.shape[0])
-    out = cv2.VideoWriter(path, cv2.VideoWriter_fourcc(*'mp4v'), fps, size)
-
-    for i in range(transient.shape[axis_video]):
-        frame = transient[generate_index(axis_video, len(transient.shape), i)]
-        bitmap = mi.Bitmap(frame).convert(
-            component_format=mi.Struct.Type.UInt8, srgb_gamma=True)
-        out.write(np.array(bitmap)[:, :, ::-1])
-
-    out.release()
-
-    if display_video:
-        from IPython.display import Video, display
-        return display(Video(path, embed=True, width=size[0], height=size[1]))
-
-
-def show_video(input_sample, axis_video, uint8_srgb=True):
-    # if not in_ipython():
-    #     print("[show_video()] needs to be executed in a IPython/Jupyter environment")
-    #     return
-
-    import matplotlib.animation as animation
-    from IPython.display import HTML, display
-    from matplotlib import pyplot as plt
-    import numpy as np
-
-    def generate_index(axis_video, dims, index):
-        return tuple([np.s_[:] if dim != axis_video else np.s_[index] for dim in range(dims)])
-
-    num_frames = input_sample.shape[axis_video]
-    fig = plt.figure()
-
-    frame = input_sample[generate_index(
-        axis_video, len(input_sample.shape), 0)]
-    im = plt.imshow(mi.util.convert_to_bitmap(frame, uint8_srgb))
-    plt.axis('off')
-
-    def update(i):
-        frame = input_sample[generate_index(
-            axis_video, len(input_sample.shape), i)]
-        img = mi.util.convert_to_bitmap(frame, uint8_srgb)
-        im.set_data(img)
-        return im
-
-    ani = animation.FuncAnimation(fig, update, frames=num_frames, repeat=False)
-    display(HTML(ani.to_html5_video()))
-    plt.close()
-
-
-def save_frames(data, axis_video, folder):
-    import os
-    os.makedirs(folder, exist_ok=True)
-
-    def generate_index(axis_video, dims, index):
-        return tuple([np.s_[:] if dim != axis_video else np.s_[index] for dim in range(dims)])
-
-    num_frames = data.shape[axis_video]
-    for i in range(num_frames):
-        mi.Bitmap(data[generate_index(axis_video, len(data.shape), i)]).write(
-            f'{folder}/{i:03d}.exr')
-
-
-def indent(obj, amount=2):
-    ''' Indent output of subobjects '''
-    output = str(obj)
-    result = ""
-    lines = output.splitlines(keepends=True)
-    if len(lines) == 1:
-        result += lines[0]
-    else:
-        for line in lines:
-            result += line + ' '*amount
-    return result

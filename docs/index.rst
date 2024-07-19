@@ -124,3 +124,4 @@ Note: note that the time values we need to compute are very small (e.g. light ta
       generated/plugin_reference/section_integrators
       generated/plugin_reference/section_films
       generated/plugin_reference/section_sensors
+      src/other
