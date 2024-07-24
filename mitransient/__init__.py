@@ -21,6 +21,6 @@ from .render import *
 from .films import *
 from .sensors import *
 
-from .utils import speed_of_light
+from .utils import speed_of_light, cornell_box
 from . import nlos
 from . import visualization as vis
