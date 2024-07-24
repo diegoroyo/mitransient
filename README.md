@@ -16,6 +16,12 @@
   </p>
 </p>
 
+<div style="text-align:center">
+  <a href='https://mitransient.readthedocs.io/en/latest/?badge=latest'>
+      <img src='https://readthedocs.org/projects/mitransient/badge/?version=latest' alt='Documentation Status' />
+  </a>
+</div>
+
 <br />
 
 <div align="center">
