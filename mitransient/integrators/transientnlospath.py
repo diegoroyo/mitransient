@@ -32,24 +32,24 @@ class TransientNLOSPath(TransientADIntegrator):
          A value of 1 will only render single-bounce (direct-only) illumination
          3 will lead to three-bounce (single-corner) illumination in NLOS setups
          And so on. A value of -1 disables this feature (default: -1 i.e. disabled)
-         
+
      * - discard_direct_paths
        - |bool|
        - If True, paths with only 1 bounce (direct illuminations) are discarded.
          If False, this parameter does not have any effect. (default: false)
-     
+
      * - nlos_laser_sampling
        - |bool|
        - If False, lights are sampled using Next-Event Estimation.
          If True, lights are sampled using the Laser Sampling technique.
          See [Royo2022] for more information about Laser Sampling. (default: false)
-     
+
      * - nlos_hidden_geometry_sampling
        - |bool|
        - If False, ray directions are sampled using material properties. 
          If True, ray directions are sampled using the Hidden Geometry Sampling technique. 
          See [Royo2022] for more information about Hidden Geometry Sampling (default: false)
-     
+
      * - nlos_hidden_geometry_sampling_do_rroulette
        - |bool|
        - Only relevant when `nlos_hidden_geometry_sampling` is True.
@@ -58,7 +58,7 @@ class TransientNLOSPath(TransientADIntegrator):
          If True, uses Russian Roulette to choose between 50% Hidden Geometry Sampling and 
          50% Material Sampling.
          See [Royo2022] for more information about Hidden Geometry Sampling (default: false)
- 
+
      * - nlos_hidden_geometry_sampling_includes_relay_wall
        - |bool|
        - Only relevant when `nlos_hidden_geometry_sampling` is True.
@@ -66,7 +66,7 @@ class TransientNLOSPath(TransientADIntegrator):
          Hidden Geometry Sampling technique.
          If True, points in the relay wall can be sampled.
          See [Royo2022] for more information about Hidden Geometry Sampling (default: false)
- 
+
      * - temporal_filter
        - |string|
        - Can be either:
@@ -74,21 +74,21 @@ class TransientNLOSPath(TransientADIntegrator):
          - 'gaussian' for a Gaussian filter (see gaussian_stddev below)
          - Empty string to use the same filter in the temporal domain as
          the rfilter used in the spatial domain.
-             
+
          IMPORTANT: RECOMMENDED TO SET TO 'box' FOR NLOS SIMULATIONS. (default: empty string)
 
      * - block_size
        - |int|
        - Size of (square) image blocks to render in parallel (in scalar mode).
          Should be a power of two. (default: 0 i.e. let Mitsuba decide for you)
-     
+
      * - max_depth
        - |int|
        - Specifies the longest path depth in the generated output image (where -1
          corresponds to infinity). A value of 1 will only render directly
          visible light sources. 2 will lead to single-bounce (direct-only)
          illumination, and so on. (default: 6)
-     
+
      * - rr_depth
        - |int|
        - Specifies the path depth, at which the implementation will begin to use
@@ -183,8 +183,9 @@ class TransientNLOSPath(TransientADIntegrator):
             laser_dir: mi.Vector3f = trafo.transform_affine(
                 mi.Vector3f(0, 0, 1))
 
+            wavelengths, _ = mi.sample_rgb_spectrum(0.0)
             laser_ray = mi.Ray3f(laser_origin, laser_dir,
-                                 dr.largest(mi.Float), 0.0, [])
+                                 dr.largest(mi.Float), 0.0, wavelengths)
             si = scene.ray_intersect(laser_ray)
 
             assert dr.all(
