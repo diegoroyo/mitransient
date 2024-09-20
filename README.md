@@ -5,7 +5,9 @@
 <!-- PROJECT LOGO -->
 <p align="center">
   <h1 align="center">mitransient</h1>
-  <h3 align="center">Transient light transport in Mitsuba 3</h3>
+  <h3 align="center">Transient light transport in Mitsuba 3&nbsp;&nbsp;<a href='https://mitransient.readthedocs.io/en/latest/?badge=latest'>
+      <img src='https://readthedocs.org/projects/mitransient/badge/?version=latest' alt='Documentation Status' />
+  </a></h3>
 
   <p align="center">
     <a href="https://diego.contact"><strong>Diego Royo</strong></a>
@@ -15,12 +17,6 @@
     <a href="https://jgarciapueyo.github.io/"><strong>Jorge Garcia-Pueyo</strong></a>
   </p>
 </p>
-
-<div style="text-align:center">
-  <a href='https://mitransient.readthedocs.io/en/latest/?badge=latest'>
-      <img src='https://readthedocs.org/projects/mitransient/badge/?version=latest' alt='Documentation Status' />
-  </a>
-</div>
 
 <br />
 
@@ -46,7 +42,8 @@
 
 <br>
 
-> **ℹ️ Check out our examples about how to use our library!** <br>
+> [!TIP]
+> **Check out our <a href="https://mitransient.readthedocs.io">online documentation (mitransient.readthedocs.io)</a> and our code examples:** <br>
 > Featuring [General Usage](https://github.com/diegoroyo/mitransient/tree/main/examples), [Transient rendering](https://github.com/diegoroyo/mitransient/blob/main/examples/transient/render_cbox_diffuse.ipynb), and [Non-line-of-sight (NLOS) transient rendering](https://github.com/diegoroyo/mitransient/blob/main/examples/transient-nlos/mitsuba3-transient-nlos.ipynb)
 
 <br>
@@ -99,7 +96,8 @@ We provide the package via PyPI. To install `mitransient` you need to run:
 pip install mitransient
 ```
 
-If you have installed Mitsuba 3 via `pip` you will only have access to the `llvm_ad_rgb` and `cuda_ad_rgb` variants. If you want to use other variants (e.g. NLOS simulations can greatly benefit from the `llvm_mono` variant which only propagates one wavelength), then we recommend that you compile Mitsuba 3 yourself [following this tutorial](https://mitsuba.readthedocs.io/en/latest/src/developer_guide/compiling.html) and enable the following variants: `["scalar_mono", "llvm_mono", "llvm_ad_mono", "cuda_mono", "cuda_ad_mono", "scalar_rgb", "llvm_rgb", "llvm_ad_rgb", "cuda_rgb", "cuda_ad_rgb"]`.
+> [!IMPORTANT]
+> **In order to run `mitransient` you also need to install Mitsuba 3.** If you have installed Mitsuba 3 via `pip` (`pip install mitsuba`) you will only have access to the `llvm_ad_rgb` and `cuda_ad_rgb` variants. If you want to use other variants (e.g. NLOS simulations can greatly benefit from the `llvm_mono` variant which only propagates one wavelength), then we recommend that you compile Mitsuba 3 yourself [following this tutorial](https://mitsuba.readthedocs.io/en/latest/src/developer_guide/compiling.html) and enable the following variants: `["scalar_mono", "llvm_mono", "llvm_ad_mono", "cuda_mono", "cuda_ad_mono", "scalar_rgb", "llvm_rgb", "llvm_ad_rgb", "cuda_rgb", "cuda_ad_rgb"]`.
 
 ## Requirements
 
@@ -132,7 +130,8 @@ import mitsuba as mi
 
 # Usage
 
-> **ℹ️ Check out the `examples` folder for practical usage!** <br>
+> [!TIP]
+> **Check out the `examples` folder for practical usage!** <br>
 
 You are now prepared to render your first transient scene with mitransient. Running the code below will render the famous Cornell Box scene in transient domain and show a video.
 
