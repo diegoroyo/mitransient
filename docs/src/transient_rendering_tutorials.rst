@@ -7,6 +7,7 @@ The best way to learn how to use ``mitransient`` is these beginner-friendly tuto
       :caption: Transient rendering
       
       examples/transient/render_cbox_diffuse
+      examples/transient/rainbow_visualization
       examples/transient/render_cbox_mirror
       examples/transient/render_cbox_volumetric
 

@@ -47,7 +47,7 @@
         </transform>
         <sensor type="nlos_capture_meter">
             <sampler type="independent">
-                <integer name="sample_count" value="5000"/>
+                <integer name="sample_count" value="25000"/>
                 <integer name="seed" value="0"/>
             </sampler>
 

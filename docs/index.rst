@@ -32,7 +32,7 @@ Installation
 
 We provide the package via PyPI. To install ``mitransient`` you need to run:
 
-.. code-block:: bash
+.. code-block:: python
 
       pip install mitransient
 
@@ -100,6 +100,10 @@ Conventional rendering is referred to as steady state, where the light propagati
 For example, path tracing algorithms integrate over multiple paths that connect a light source with the camera. For a known path, transient path tracing uses the very complex formula of time = distance / speed (see [Two New Sciences by Galileo]) to compute the time when each photon arrives at the camera from the path's distance and light's speed. This adds a new time dimension to the captured images (i.e. it's a video now). The simulations now take new parameters as input: when to start recording the video, how long is each time step (framerate), and how many frames to record.
 
 Note: note that the time values we need to compute are very small (e.g. light takes only ~3.33 * 10^-9 seconds to travel 1 meter), time is usually measured in optical path distance. See Wikipedia for more information. TL;DR opl = distance * refractive_index
+
+
+.. image:: ../.images/iccp-mitransient-poster-compressed.jpg
+      :width: 100%
 
 .. .....................................................
 .. toctree::

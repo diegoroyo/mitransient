@@ -3,7 +3,7 @@ Installation
 
 We provide the package via PyPI. To install ``mitransient`` you need to run:
 
-.. code-block:: bash
+.. code-block:: python
 
       pip install mitransient
 
