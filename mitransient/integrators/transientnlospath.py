@@ -1,12 +1,11 @@
 from __future__ import annotations  # Delayed parsing of type annotations
+from typing import Tuple, Optional
 
 import drjit as dr
 import mitsuba as mi
-from mitransient.integrators.common import TransientADIntegrator, mis_weight
-
 from mitsuba import Log, LogLevel
-from mitsuba.math import ShadowEpsilon  # type: ignore
-from typing import Tuple, Optional
+
+from mitransient.integrators.common import TransientADIntegrator
 
 
 class TransientNLOSPath(TransientADIntegrator):
