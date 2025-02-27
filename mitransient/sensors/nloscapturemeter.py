@@ -35,7 +35,7 @@ class NLOSCaptureMeter(NLOSSensor):
         </shape>
 
     .. pluginparameters::
-    
+
      * - account_first_and_last_bounces
        - |bool|
        - if True, the first and last bounces are accounted in the computation of the optical path length of the temporal dimension. This makes sense if you think of a NLOS setup. If False, the first and last bounces are not accounted (useful!)

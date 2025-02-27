@@ -5,8 +5,9 @@ import mitsuba as mi
 
 from ..utils import indent
 
+
 class TransientImageBlockTwo(mi.Object):
-    
+
     def __init__(
         self,
         size_with_time_dimension: mi.ScalarVector3u,
@@ -35,16 +36,17 @@ class TransientImageBlockTwo(mi.Object):
             self.rfilter = None
 
         self.border_size = self.rfilter.border_size() if (self.rfilter and border) else 0
-        
+
         self.set_size(size_with_time_dimension)
         self.clear()
 
         # TODO(JORGE): add checks for normalize, coalesce and compensate?
-    
+
     def clear(self):
-        border_size_ScalarPoint3 = mi.ScalarVector3u(self.border_size, self.border_size, 0)
+        border_size_ScalarPoint3 = mi.ScalarVector3u(
+            self.border_size, self.border_size, 0)
         size_ext = self.size_with_time_dimension + 2 * border_size_ScalarPoint3
-        
+
         size_flat = self.channel_count * dr.prod(size_ext)
         shape = (size_ext.y, size_ext.x, size_ext.z, self.channel_count)
 
@@ -54,12 +56,13 @@ class TransientImageBlockTwo(mi.Object):
     def set_size(self, size_with_time_dimension: mi.ScalarVector3u):
         if dr.all(size_with_time_dimension == self.size_with_time_dimension):
             return
-        
+
         self.size_with_time_dimension = size_with_time_dimension
 
     def accum(self, value: mi.Float, index: mi.UInt32, active: mi.Bool):
-        dr.scatter_reduce(dr.ReduceOp.Add, self.tensor.array, value, index, active)
-    
+        dr.scatter_reduce(dr.ReduceOp.Add, self.tensor.array,
+                          value, index, active)
+
     def put(self, pos: mi.Point3f, wavelengths: mi.UnpolarizedSpectrum, value: mi.Spectrum, alpha: mi.Float, weight: mi.Float, active: bool = True):
         spec_u = mi.unpolarized_spectrum(value)
 
@@ -78,10 +81,11 @@ class TransientImageBlockTwo(mi.Object):
             values[3] = alpha
             values[4] = weight
         else:
-            mi.Log(mi.LogLevel.Error, "TransientImageBlock::put(): non-standard image block configuration! (AOVs?)")
+            mi.Log(mi.LogLevel.Error,
+                   "TransientImageBlock::put(): non-standard image block configuration! (AOVs?)")
 
         self.put_(pos, values, active)
-        
+
     def put_(self, pos: mi.Point3f, values: Sequence[mi.Float], active: bool = True):
 
         # Check if all sample values are valid
@@ -91,11 +95,11 @@ class TransientImageBlockTwo(mi.Object):
             if self.warn_negative:
                 for k in range(self.channel_count):
                     is_valid &= values[k] >= -1e-5
-            
+
             if self.warn_invalid:
                 for k in range(self.channel_count):
                     is_valid &= dr.isfinite(values[k])
-            
+
             if dr.any(active and not is_valid):
                 log_str = "Invalid sample value: ["
                 for k in range(self.channel_count):
@@ -112,10 +116,11 @@ class TransientImageBlockTwo(mi.Object):
             p = mi.Point3u(dr.floor(pos) - self.offset)
 
             index = dr.fma(p.y, self.size_with_time_dimension.x, p.x)
-            index = dr.fma(index, self.size_with_time_dimension.z, p.z) * self.channel_count
+            index = dr.fma(index, self.size_with_time_dimension.z,
+                           p.z) * self.channel_count
 
             active &= dr.all((0 < p) & (p < self.size_with_time_dimension))
-            
+
             for k in range(self.channel_count):
                 self.accum(values[k], index + k, active)
         else:
@@ -138,7 +143,7 @@ class TransientImageBlockTwo(mi.Object):
             string += f"  rfilter = BoxFilter[] \n"
         string += "]"
         return string
-    
+
     def __str__(self):
         return self.to_string()
 

@@ -1,4 +1,5 @@
-from __future__ import annotations as __annotations__  # Delayed parsing of type annotations
+# Delayed parsing of type annotations
+from __future__ import annotations as __annotations__
 
 import mitsuba as mi
 import drjit as dr
@@ -8,6 +9,7 @@ from typing import Union, Any, Tuple
 
 from mitsuba.ad.integrators.common import ADIntegrator  # type: ignore
 from ..films.transient_hdr_film import TransientHDRFilm
+
 
 class TransientADIntegrator(ADIntegrator):
 
@@ -26,11 +28,11 @@ class TransientADIntegrator(ADIntegrator):
                spp: int = 0,
                develop: bool = True,
                evaluate: bool = True) -> Tuple[mi.TensorXf, mi.TensorXf]:
-        
+
         if not develop:
             raise Exception("develop=True must be specified when "
                             "invoking AD integrators")
-        
+
         self.check_transient_(scene, sensor)
 
         if isinstance(sensor, int):
@@ -105,17 +107,17 @@ class TransientADIntegrator(ADIntegrator):
         )
 
     def render_backward(self: mi.SamplingIntegrator,
-                    scene: mi.Scene,
-                    params: Any,
-                    grad_in: mi.TensorXf,
-                    sensor: Union[int, mi.Sensor] = 0,
-                    seed: mi.UInt32 = 0,
-                    spp: int = 0) -> None:
+                        scene: mi.Scene,
+                        params: Any,
+                        grad_in: mi.TensorXf,
+                        sensor: Union[int, mi.Sensor] = 0,
+                        seed: mi.UInt32 = 0,
+                        spp: int = 0) -> None:
         # TODO implement render_backward (either here or move this function to RBIntegrator)
         raise NotImplementedError(
             "Check https://github.com/mitsuba-renderer/mitsuba3/blob/1e513ef94db0534f54a884f2aeab7204f6f1e3ed/src/python/python/ad/integrators/common.py"
         )
-    
+
     def add_transient_f(self, film: TransientHDRFilm, pos: mi.Vector2f, ray_weight: mi.Float, sample_scale: mi.Float):
         """
         Return a lambda function for saving transient samples.
@@ -126,7 +128,7 @@ class TransientADIntegrator(ADIntegrator):
                 pos, distance, wavelengths, spec * sample_scale, ray_weight, active
             )
         )
-    
+
     def check_transient_(self, scene: mi.Scene, sensor: mi.Sensor):
         if isinstance(sensor, int):
             sensor = scene.sensors()[sensor]
@@ -139,7 +141,7 @@ class TransientADIntegrator(ADIntegrator):
                     "camera_unwarp is not supported for NLOSCaptureMeter. "
                     "Use account_first_and_last_bounces in the NLOSCaptureMeter plugin instead."
                 )
-            
+
         del NLOSCaptureMeter
 
         from mitransient.films.transient_hdr_film import TransientHDRFilm

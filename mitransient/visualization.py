@@ -108,21 +108,22 @@ def rainbow_visualization(steady_state, data_transient, modulo, min_modulo, max_
             # Sparse fusion
             if mode == "sparse_fusion":
                 if min_modulo <= idx % modulo <= max_modulo:
-                    visualization[i,j,idx,:] = data_transient[i,j,idx,:]**scale_full_fusion
+                    visualization[i, j, idx, :] = data_transient[i,
+                                                                 j, idx, :]**scale_full_fusion
                 else:
-                    visualization[i,j,idx,:] = 0
+                    visualization[i, j, idx, :] = 0
             elif mode == "rainbow_fusion":
                 if min_modulo <= idx % modulo <= max_modulo:
-                    visualization[i,j,idx,:] = cm.jet(idx/time_bins)[:3]
+                    visualization[i, j, idx, :] = cm.jet(idx/time_bins)[:3]
                 else:
-                    visualization[i,j,idx,:] = 0
+                    visualization[i, j, idx, :] = 0
             elif mode == "peak_time_fusion":
                 if min_modulo <= idx % modulo <= max_modulo:
-                    visualization[i,j,idx,:] = cm.jet(idx/time_bins)[:3]
+                    visualization[i, j, idx, :] = cm.jet(idx/time_bins)[:3]
                 else:
-                    visualization[i,j,idx,:] = steady_state[i,j,:]
+                    visualization[i, j, idx, :] = steady_state[i, j, :]
             else:
                 raise NotImplementedError("Not implemented")
-    
+
     visualization = np.sum(visualization, axis=2)
     return visualization

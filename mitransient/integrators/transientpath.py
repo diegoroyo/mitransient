@@ -1,9 +1,9 @@
-from __future__ import annotations # Delayed parsing of type annotations
+from __future__ import annotations  # Delayed parsing of type annotations
 from typing import Optional, Tuple, List, Callable, Any
 
 import drjit as dr
 import mitsuba as mi
-from mitsuba.ad.integrators.common import mis_weight  #type: ignore
+from mitsuba.ad.integrators.common import mis_weight  # type: ignore
 
 from .common import TransientADIntegrator
 
@@ -25,9 +25,10 @@ class TransientPath(TransientADIntegrator):
                δL: Optional[mi.Spectrum],
                state_in: Optional[mi.Spectrum],
                active: mi.Bool,
-               add_transient: Callable[[Any, Any, Any, Any], None],  # TODO (JORGE): revise
-               **kwargs # Absorbs unused arguments
-    ) -> Tuple[mi.Spectrum, mi.Bool, List[mi.Float], mi.Spectrum]:
+               # TODO (JORGE): revise
+               add_transient: Callable[[Any, Any, Any, Any], None],
+               **kwargs  # Absorbs unused arguments
+               ) -> Tuple[mi.Spectrum, mi.Bool, List[mi.Float], mi.Spectrum]:
         """
         See ``TransientADIntegrator.sample()`` for a description of this interface and
         the role of the various parameters and return values.
@@ -45,15 +46,16 @@ class TransientPath(TransientADIntegrator):
         ray = mi.Ray3f(dr.detach(ray))
         depth = mi.UInt32(0)                          # Depth of current vertex
         L = mi.Spectrum(0 if primal else state_in)    # Radiance accumulator
-        δL = mi.Spectrum(δL if δL is not None else 0) # Differential/adjoint radiance
+        # Differential/adjoint radiance
+        δL = mi.Spectrum(δL if δL is not None else 0)
         β = mi.Spectrum(1)                            # Path throughput weight
         η = mi.Float(1)                               # Index of refraction
         active = mi.Bool(active)                      # Active SIMD lanes
         distance = mi.Float(0.0)                      # Distance of the path
 
         # Variables caching information from the previous bounce
-        prev_si         = dr.zeros(mi.SurfaceInteraction3f)
-        prev_bsdf_pdf   = mi.Float(1.0)
+        prev_si = dr.zeros(mi.SurfaceInteraction3f)
+        prev_bsdf_pdf = mi.Float(1.0)
         prev_bsdf_delta = mi.Bool(True)
 
         if self.camera_unwarp:
@@ -75,7 +77,7 @@ class TransientPath(TransientADIntegrator):
                 si = scene.ray_intersect(ray,
                                          ray_flags=mi.RayFlags.All,
                                          coherent=(depth == 0))
-            
+
             # Update distance
             distance += dr.select(active, si.t, 0.0) * η
 
@@ -108,7 +110,8 @@ class TransientPath(TransientADIntegrator):
             active_next &= (depth + 1 < self.max_depth) & si.is_valid()
 
             # Is emitter sampling even possible on the current vertex?
-            active_em = active_next & mi.has_flag(bsdf.flags(), mi.BSDFFlags.Smooth)
+            active_em = active_next & mi.has_flag(
+                bsdf.flags(), mi.BSDFFlags.Smooth)
 
             # If so, randomly sample an emitter without derivative tracking.
             ds, em_weight = scene.sample_emitter_direction(
@@ -121,17 +124,21 @@ class TransientPath(TransientADIntegrator):
                     # contribution with AD to enable light source optimization
                     ds.d = dr.replace_grad(ds.d, dr.normalize(ds.p - si.p))
                     em_val = scene.eval_emitter_direction(si, ds, active_em)
-                    em_weight = dr.replace_grad(em_weight, dr.select((ds.pdf != 0), em_val / ds.pdf, 0))
+                    em_weight = dr.replace_grad(em_weight, dr.select(
+                        (ds.pdf != 0), em_val / ds.pdf, 0))
                     dr.disable_grad(ds.d)
 
                 # Evaluate BSDF * cos(theta) differentiably
                 wo = si.to_local(ds.d)
-                bsdf_value_em, bsdf_pdf_em = bsdf.eval_pdf(bsdf_ctx, si, wo, active_em)
-                mis_em = dr.select(ds.delta, 1, mis_weight(ds.pdf, bsdf_pdf_em))
+                bsdf_value_em, bsdf_pdf_em = bsdf.eval_pdf(
+                    bsdf_ctx, si, wo, active_em)
+                mis_em = dr.select(
+                    ds.delta, 1, mis_weight(ds.pdf, bsdf_pdf_em))
                 Lr_dir = β * mis_em * bsdf_value_em * em_weight
-            
+
             # Add contribution direct emitter sampling
-            add_transient(Lr_dir, distance + ds.dist * η, ray.wavelengths, active)
+            add_transient(Lr_dir, distance + ds.dist *
+                          η, ray.wavelengths, active)
 
             # ------------------ Detached BSDF sampling -------------------
 
@@ -151,7 +158,8 @@ class TransientPath(TransientADIntegrator):
 
             prev_si = dr.detach(si, True)
             prev_bsdf_pdf = bsdf_sample.pdf
-            prev_bsdf_delta = mi.has_flag(bsdf_sample.sampled_type, mi.BSDFFlags.Delta)
+            prev_bsdf_delta = mi.has_flag(
+                bsdf_sample.sampled_type, mi.BSDFFlags.Delta)
 
             # -------------------- Stopping criterion ---------------------
 
@@ -197,13 +205,15 @@ class TransientPath(TransientADIntegrator):
                     # radiance. Minor optional tweak: indicate that the primal
                     # value of the second term is always 1.
                     tmp = inv_bsdf_val_det * bsdf_val
-                    tmp_replaced = dr.replace_grad(dr.ones(mi.Float, dr.width(tmp)), tmp) #FIXME
+                    tmp_replaced = dr.replace_grad(
+                        dr.ones(mi.Float, dr.width(tmp)), tmp)  # FIXME
                     Lr_ind = L * tmp_replaced
 
                     # Differentiable Monte Carlo estimate of all contributions
                     Lo = Le + Lr_dir + Lr_ind
 
-                    attached_contrib = dr.flag(dr.JitFlag.VCallRecord) and not dr.grad_enabled(Lo)
+                    attached_contrib = dr.flag(
+                        dr.JitFlag.VCallRecord) and not dr.grad_enabled(Lo)
                     if dr.hint(attached_contrib, mode='scalar'):
                         raise Exception(
                             "The contribution computed by the differential "
@@ -225,11 +235,12 @@ class TransientPath(TransientADIntegrator):
             active = active_next
 
         return (
-            L if primal else δL, # Radiance/differential radiance
+            L if primal else δL,  # Radiance/differential radiance
             (depth != 0),        # Ray validity flag for alpha blending
             [],                  # Empty typle of AOVs
             L                    # State for the differential phase
         )
+
 
 mi.register_integrator("transient_path", lambda props: TransientPath(props))
 

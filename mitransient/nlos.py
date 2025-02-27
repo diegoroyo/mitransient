@@ -6,7 +6,7 @@ def focus_emitter_at_relay_wall_3dpoint(target, relay_wall, emitter):
     """
     Focuses the laser emitter in NLOS scenes towards target point in space.
     It requires to use the sensor ``nlos_capture_meter``.
-    
+
     :param target: 3d point in space at which laser will focus
     :param relay_wall: reference to relay_wall object in the scene
     :param emitter: reference to emitter object in the scene

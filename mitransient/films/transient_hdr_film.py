@@ -50,26 +50,29 @@ class TransientHDRFilm(mi.Film):
         channels = []
         for i in range(base_channels):
             channels.append(base_channel_names[i])
-        
+
         for i in range(len(aovs)):
             channels.append(aovs[i])
 
-        crop_offset_with_time_dimension = mi.ScalarPoint3i(self.crop_offset().x, self.crop_offset().y, 0)
-        crop_size_with_time_dimension = mi.ScalarVector3u(self.size().x, self.size().y, self.temporal_bins)
+        crop_offset_with_time_dimension = mi.ScalarPoint3i(
+            self.crop_offset().x, self.crop_offset().y, 0)
+        crop_size_with_time_dimension = mi.ScalarVector3u(
+            self.size().x, self.size().y, self.temporal_bins)
 
         self.transient_storage = TransientImageBlockTwo(
             size_with_time_dimension=crop_size_with_time_dimension,
             offset=crop_offset_with_time_dimension,
-            channel_count=len(channels), 
+            channel_count=len(channels),
             rfilter=self.rfilter()
         )
         self.channels = channels
 
         if len(set(channels)) != len(channels):
-            mi.Log(mi.LogLevel.Error, "Film::prepare_transient_(): duplicate channel name.")
+            mi.Log(mi.LogLevel.Error,
+                   "Film::prepare_transient_(): duplicate channel name.")
 
         return len(self.channels)
-    
+
     def clear(self):
         self.steady.clear()
 
@@ -78,19 +81,21 @@ class TransientHDRFilm(mi.Film):
 
     def develop(self, raw: bool = False):
         steady_image = self.steady.develop(raw)
-        transient_image = self.develop_transient_(raw = True)
+        transient_image = self.develop_transient_(raw=True)
 
         return steady_image, transient_image
-    
+
     def develop_transient_(self, raw: bool = False):
         if not self.transient_storage:
-            mi.Log(mi.LogLevel.Error, "No transient storage allocated, was prepare_transient_() called first?")
+            mi.Log(mi.LogLevel.Error,
+                   "No transient storage allocated, was prepare_transient_() called first?")
 
         if raw:
             return self.transient_storage.tensor
         else:
             # TODO(JORGE): implement develop for transient image
-            mi.Log(mi.LogLevel.Error, "TransientHDRFilm only allows to develop image buffer in raw format.")
+            mi.Log(mi.LogLevel.Error,
+                   "TransientHDRFilm only allows to develop image buffer in raw format.")
 
     def add_transient_data(self, pos: mi.Vector2f, distance: mi.Float, wavelengths: mi.UnpolarizedSpectrum, spec: mi.Spectrum, ray_weight: mi.Float, active: mi.Bool):
         """
@@ -110,7 +115,8 @@ class TransientHDRFilm(mi.Film):
             wavelengths=wavelengths,
             value=spec * ray_weight,
             alpha=mi.Float(0.0),
-            weight=mi.Float(0.0), # value should have the sample scale already multiplied
+            # value should have the sample scale already multiplied
+            weight=mi.Float(0.0),
             active=active & mask,
         )
 
@@ -129,11 +135,15 @@ class TransientHDRFilm(mi.Film):
 
     def traverse(self, callback):
         super().traverse(callback)
-        callback.put_parameter("temporal_bins", self.temporal_bins, mi.ParamFlags.NonDifferentiable)
-        callback.put_parameter("bin_width_opl", self.bin_width_opl, mi.ParamFlags.NonDifferentiable)
-        callback.put_parameter("start_opl", self.start_opl, mi.ParamFlags.NonDifferentiable)
+        callback.put_parameter(
+            "temporal_bins", self.temporal_bins, mi.ParamFlags.NonDifferentiable)
+        callback.put_parameter(
+            "bin_width_opl", self.bin_width_opl, mi.ParamFlags.NonDifferentiable)
+        callback.put_parameter("start_opl", self.start_opl,
+                               mi.ParamFlags.NonDifferentiable)
 
     def parameters_changed(self, keys):
         super().parameters_changed(keys)
+
 
 mi.register_film("transient_hdr_film", lambda props: TransientHDRFilm(props))

@@ -1,11 +1,12 @@
-from __future__ import annotations # Delayed parsing of type annotations
+from __future__ import annotations  # Delayed parsing of type annotations
 from typing import Optional, Tuple, List, Callable, Any
 
 import drjit as dr
 import mitsuba as mi
-from mitsuba.ad.integrators.common import mis_weight  #type: ignore
+from mitsuba.ad.integrators.common import mis_weight  # type: ignore
 
 from .common import TransientADIntegrator
+
 
 def index_spectrum(spec, idx):
     m = spec[0]
@@ -13,6 +14,7 @@ def index_spectrum(spec, idx):
         m[idx == 1] = spec[1]
         m[idx == 2] = spec[2]
     return m
+
 
 class TransientPRBVolpathIntegrator(TransientADIntegrator):
     r"""
@@ -72,6 +74,7 @@ class TransientPRBVolpathIntegrator(TransientADIntegrator):
             'type': 'prbvolpath',
             'max_depth': 8
     """
+
     def __init__(self, props: mi.Properties):
         super().__init__(props)
         self.use_nee = False
@@ -89,7 +92,8 @@ class TransientPRBVolpathIntegrator(TransientADIntegrator):
                     # Enable NEE if a medium specifically asks for it
                     self.use_nee = self.use_nee or medium.use_emitter_sampling()
                     self.nee_handle_homogeneous = self.nee_handle_homogeneous or medium.is_homogeneous()
-                    self.handle_null_scattering = self.handle_null_scattering or (not medium.is_homogeneous())
+                    self.handle_null_scattering = self.handle_null_scattering or (
+                        not medium.is_homogeneous())
         self.is_prepared = True
         # By default enable always NEE in case there are surfaces
         self.use_nee = True
@@ -103,9 +107,10 @@ class TransientPRBVolpathIntegrator(TransientADIntegrator):
                δL: Optional[mi.Spectrum],
                state_in: Optional[mi.Spectrum],
                active: mi.Bool,
-               add_transient: Callable[[Any, Any, Any, Any], None],  # TODO (JORGE): revise
-               **kwargs # Absorbs unused arguments
-    ) -> Tuple[mi.Spectrum, mi.Bool, List[mi.Float], mi.Spectrum]:
+               # TODO (JORGE): revise
+               add_transient: Callable[[Any, Any, Any, Any], None],
+               **kwargs  # Absorbs unused arguments
+               ) -> Tuple[mi.Spectrum, mi.Bool, List[mi.Float], mi.Spectrum]:
         self.prepare_scene(scene)
 
         if mode == dr.ADMode.Forward:
@@ -116,8 +121,9 @@ class TransientPRBVolpathIntegrator(TransientADIntegrator):
 
         ray = mi.Ray3f(ray)
         depth = mi.UInt32(0)                          # Depth of current vertex
-        L = mi.Spectrum(0 if is_primal else state_in) # Radiance accumulator
-        δL = mi.Spectrum(δL if δL is not None else 0) # Differential/adjoint radiance
+        L = mi.Spectrum(0 if is_primal else state_in)  # Radiance accumulator
+        # Differential/adjoint radiance
+        δL = mi.Spectrum(δL if δL is not None else 0)
         throughput = mi.Spectrum(1)                   # Path throughput weight
         η = mi.Float(1)                               # Index of refraction
         active = mi.Bool(active)
@@ -144,13 +150,14 @@ class TransientPRBVolpathIntegrator(TransientADIntegrator):
         if mi.is_rgb:
             # Sample a color channel to sample free-flight distances
             n_channels = dr.size_v(mi.Spectrum)
-            channel = mi.UInt32(dr.minimum(n_channels * sampler.next_1d(active), n_channels - 1))
+            channel = mi.UInt32(dr.minimum(
+                n_channels * sampler.next_1d(active), n_channels - 1))
 
         while dr.hint(active,
                       label=f"Path Replay Backpropagation ({mode.name})"):
             active &= dr.any(throughput != 0.0)
 
-            #--------------------- Perform russian roulette --------------------
+            # --------------------- Perform russian roulette --------------------
 
             q = dr.minimum(dr.max(throughput) * dr.square(η), 0.99)
             perform_rr = (depth > self.rr_depth)
@@ -161,14 +168,15 @@ class TransientPRBVolpathIntegrator(TransientADIntegrator):
             active_surface = active & ~active_medium
 
             with dr.resume_grad(when=not is_primal):
-                #--------------------- Sample medium interaction -------------------
+                # --------------------- Sample medium interaction -------------------
 
                 # Handle medium sampling and potential medium escape
                 u = sampler.next_1d(active_medium)
                 mei = medium.sample_interaction(ray, u, channel, active_medium)
                 mei.t = dr.detach(mei.t)
 
-                ray.maxt[active_medium & medium.is_homogeneous() & mei.is_valid()] = mei.t
+                ray.maxt[active_medium & medium.is_homogeneous() &
+                         mei.is_valid()] = mei.t
                 intersect = needs_intersection & active_medium
                 si[intersect] = scene.ray_intersect(ray, intersect)
 
@@ -176,20 +184,25 @@ class TransientPRBVolpathIntegrator(TransientADIntegrator):
                 mei.t[active_medium & (si.t < mei.t)] = dr.inf
 
                 # Evaluate ratio of transmittance and free-flight PDF
-                tr, free_flight_pdf = medium.transmittance_eval_pdf(mei, si, active_medium)
+                tr, free_flight_pdf = medium.transmittance_eval_pdf(
+                    mei, si, active_medium)
                 tr_pdf = index_spectrum(free_flight_pdf, channel)
                 weight = mi.Spectrum(1.0)
-                weight[active_medium] *= dr.select(tr_pdf > 0.0, tr / dr.detach(tr_pdf), 0.0)
+                weight[active_medium] *= dr.select(tr_pdf >
+                                                   0.0, tr / dr.detach(tr_pdf), 0.0)
 
                 escaped_medium = active_medium & ~mei.is_valid()
                 active_medium &= mei.is_valid()
 
                 # Handle null and real scatter events
                 if dr.hint(self.handle_null_scattering, mode='scalar'):
-                    scatter_prob = index_spectrum(mei.sigma_t, channel) / index_spectrum(mei.combined_extinction, channel)
-                    act_null_scatter = (sampler.next_1d(active_medium) >= scatter_prob) & active_medium
+                    scatter_prob = index_spectrum(
+                        mei.sigma_t, channel) / index_spectrum(mei.combined_extinction, channel)
+                    act_null_scatter = (sampler.next_1d(
+                        active_medium) >= scatter_prob) & active_medium
                     act_medium_scatter = ~act_null_scatter & active_medium
-                    weight[act_null_scatter] *= mei.sigma_n / dr.detach(1 - scatter_prob)
+                    weight[act_null_scatter] *= mei.sigma_n / \
+                        dr.detach(1 - scatter_prob)
                 else:
                     scatter_prob = mi.Float(1.0)
                     act_medium_scatter = active_medium
@@ -206,19 +219,21 @@ class TransientPRBVolpathIntegrator(TransientADIntegrator):
                     ray.o[act_null_scatter] = dr.detach(mei.p)
                     si.t[act_null_scatter] = si.t - dr.detach(mei.t)
 
-                weight[act_medium_scatter] *= mei.sigma_s / dr.detach(scatter_prob)
+                weight[act_medium_scatter] *= mei.sigma_s / \
+                    dr.detach(scatter_prob)
                 throughput *= dr.detach(weight)
 
                 mei = dr.detach(mei)
                 if dr.hint(not is_primal and dr.grad_enabled(weight), mode='scalar'):
-                    Lo = dr.detach(dr.select(active_medium | escaped_medium, L / dr.maximum(1e-8, weight), 0.0))
+                    Lo = dr.detach(
+                        dr.select(active_medium | escaped_medium, L / dr.maximum(1e-8, weight), 0.0))
                     dr.backward(δL * weight * Lo)
 
                 phase_ctx = mi.PhaseFunctionContext(sampler)
                 phase = mei.medium.phase_function()
                 phase[~act_medium_scatter] = dr.zeros(mi.PhaseFunctionPtr)
 
-                #--------------------- Surface Interactions --------------------
+                # --------------------- Surface Interactions --------------------
 
                 active_surface |= escaped_medium
                 intersect = active_surface & needs_intersection
@@ -231,12 +246,14 @@ class TransientPRBVolpathIntegrator(TransientADIntegrator):
                 ray_from_camera = active_surface & (depth == 0)
                 count_direct = ray_from_camera | specular_chain
                 emitter = si.emitter(scene)
-                active_e = active_surface & (emitter != None) & ~((depth == 0) & self.hide_emitters)
+                active_e = active_surface & (emitter != None) & ~(
+                    (depth == 0) & self.hide_emitters)
 
                 # Get the PDF of sampling this emitter using next event estimation
                 ds = mi.DirectionSample3f(scene, si, last_scatter_event)
                 if dr.hint(self.use_nee, mode='scalar'):
-                    emitter_pdf = scene.pdf_emitter_direction(last_scatter_event, ds, active_e)
+                    emitter_pdf = scene.pdf_emitter_direction(
+                        last_scatter_event, ds, active_e)
                 else:
                     emitter_pdf = 0.0
                 emitted = emitter.eval(si, active_e)
@@ -245,7 +262,7 @@ class TransientPRBVolpathIntegrator(TransientADIntegrator):
                 L[active_e] += dr.detach(contrib if is_primal else -contrib)
                 if dr.hint(not is_primal and dr.grad_enabled(contrib), mode='scalar'):
                     dr.backward(δL * contrib)
-                
+
                 add_transient(contrib, distance, ray.wavelengths, active_e)
 
                 active_surface &= si.is_valid()
@@ -255,7 +272,8 @@ class TransientPRBVolpathIntegrator(TransientADIntegrator):
                 # ---------------------- Emitter sampling ----------------------
 
                 if dr.hint(self.use_nee, mode='scalar'):
-                    active_e_surface = active_surface & mi.has_flag(bsdf.flags(), mi.BSDFFlags.Smooth) & (depth + 1 < self.max_depth)
+                    active_e_surface = active_surface & mi.has_flag(
+                        bsdf.flags(), mi.BSDFFlags.Smooth) & (depth + 1 < self.max_depth)
                     sample_emitters = mei.medium.use_emitter_sampling()
                     specular_chain &= ~act_medium_scatter
                     specular_chain |= act_medium_scatter & ~sample_emitters
@@ -265,42 +283,52 @@ class TransientPRBVolpathIntegrator(TransientADIntegrator):
 
                     nee_sampler = sampler if is_primal else sampler.clone()
                     emitted, ds = self.sample_emitter(mei, si, active_e_medium, active_e_surface,
-                        scene, sampler, medium, channel, active_e, mode=dr.ADMode.Primal)
+                                                      scene, sampler, medium, channel, active_e, mode=dr.ADMode.Primal)
 
                     # Query the BSDF for that emitter-sampled direction
-                    bsdf_val, bsdf_pdf = bsdf.eval_pdf(ctx, si, si.to_local(ds.d), active_e_surface)
-                    phase_val, phase_pdf = phase.eval_pdf(phase_ctx, mei, ds.d, active_e_medium)
-                    nee_weight = dr.select(active_e_surface, bsdf_val, phase_val)
-                    nee_directional_pdf = dr.select(ds.delta, 0.0, dr.select(active_e_surface, bsdf_pdf, phase_pdf))
+                    bsdf_val, bsdf_pdf = bsdf.eval_pdf(
+                        ctx, si, si.to_local(ds.d), active_e_surface)
+                    phase_val, phase_pdf = phase.eval_pdf(
+                        phase_ctx, mei, ds.d, active_e_medium)
+                    nee_weight = dr.select(
+                        active_e_surface, bsdf_val, phase_val)
+                    nee_directional_pdf = dr.select(ds.delta, 0.0, dr.select(
+                        active_e_surface, bsdf_pdf, phase_pdf))
 
-                    contrib = throughput * nee_weight * mis_weight(ds.pdf, nee_directional_pdf) * emitted
+                    contrib = throughput * nee_weight * \
+                        mis_weight(ds.pdf, nee_directional_pdf) * emitted
                     L[active_e] += dr.detach(contrib if is_primal else -contrib)
 
                     if dr.hint(not is_primal, mode='scalar'):
                         self.sample_emitter(mei, si, active_e_medium, active_e_surface,
-                            scene, nee_sampler, medium, channel, active_e, adj_emitted=contrib,
-                            δL=δL, mode=mode)
+                                            scene, nee_sampler, medium, channel, active_e, adj_emitted=contrib,
+                                            δL=δL, mode=mode)
 
                         if dr.hint(dr.grad_enabled(nee_weight) or dr.grad_enabled(emitted), mode='scalar'):
                             dr.backward(δL * contrib)
-                    
+
                     add_transient(contrib, distance + ds.dist *
                                   η, ray.wavelengths, active_e)
 
-                #-------------------- Phase function sampling ------------------
+                # -------------------- Phase function sampling ------------------
 
                 valid_ray |= act_medium_scatter
                 with dr.suspend_grad():
                     wo, phase_weight, phase_pdf = phase.sample(phase_ctx, mei,
-                                                               sampler.next_1d(act_medium_scatter),
-                                                               sampler.next_2d(act_medium_scatter),
+                                                               sampler.next_1d(
+                                                                   act_medium_scatter),
+                                                               sampler.next_2d(
+                                                                   act_medium_scatter),
                                                                act_medium_scatter)
                 act_medium_scatter &= phase_pdf > 0.0
 
                 # Re evaluate the phase function value in an attached manner
-                phase_eval, _ = phase.eval_pdf(phase_ctx, mei, wo, act_medium_scatter)
+                phase_eval, _ = phase.eval_pdf(
+                    phase_ctx, mei, wo, act_medium_scatter)
                 if dr.hint(not is_primal and dr.grad_enabled(phase_eval), mode='scalar'):
-                    Lo = phase_eval * dr.detach(dr.select(act_medium_scatter, L / dr.maximum(1e-8, phase_eval), 0.0))
+                    Lo = phase_eval * \
+                        dr.detach(dr.select(act_medium_scatter, L /
+                                  dr.maximum(1e-8, phase_eval), 0.0))
                     if mode == dr.ADMode.Backward:
                         dr.backward_from(δL * Lo)
                     else:
@@ -315,15 +343,19 @@ class TransientPRBVolpathIntegrator(TransientADIntegrator):
 
                 with dr.suspend_grad():
                     bs, bsdf_weight = bsdf.sample(ctx, si,
-                                                  sampler.next_1d(active_surface),
-                                                  sampler.next_2d(active_surface),
+                                                  sampler.next_1d(
+                                                      active_surface),
+                                                  sampler.next_2d(
+                                                      active_surface),
                                                   active_surface)
                     active_surface &= bs.pdf > 0
 
                 bsdf_eval = bsdf.eval(ctx, si, bs.wo, active_surface)
 
                 if dr.hint(not is_primal and dr.grad_enabled(bsdf_eval), mode='scalar'):
-                    Lo = bsdf_eval * dr.detach(dr.select(active_surface, L / dr.maximum(1e-8, bsdf_eval), 0.0))
+                    Lo = bsdf_eval * \
+                        dr.detach(dr.select(active_surface, L /
+                                  dr.maximum(1e-8, bsdf_eval), 0.0))
                     if dr.hint(mode == dr.ADMode.Backward, mode='scalar'):
                         dr.backward_from(δL * Lo)
                     else:
@@ -335,7 +367,8 @@ class TransientPRBVolpathIntegrator(TransientADIntegrator):
                 ray[active_surface] = bsdf_ray
 
                 needs_intersection |= active_surface
-                non_null_bsdf = active_surface & ~mi.has_flag(bs.sampled_type, mi.BSDFFlags.Null)
+                non_null_bsdf = active_surface & ~mi.has_flag(
+                    bs.sampled_type, mi.BSDFFlags.Null)
                 depth[non_null_bsdf] += 1
 
                 # update the last scatter PDF event if we encountered a non-null scatter event
@@ -343,8 +376,10 @@ class TransientPRBVolpathIntegrator(TransientADIntegrator):
                 last_scatter_direction_pdf[non_null_bsdf] = bs.pdf
 
                 valid_ray |= non_null_bsdf
-                specular_chain |= non_null_bsdf & mi.has_flag(bs.sampled_type, mi.BSDFFlags.Delta)
-                specular_chain &= ~(active_surface & mi.has_flag(bs.sampled_type, mi.BSDFFlags.Smooth))
+                specular_chain |= non_null_bsdf & mi.has_flag(
+                    bs.sampled_type, mi.BSDFFlags.Delta)
+                specular_chain &= ~(active_surface & mi.has_flag(
+                    bs.sampled_type, mi.BSDFFlags.Smooth))
                 has_medium_trans = active_surface & si.is_medium_transition()
                 medium[has_medium_trans] = si.target_medium(ray.d)
                 active &= (active_surface | active_medium)
@@ -363,7 +398,8 @@ class TransientPRBVolpathIntegrator(TransientADIntegrator):
         ref_interaction[active_surface] = si
 
         ds, emitter_val = scene.sample_emitter_direction(ref_interaction,
-                                                         sampler.next_2d(active),
+                                                         sampler.next_2d(
+                                                             active),
                                                          False, active)
         ds = dr.detach(ds)
         invalid = (ds.pdf == 0.0)
@@ -371,7 +407,8 @@ class TransientPRBVolpathIntegrator(TransientADIntegrator):
         active &= ~invalid
 
         medium = dr.select(active, medium, dr.zeros(mi.MediumPtr))
-        medium[(active_surface & si.is_medium_transition())] = si.target_medium(ds.d)
+        medium[(active_surface & si.is_medium_transition())
+               ] = si.target_medium(ds.d)
 
         ray = ref_interaction.spawn_ray_to(ds.p)
         max_dist = mi.Float(ray.maxt)
@@ -387,14 +424,16 @@ class TransientPRBVolpathIntegrator(TransientADIntegrator):
 
             # This ray will not intersect if it reached the end of the segment
             needs_intersection &= active
-            si[needs_intersection] = scene.ray_intersect(ray, needs_intersection)
+            si[needs_intersection] = scene.ray_intersect(
+                ray, needs_intersection)
             needs_intersection &= False
 
             active_medium = active & (medium != None)
             active_surface = active & ~active_medium
 
             # Handle medium interactions / transmittance
-            mei = medium.sample_interaction(ray, sampler.next_1d(active_medium), channel, active_medium)
+            mei = medium.sample_interaction(ray, sampler.next_1d(
+                active_medium), channel, active_medium)
             mei.t[active_medium & (si.t < mei.t)] = dr.inf
             mei.t = dr.detach(mei.t)
 
@@ -404,7 +443,8 @@ class TransientPRBVolpathIntegrator(TransientADIntegrator):
             if dr.hint(self.nee_handle_homogeneous, mode='scalar'):
                 active_homogeneous = active_medium & medium.is_homogeneous()
                 mei.t[active_homogeneous] = dr.minimum(remaining_dist, si.t)
-                tr_multiplier[active_homogeneous] = medium.transmittance_eval_pdf(mei, si, active_homogeneous)[0]
+                tr_multiplier[active_homogeneous] = medium.transmittance_eval_pdf(
+                    mei, si, active_homogeneous)[0]
                 mei.t[active_homogeneous] = dr.inf
 
             escaped_medium = active_medium & ~mei.is_valid()
@@ -413,8 +453,8 @@ class TransientPRBVolpathIntegrator(TransientADIntegrator):
             active_medium &= mei.is_valid()
             ray.o[active_medium] = dr.detach(mei.p)
             si.t[active_medium] = dr.detach(si.t - mei.t)
-            tr_multiplier[active_medium] *= mei.sigma_n / mei.combined_extinction
-
+            tr_multiplier[active_medium] *= mei.sigma_n / \
+                mei.combined_extinction
 
             # Handle interactions with surfaces
             active_surface |= escaped_medium
@@ -424,8 +464,10 @@ class TransientPRBVolpathIntegrator(TransientADIntegrator):
             tr_multiplier[active_surface] *= bsdf_val
 
             if dr.hint(not is_primal and dr.grad_enabled(tr_multiplier), mode='scalar'):
-                active_adj = (active_surface | active_medium) & (tr_multiplier > 0.0)
-                dr.backward(tr_multiplier * dr.detach(dr.select(active_adj, δL * adj_emitted / tr_multiplier, 0.0)))
+                active_adj = (active_surface | active_medium) & (
+                    tr_multiplier > 0.0)
+                dr.backward(tr_multiplier * dr.detach(dr.select(active_adj,
+                            δL * adj_emitted / tr_multiplier, 0.0)))
 
             transmittance *= dr.detach(tr_multiplier)
 
@@ -435,7 +477,8 @@ class TransientPRBVolpathIntegrator(TransientADIntegrator):
             needs_intersection |= active_surface
 
             # Continue tracing through scene if non-zero weights exist
-            active &= (active_medium | active_surface) & dr.any(transmittance != 0.0)
+            active &= (active_medium | active_surface) & dr.any(
+                transmittance != 0.0)
             total_dist[active] += dr.select(active_medium, mei.t, si.t)
 
             # If a medium transition is taking place: Update the medium pointer
@@ -443,7 +486,7 @@ class TransientPRBVolpathIntegrator(TransientADIntegrator):
             medium[has_medium_trans] = si.target_medium(ray.d)
 
         return emitter_val * dr.detach(transmittance), ds
-    
+
     @dr.syntax
     def first_surface(self, scene, ray_, active_):
         ray = mi.Ray3f(ray_)
@@ -463,6 +506,8 @@ class TransientPRBVolpathIntegrator(TransientADIntegrator):
     def to_string(self):
         return f'PRBVolpathIntegrator[max_depth = {self.max_depth}]'
 
-mi.register_integrator("transient_prbvolpath", lambda props: TransientPRBVolpathIntegrator(props))
+
+mi.register_integrator("transient_prbvolpath",
+                       lambda props: TransientPRBVolpathIntegrator(props))
 
 del TransientADIntegrator
