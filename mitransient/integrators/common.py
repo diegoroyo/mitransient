@@ -29,10 +29,60 @@ class TransientADIntegrator(ADIntegrator):
         _ = props.get("gaussian_stddev", 0.5)
         _ = props.get("temporal_filter", "")
 
-    # NOTE(diego): We need to pass the scene to transientnlospath's prepare method.
-    # This ensures compatibility with other integrators.
     def prepare(self, scene, sensor, seed, spp, aovs):
-        return super().prepare(sensor, seed, spp, aovs)
+        film = sensor.film()
+        original_sampler = sensor.sampler()
+        sampler = original_sampler.clone()
+
+        if spp != 0:
+            sampler.set_sample_count(spp)
+
+        spp = sampler.sample_count()
+        sampler.set_samples_per_wavefront(spp)
+
+        film_size = film.crop_size()
+
+        if film.sample_border():
+            film_size += 2 * film.rfilter().border_size()
+
+        wavefront_size = dr.prod(film_size) * spp
+        film.prepare(aovs)
+
+        if wavefront_size <= 2**32:
+            sampler.seed(seed, wavefront_size)
+            # Intentionally pass it on a list to mantain compatibility
+            return [sampler, spp]
+
+        # It is not possible to render more than 2^32 samples
+        # in a single pass (32-bit integer)
+        # We reduce it even further, to 2^26, to make the progress
+        # bar update more frequently at the cost of more overhead
+        # to create the kernels/etc (measured ~5% overhead)
+        spp_per_pass = int((2**26 - 1) / dr.prod(film_size))
+        if spp_per_pass == 0:
+            raise Exception("Your film is too big. Please make it smaller.")
+
+        # Split into max-size jobs (maybe add reminder at the end)
+        needs_remainder = spp % spp_per_pass != 0
+        num_passes = spp // spp_per_pass + 1 * needs_remainder
+
+        sampler.set_sample_count(num_passes)
+        sampler.set_samples_per_wavefront(num_passes)
+        sampler.seed(seed, num_passes)
+        seeds = mi.UInt32(sampler.next_1d() * 2**32)
+
+        def sampler_per_pass(i):
+            if needs_remainder and i == num_passes - 1:
+                spp_per_pass_i = spp % spp_per_pass
+            else:
+                spp_per_pass_i = spp_per_pass
+            sampler_clone = sensor.sampler().clone()
+            sampler_clone.set_sample_count(spp_per_pass_i)
+            sampler_clone.set_samples_per_wavefront(spp_per_pass_i)
+            sampler_clone.seed(seeds[i], dr.prod(film_size) * spp_per_pass_i)
+            return sampler_clone, spp_per_pass_i
+
+        return [sampler_per_pass(i) for i in range(num_passes)]
 
     def render(self: mi.SamplingIntegrator,
                scene: mi.Scene,
@@ -40,72 +90,82 @@ class TransientADIntegrator(ADIntegrator):
                seed: mi.UInt32 = 0,
                spp: int = 0,
                develop: bool = True,
-               evaluate: bool = True) -> Tuple[mi.TensorXf, mi.TensorXf]:
+               evaluate: bool = True,
+               progress_callback: function = None) -> Tuple[mi.TensorXf, mi.TensorXf]:
         if not develop:
             raise Exception("develop=True must be specified when "
                             "invoking AD integrators")
 
-        self.check_transient_(scene, sensor)
-
         if isinstance(sensor, int):
             sensor = scene.sensors()[sensor]
-
         film = sensor.film()
+
+        self.check_transient_(scene, sensor)
 
         # Disable derivatives in all of the following
         with dr.suspend_grad():
             # Prepare the film and sample generator for rendering
-            sampler, spp = self.prepare(
+            samplers_spps = self.prepare(
                 scene=scene,
                 sensor=sensor,
                 seed=seed,
                 spp=spp,
                 aovs=self.aov_names()
             )
-            # TODO(JORGE): add extension to allow for bigger spp
 
-            # Generate a set of rays starting at the sensor
-            ray, weight, pos = self.sample_rays(scene, sensor, sampler)
+            # need to re-add in case the spp parameter was set to 0
+            # (spp was set through the xml file)
+            total_spp = 0
+            for _, spp_i in samplers_spps:
+                total_spp += spp_i
 
-            # Launch the Monte Carlo sampling process in primal mode
-            L, valid, aovs, _ = self.sample(
-                mode=dr.ADMode.Primal,
-                scene=scene,
-                sampler=sampler,
-                ray=ray,
-                depth=mi.UInt32(0),
-                δL=None,
-                δaovs=None,
-                state_in=None,
-                active=mi.Bool(True),
-                add_transient=self.add_transient_f(
-                    film=film, pos=pos, ray_weight=weight, sample_scale=1.0 / spp
+            for i, (sampler_i, spp_i) in enumerate(samplers_spps):
+                # Generate a set of rays starting at the sensor
+                ray, weight, pos = self.sample_rays(scene, sensor, sampler_i)
+
+                # Launch the Monte Carlo sampling process in primal mode
+                L, valid, aovs, _ = self.sample(
+                    mode=dr.ADMode.Primal,
+                    scene=scene,
+                    sampler=sampler_i,
+                    ray=ray,
+                    depth=mi.UInt32(0),
+                    δL=None,
+                    δaovs=None,
+                    state_in=None,
+                    active=mi.Bool(True),
+                    add_transient=self.add_transient_f(
+                        film=film, pos=pos, ray_weight=weight, sample_scale=1.0 / total_spp
+                    )
                 )
-            )
 
-            # Prepare an ImageBlock as specified by the film
-            block = film.steady.create_block()
+                # Prepare an ImageBlock as specified by the film
+                block = film.steady.create_block()
 
-            # Only use the coalescing feature when rendering enough samples
-            block.set_coalesce(block.coalesce() and spp >= 4)
+                # Only use the coalescing feature when rendering enough samples
+                block.set_coalesce(block.coalesce() and spp_i >= 4)
 
-            # Accumulate into the image block
-            ADIntegrator._splat_to_block(
-                block, film, pos,
-                value=L * weight,
-                weight=1.0,
-                alpha=dr.select(valid, mi.Float(1), mi.Float(0)),
-                aovs=aovs,
-                wavelengths=ray.wavelengths
-            )
+                # Accumulate into the image block
+                ADIntegrator._splat_to_block(
+                    block, film, pos,
+                    value=L * weight,
+                    weight=1.0,
+                    alpha=dr.select(valid, mi.Float(1), mi.Float(0)),
+                    aovs=aovs,
+                    wavelengths=ray.wavelengths
+                )
 
-            # Explicitly delete any remaining unused variables
-            del sampler, ray, weight, pos, L, valid
+                # Explicitly delete any remaining unused variables
+                del sampler_i, ray, weight, pos, L, valid
 
-            # Perform the weight division and return an image tensor
-            film.steady.put_block(block)
+                # Perform the weight division and return an image tensor
+                film.steady.put_block(block)
+
+                # Report progress
+                if progress_callback:
+                    progress_callback((i + 1) / len(samplers_spps))
+
             steady_image, transient_image = film.develop()
-
             return steady_image, transient_image
 
     def render_forward(self: mi.SamplingIntegrator,
