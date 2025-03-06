@@ -3,7 +3,7 @@ from __future__ import annotations  # Delayed parsing of type annotations
 import drjit as dr
 import mitsuba as mi
 
-from mitsuba import Log, LogLevel, is_spectral, Transform4f, ScalarVector2u, ScalarVector2f
+from mitsuba import Log, LogLevel, is_spectral, Transform4f, ScalarVector2f
 from drjit.scalar import Array3f as ScalarArray3f  # type: ignore
 
 from typing import Tuple
@@ -72,7 +72,7 @@ class NLOSCaptureMeter(NLOSSensor):
             props.get('account_first_and_last_bounces', True)
 
         self.world_transform: Transform4f = \
-            Transform4f.translate(
+            Transform4f().translate(
                 props.get('sensor_origin', ScalarArray3f(0)))
 
         # Distance between the laser origin and the focusing point
@@ -119,7 +119,7 @@ class NLOSCaptureMeter(NLOSSensor):
             # "pixels"
             grid_sample = self._pixel_to_sample(
                 dr.floor(sample * self.film_size) + 0.5)
-            target = self.shape().sample_position(
+            target = self.get_shape().sample_position(
                 time, grid_sample, active
             ).p  # sampled position of PositionSample3f
 
@@ -172,8 +172,9 @@ class NLOSCaptureMeter(NLOSSensor):
         super().traverse(callback)
         callback.put_parameter(
             "needs_sample_3", self.needs_sample_3, mi.ParamFlags.NonDifferentiable)
-        callback.put_parameter("account_first_and_last_bounces",
-                               self.account_first_and_last_bounces, mi.ParamFlags.NonDifferentiable)
+        callback.put_parameter(
+            "account_first_and_last_bounces",
+            self.account_first_and_last_bounces, mi.ParamFlags.NonDifferentiable)
         callback.put_parameter(
             "is_confocal", self.is_confocal, mi.ParamFlags.NonDifferentiable)
         callback.put_parameter(

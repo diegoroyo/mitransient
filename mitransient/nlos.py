@@ -16,7 +16,7 @@ def focus_emitter_at_relay_wall_3dpoint(target, relay_wall, emitter):
     # Update emitter to_world transform to focus on that point
     emitter_origin = emitter.world_transform().translation()
     emitter_params = mi.traverse(emitter)
-    emitter_params['to_world'] = mi.Transform4f.look_at(
+    emitter_params['to_world'] = mi.Transform4f().look_at(
         origin=emitter_origin,
         target=target,
         up=mi.Vector3f(0, 1, 0)

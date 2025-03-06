@@ -1,12 +1,59 @@
 from typing import Sequence
 
 import mitsuba as mi
+from mitsuba import (
+    Float,
+    Int32,
+    ScalarInt32,
+    TensorXf,
+)
 import drjit as dr
 
-from mitransient.render.transient_image_block import TransientImageBlockTwo
+from mitransient.render.transient_image_block import TransientImageBlock
 
 
 class TransientHDRFilm(mi.Film):
+    r"""
+
+    .. film-transient_hdr_film:
+
+    Transient HDR Film (:monosp:`transient_hdr_film`)
+    -------------------------------------------------
+
+    mitransient's equivalent to Mitsuba 3's HDRFilm
+
+    Stores two image blocks simultaneously:
+
+    * Steady block: Accumulates all samples (sum over all the time dimension)
+    * Transient block: Accumulates samples separating them in time bins (histogram)
+
+    The results can be retrieved using the ``develop(raw=True)`` method, which returns a (steady, transient) tuple.
+
+    .. pluginparameters::
+
+     * - temporal_bins
+       - |int|
+       - number of bins in the time dimension (histogram representation)
+
+     * - bin_width_opl
+       - |float|
+       - width of each bin in the time dimension (histogram representation)
+
+     * - start_opl
+       - |float|
+       - start of the time dimension (histogram representation)
+
+    See also, from `mi.Film <https://mitsuba.readthedocs.io/en/latest/src/generated/plugins_films.html>`_:
+
+    * `width` (integer)
+    * `height` (integer)
+    * `crop_width` (integer)
+    * `crop_height` (integer)
+    * `crop_offset_x` (integer)
+    * `crop_offset_y` (integer)
+    * `sample_border` (bool)
+    * `rfilter` (rfilter)
+    """
 
     def __init__(self, props: mi.Properties):
         super().__init__(props)
@@ -43,25 +90,28 @@ class TransientHDRFilm(mi.Film):
 
     def prepare_transient_(self, aovs: Sequence[str]):
         alpha = mi.has_flag(self.flags(), mi.FilmFlags.Alpha)
-        base_channels = 5 if alpha else 4
 
-        base_channel_names = "RGBAW" if alpha else "RGBW"
+        if mi.is_monochromatic:
+            base_channels = "LAW" if alpha else "LW"
+        else:
+            # RGB
+            base_channels = "RGBAW" if alpha else "RGBW"
 
         channels = []
-        for i in range(base_channels):
-            channels.append(base_channel_names[i])
+        for i in range(len(base_channels)):
+            channels.append(base_channels[i])
 
         for i in range(len(aovs)):
             channels.append(aovs[i])
 
-        crop_offset_with_time_dimension = mi.ScalarPoint3i(
+        crop_offset_xyt = mi.ScalarPoint3i(
             self.crop_offset().x, self.crop_offset().y, 0)
-        crop_size_with_time_dimension = mi.ScalarVector3u(
+        crop_size_xyt = mi.ScalarVector3u(
             self.size().x, self.size().y, self.temporal_bins)
 
-        self.transient_storage = TransientImageBlockTwo(
-            size_with_time_dimension=crop_size_with_time_dimension,
-            offset=crop_offset_with_time_dimension,
+        self.transient_storage = TransientImageBlock(
+            size_xyt=crop_size_xyt,
+            offset_xyt=crop_offset_xyt,
             channel_count=len(channels),
             rfilter=self.rfilter()
         )
@@ -80,8 +130,8 @@ class TransientHDRFilm(mi.Film):
             self.transient_storage.clear()
 
     def develop(self, raw: bool = False):
-        steady_image = self.steady.develop(raw)
-        transient_image = self.develop_transient_(raw=True)
+        steady_image = self.steady.develop(raw=raw)
+        transient_image = self.develop_transient_(raw=raw)
 
         return steady_image, transient_image
 
@@ -92,12 +142,32 @@ class TransientHDRFilm(mi.Film):
 
         if raw:
             return self.transient_storage.tensor
-        else:
-            # TODO(JORGE): implement develop for transient image
-            mi.Log(mi.LogLevel.Error,
-                   "TransientHDRFilm only allows to develop image buffer in raw format.")
 
-    def add_transient_data(self, pos: mi.Vector2f, distance: mi.Float, wavelengths: mi.UnpolarizedSpectrum, spec: mi.Spectrum, ray_weight: mi.Float, active: mi.Bool):
+        data = self.transient_storage.tensor
+
+        pixel_count = dr.prod(data.shape[0:-1])
+        source_ch = data.shape[-1]
+        # Remove alpha and weight channels
+        alpha = mi.has_flag(self.flags(), mi.FilmFlags.Alpha)
+        target_ch = source_ch - (ScalarInt32(2) if alpha else ScalarInt32(1))
+
+        idx = dr.arange(Int32, pixel_count * target_ch)
+        pixel_idx = idx // target_ch
+        channel_idx = dr.fma(pixel_idx, -target_ch, idx)
+
+        values_idx = dr.fma(pixel_idx, source_ch, channel_idx)
+        weight_idx = dr.fma(pixel_idx, source_ch, source_ch - 1)
+
+        weight = dr.gather(Float, data.array, weight_idx)
+        values_ = dr.gather(Float, data.array, values_idx)
+
+        values = values_ / dr.select((weight == 0.0), 1.0, weight)
+
+        return TensorXf(values, tuple(list(data.shape[0:-1]) + [target_ch]))
+
+    def add_transient_data(self, pos: mi.Vector2f, distance: mi.Float,
+                           wavelengths: mi.UnpolarizedSpectrum, spec: mi.Spectrum,
+                           ray_weight: mi.Float, active: mi.Bool):
         """
         Add a path's contribution to the film:
         * pos: pixel position
@@ -139,8 +209,8 @@ class TransientHDRFilm(mi.Film):
             "temporal_bins", self.temporal_bins, mi.ParamFlags.NonDifferentiable)
         callback.put_parameter(
             "bin_width_opl", self.bin_width_opl, mi.ParamFlags.NonDifferentiable)
-        callback.put_parameter("start_opl", self.start_opl,
-                               mi.ParamFlags.NonDifferentiable)
+        callback.put_parameter(
+            "start_opl", self.start_opl, mi.ParamFlags.NonDifferentiable)
 
     def parameters_changed(self, keys):
         super().parameters_changed(keys)

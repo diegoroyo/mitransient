@@ -1,9 +1,10 @@
 from __future__ import annotations  # Delayed parsing of type annotations
-from typing import Tuple, Optional
+from typing import Optional, Tuple, List, Callable
 
 import drjit as dr
 import mitsuba as mi
 from mitsuba import Log, LogLevel
+from mitsuba.ad.integrators.common import mis_weight  # type: ignore
 
 from mitransient.integrators.common import TransientADIntegrator
 
@@ -16,7 +17,7 @@ class TransientNLOSPath(TransientADIntegrator):
     ---------------------------------------------------
 
     Standard path tracing algorithm which now includes the time dimension,
-    and *contains multiple sampling routines specific to non-line-of-sight (NLOS) 
+    and *contains multiple sampling routines specific to non-line-of-sight (NLOS)
     scenes*. To render LOS scenes, use the `transient_path` integrator.
     Choose one or the other depending on if you have a LOS or NLOS scene.
 
@@ -45,8 +46,8 @@ class TransientNLOSPath(TransientADIntegrator):
 
      * - nlos_hidden_geometry_sampling
        - |bool|
-       - If False, ray directions are sampled using material properties. 
-         If True, ray directions are sampled using the Hidden Geometry Sampling technique. 
+       - If False, ray directions are sampled using material properties.
+         If True, ray directions are sampled using the Hidden Geometry Sampling technique.
          See [Royo2022] for more information about Hidden Geometry Sampling (default: false)
 
      * - nlos_hidden_geometry_sampling_do_rroulette
@@ -54,7 +55,7 @@ class TransientNLOSPath(TransientADIntegrator):
        - Only relevant when `nlos_hidden_geometry_sampling` is True.
          If False, always uses the Hidden Geometry Sampling technique
          to sample new directions.
-         If True, uses Russian Roulette to choose between 50% Hidden Geometry Sampling and 
+         If True, uses Russian Roulette to choose between 50% Hidden Geometry Sampling and
          50% Material Sampling.
          See [Royo2022] for more information about Hidden Geometry Sampling (default: false)
 
@@ -129,11 +130,8 @@ class TransientNLOSPath(TransientADIntegrator):
             self.hg_sampling
         )
 
-    def prepare_transient(self, scene: mi.Scene, sensor: mi.Sensor):
-        super().prepare_transient(scene, sensor)
-
+    def prepare(self, scene: mi.Scene, sensor: mi.Sensor, seed: mi.UInt32, spp: int, aovs: List):
         # prepare laser sampling
-
         if isinstance(sensor, int):
             sensor = scene.sensors()[sensor]
 
@@ -146,7 +144,7 @@ class TransientNLOSPath(TransientADIntegrator):
             # NOTE (Miguel) : Improved hidden geometry sampling via vectorization.
             # There is a bug that does not allow this currently. Uncomment it after nanobind upgrade
             # ------------------------------------------------------------------------------------
-            # valid_object = dr.neq(scene.shapes_dr(), mi.ShapePtr(sensor.shape())) | self.hg_sampling_includes_relay_wall
+            # valid_object = (scene.shapes_dr() != mi.ShapePtr(sensor.get_shape())) | self.hg_sampling_includes_relay_wall
 
             # # surface_areas = scene.shapes_dr().surface_area()
             # surface_areas = scene.shapes_dr().surface_area()
@@ -160,8 +158,8 @@ class TransientNLOSPath(TransientADIntegrator):
             surface_areas = []
             for shape in scene.shapes():
                 surface_areas.append(
-                    0.0 if (shape == sensor.shape(
-                    ) and not self.hg_sampling_includes_relay_wall) else shape.surface_area()[0]
+                    0.0 if (shape == sensor.get_shape()
+                            and not self.hg_sampling_includes_relay_wall) else shape.surface_area()[0]
                 )
 
             if len(surface_areas) == 0:
@@ -178,22 +176,23 @@ class TransientNLOSPath(TransientADIntegrator):
         if self.laser_sampling:
             # This integrator expects only one emitter per scene
             trafo: mi.Transform4f = scene.emitters()[0].world_transform()
-            laser_origin: mi.Point3f = trafo.translation()
+            laser_origin: mi.Point3f = mi.Point3f(trafo.translation())
             laser_dir: mi.Vector3f = trafo.transform_affine(
                 mi.Vector3f(0, 0, 1))
 
-            wavelengths, _ = mi.sample_rgb_spectrum(0.0)
-            laser_ray = mi.Ray3f(laser_origin, laser_dir,
-                                 dr.largest(mi.Float), 0.0, wavelengths)
+            laser_ray = mi.Ray3f(laser_origin, laser_dir)
             si = scene.ray_intersect(laser_ray)
 
-            assert dr.all(
-                si.is_valid()), 'The emitter is not pointing at the scene!'
+            assert dr.all(si.is_valid()), \
+                'The emitter is not pointing at the scene!'
             self.nlos_laser_target: mi.Point3f = si.p
 
+        return super().prepare(scene, sensor, seed, spp, aovs)
+
+    @dr.syntax
     def _sample_hidden_geometry_position(
             self, ref: mi.Interaction3f, scene: mi.Scene,
-            sample2: mi.Point2f, active: mi.Mask) -> mi.PositionSample3f:
+            sample2: mi.Point2f, active: mi.Bool) -> mi.PositionSample3f:
         """
         For non-line of sight scenes, sample a point in the hidden
         geometry's surface area. The "hidden geometry" is defined
@@ -216,6 +215,8 @@ class TransientNLOSPath(TransientADIntegrator):
         Position sampling record
         """
 
+        # NOTE(diego): Doing returns inside if's is not supported
+        #              if not in scalar mode
         # if len(self.hidden_geometries) == 0:
         #     return dr.zeros(mi.PositionSample3f)
 
@@ -239,20 +240,20 @@ class TransientNLOSPath(TransientADIntegrator):
             self, mode: dr.ADMode, scene: mi.Scene, sampler: mi.Sampler,
             si: mi.SurfaceInteraction3f, bsdf: mi.BSDF, bsdf_ctx: mi.BSDFContext,
             β: mi.Spectrum, distance: mi.Float, η: mi.Float, depth: mi.UInt,
-            active_e: mi.Mask, add_transient) -> mi.Spectrum:
-        ds, emitter_spec = scene.sample_emitter_direction(
+            active_e: mi.Bool, add_transient) -> mi.Spectrum:
+        ds, em_weight = scene.sample_emitter_direction(
             ref=si, sample=sampler.next_2d(active_e), test_visibility=True, active=active_e)
-        active_e &= dr.neq(ds.pdf, 0.0)
+        active_e &= (ds.pdf != 0.0)
 
         primal = mode == dr.ADMode.Primal
         with dr.resume_grad(when=not primal):
-            if not primal:
+            if dr.hint(not primal, mode='scalar'):
                 # Given the detached emitter sample, *recompute* its
                 # contribution with AD to enable light source optimization
-                ds.d = dr.normalize(ds.p - si.p)
-                emitter_val = scene.eval_emitter_direction(si, ds, active_e)
-                emitter_spec = dr.select(
-                    dr.neq(ds.pdf, 0), emitter_val / ds.pdf, 0)
+                ds.d = dr.replace_grad(ds.d, dr.normalize(ds.p - si.p))
+                em_val = scene.eval_emitter_direction(si, ds, active_e)
+                em_weight = dr.replace_grad(em_weight, dr.select(
+                    (ds.pdf != 0), em_val / ds.pdf, 0))
                 dr.disable_grad(ds.d)
 
             # Query the BSDF for that emitter-sampled direction
@@ -262,13 +263,13 @@ class TransientNLOSPath(TransientADIntegrator):
 
             Lr_dir = mi.Spectrum(0)
             if self.filter_depth != -1:
-                active_e &= dr.eq(depth, self.filter_depth)
+                active_e &= (depth == self.filter_depth)
             if self.discard_direct_paths:
                 active_e &= depth > 2
-            Lr_dir[active_e] = β * bsdf_spec * emitter_spec
+            Lr_dir[active_e] = β * bsdf_spec * em_weight
 
-            add_transient(Lr_dir, distance + ds.dist * η,
-                          si.wavelengths, active_e)
+        add_transient(Lr_dir, distance + ds.dist * η,
+                      si.wavelengths, active_e)
 
         return Lr_dir
 
@@ -276,7 +277,7 @@ class TransientNLOSPath(TransientADIntegrator):
             self, mode: dr.ADMode, scene: mi.Scene, sampler: mi.Sampler,
             si: mi.SurfaceInteraction3f, bsdf: mi.BSDF, bsdf_ctx: mi.BSDFContext,
             β: mi.Spectrum, distance: mi.Float, η: mi.Float, depth: mi.UInt,
-            active_e: mi.Mask, add_transient) -> mi.Spectrum:
+            active_e: mi.Bool, add_transient) -> mi.Spectrum:
         """
         NLOS scenes only have one laser emitter - standard
         emitter sampling techniques do not apply as most
@@ -288,7 +289,7 @@ class TransientNLOSPath(TransientADIntegrator):
         sampling the laser we sample(1) the point that the laser
         is illuminating and then(2) the laser
         """
-        # TODO probably needs some "with dr.resume_grad(when=not primal):"
+        # TODO(diego): AD probably needs some "with dr.resume_grad(when=not primal):"
         primal = mode == dr.ADMode.Primal
 
         # 1. Obtain direction to NLOS illuminated point
@@ -329,50 +330,19 @@ class TransientNLOSPath(TransientADIntegrator):
 
     def hidden_geometry_sample(
             self, scene: mi.Scene, sampler: mi.Sampler, bsdf: mi.BSDF, bsdf_ctx: mi.BSDFContext, si: mi.SurfaceInteraction3f,
-            _: mi.Float, sample2: mi.Point2f, active: mi.Mask) -> Tuple[mi.BSDFSample3f, mi.Spectrum]:
+            _: mi.Float, sample2: mi.Point2f, active: mi.Bool) -> Tuple[mi.BSDFSample3f, mi.Spectrum]:
 
-        if not self.hg_sampling:
+        if dr.hint(not self.hg_sampling, mode='scalar'):
             return dr.zeros(mi.BSDFSample3f), 0.0
 
         # repeat HG sampling until we find a visible position (or reach max positions)
-        ps_hg: mi.PositionSample3f = dr.zeros(mi.PositionSample3f)
-        pdf_hg: mi.Float = mi.Float(0)
-        cos_theta_i = mi.Float(0)
-        cos_theta_g = mi.Float(0)
-        d = mi.Vector3f(0)
-
-        self.hgs_do_rejection = False
-        retry_rs = mi.Mask(active)
-        iters_rs = mi.UInt32(0)
-        max_rs_iterations = 5 if self.hgs_do_rejection else 1
-        loop_rs = mi.Loop(name='Hidden geometry rejection sampling',
-                          state=lambda: (retry_rs, sample2, sampler, ps_hg, pdf_hg, si, d, cos_theta_i, cos_theta_g, iters_rs))
-        loop_rs.set_max_iterations(max_rs_iterations)
-        while loop_rs(retry_rs):
-            iters_rs[retry_rs] += 1
-            sample2 = mi.Point2f(
-                dr.select(retry_rs, sampler.next_2d(retry_rs), sample2))
-            ps_hg = dr.select(
-                retry_rs,
-                self._sample_hidden_geometry_position(
-                    ref=si, scene=scene, sample2=sample2, active=retry_rs),
-                ps_hg)
-            successful_retries = retry_rs & dr.neq(ps_hg.pdf, 0.0)
-            # check visibility
-            d = mi.Vector3f(ps_hg.p - si.p)
-            dist = dr.norm(d)
-            d /= dist
-            cos_theta_i = dr.dot(si.n, d)
-            cos_theta_g = dr.dot(ps_hg.n, -d)
-            pdf_hg = dr.select(
-                retry_rs,
-                pdf_hg + ps_hg.pdf * dr.sqr(dist) / dr.abs(cos_theta_g),
-                pdf_hg
-            )
-            successful_retries &= (cos_theta_i > dr.epsilon(mi.Float)) & \
-                (cos_theta_g > dr.epsilon(mi.Float))
-            retry_rs &= ~successful_retries
-            retry_rs &= iters_rs < max_rs_iterations
+        ps_hg: mi.PositionSample3f = self._sample_hidden_geometry_position(
+            ref=si, scene=scene, sample2=sample2, active=active)
+        d = mi.Vector3f(ps_hg.p - si.p)
+        dist = dr.norm(d)
+        d /= dist
+        cos_theta_i = dr.dot(si.n, d)
+        cos_theta_g = dr.dot(ps_hg.n, -d)
         active &= (cos_theta_i > dr.epsilon(mi.Float)) & \
             (cos_theta_g > dr.epsilon(mi.Float))
 
@@ -382,9 +352,9 @@ class TransientNLOSPath(TransientADIntegrator):
 
         bs: mi.BSDFSample3f = dr.zeros(mi.BSDFSample3f)
         bs.wo = wo
-        bs.pdf = pdf_hg
+        bs.pdf = ps_hg.pdf * dr.sqr(dist) / dr.abs(cos_theta_g)
         bs.eta = 1.0
-        bs.sampled_type = mi.BSDFFlags.Reflection
+        bs.sampled_type = mi.UInt32(mi.BSDFFlags.Reflection)
         bs.sampled_component = 0
         active &= bs.pdf > dr.epsilon(mi.Float)
 
@@ -392,6 +362,7 @@ class TransientNLOSPath(TransientADIntegrator):
 
         return bs, dr.select(active, bsdf_spec, 0.0)
 
+    @dr.syntax
     def sample(self,
                mode: dr.ADMode,
                scene: mi.Scene,
@@ -400,12 +371,10 @@ class TransientNLOSPath(TransientADIntegrator):
                δL: Optional[mi.Spectrum],
                state_in: Optional[mi.Spectrum],
                active: mi.Bool,
-               max_distance: mi.Float,
-               add_transient,
+               # add_transient accepts (spec, distance, wavelengths, active)
+               add_transient: Callable[[mi.Spectrum, mi.Float, mi.UnpolarizedSpectrum, mi.Bool], None],
                **kwargs  # Absorbs unused arguments
-               ) -> Tuple[mi.Spectrum,
-                          mi.Bool,
-                          mi.Spectrum]:
+               ) -> Tuple[mi.Spectrum, mi.Bool, List[mi.Float], mi.Spectrum]:
         """
         See ``TransientADIntegrator.sample()`` for a description of this interface and
         the role of the various parameters and return values.
@@ -428,7 +397,6 @@ class TransientNLOSPath(TransientADIntegrator):
         β = mi.Spectrum(1)                            # Path throughput weight
         η = mi.Float(1)                               # Index of refraction
         active = mi.Bool(active)                      # Active SIMD lanes
-        # NOTE(diego): nloscapturemeter sets ray.time in optical path length (distance)
         distance = mi.Float(ray.time)                 # Distance of the path
 
         # Variables caching information from the previous bounce
@@ -437,41 +405,37 @@ class TransientNLOSPath(TransientADIntegrator):
         prev_bsdf_delta = mi.Bool(True)
 
         if self.camera_unwarp:
-            raise AssertionError('Use account_first_and_last_bounces instead')
-
-        # Record the following loop in its entirety
-        loop = mi.Loop(name="Path Replay Backpropagation (%s)" % mode.name,
-                       state=lambda: (sampler, ray, depth, L, δL, β, η, active,
-                                      prev_si, prev_bsdf_pdf, prev_bsdf_delta,
-                                      distance))
-
-        # Specify the max. number of loop iterations (this can help avoid
-        # costly synchronization when when wavefront-style loops are generated)
-        loop.set_max_iterations(self.max_depth)
+            raise AssertionError(
+                'Do not use camera_unwarp with TransientNLOSPath. Use account_first_and_last_bounces instead for the same purpose.')
 
         if self.laser_sampling:
             emitter_sample_f = self.emitter_laser_sample
         else:
             emitter_sample_f = self.emitter_nee_sample
 
-        while loop(active):
+        while dr.hint(active,
+                      max_iterations=self.max_depth,
+                      label="Transient Path (%s)" % mode.name):
+            active_next = mi.Bool(active)
+
             # Compute a surface interaction that tracks derivatives arising
             # from differentiable shape parameters (position, normals, etc.)
             # In primal mode, this is just an ordinary ray tracing operation.
-
             with dr.resume_grad(when=not primal):
                 si = scene.ray_intersect(ray,
                                          ray_flags=mi.RayFlags.All,
-                                         coherent=dr.eq(depth, 0))
-
+                                         coherent=(depth == 0))
             # Update distance
             distance += dr.select(active, si.t, 0.0) * η
-            active &= distance < max_distance
 
             # Get the BSDF, potentially computes texture-space differentials
             bsdf = si.bsdf(ray)
 
             # ---------------------- Direct emission ----------------------
+
+            # Hide the environment emitter if necessary
+            if dr.hint(self.hide_emitters, mode='scalar'):
+                active_next &= ~((depth == 0) & ~si.is_valid())
 
             # Compute MIS weight for emitter sample from previous bounce
             ds = mi.DirectionSample3f(scene, si=si, ref=prev_si)
@@ -482,19 +446,18 @@ class TransientNLOSPath(TransientADIntegrator):
             )
 
             with dr.resume_grad(when=not primal):
-                Le = β * mis * ds.emitter.eval(si)
+                Le = β * mis * ds.emitter.eval(si, active_next)
 
-            # Add transient contribution
-            add_transient(Le, distance,
-                          ray.wavelengths, active)
+            # Add transient contribution because of emitter found
+            add_transient(Le, distance, ray.wavelengths, active)
 
             # ---------------------- Emitter sampling ----------------------
 
             # Should we continue tracing to reach one more vertex?
-            active_next = (depth + 1 < self.max_depth) & si.is_valid()
+            active_next &= (depth + 1 < self.max_depth) & si.is_valid()
 
             # Is emitter sampling even possible on the current vertex?
-            active_e = active_next & mi.has_flag(
+            active_em = active_next & mi.has_flag(
                 bsdf.flags(), mi.BSDFFlags.Smooth)
 
             # Uses NEE or laser sampling depending on self.laser_sampling
@@ -502,10 +465,11 @@ class TransientNLOSPath(TransientADIntegrator):
                 mode, scene, sampler,
                 si, bsdf, bsdf_ctx,
                 β, distance, η, depth,
-                active_e, add_transient)
+                active_em, add_transient)
 
             # ------------------ Detached BSDF sampling -------------------
 
+            do_hg_sample = mi.Bool(False)
             if self.hg_sampling and self.hg_sampling_do_rroulette:
                 # choose HG or BSDF sampling with Russian Roulette
                 hg_prob = mi.Float(0.5)
@@ -516,7 +480,7 @@ class TransientNLOSPath(TransientADIntegrator):
                     mi.Float(1.0) - hg_prob)
             else:
                 # only one option
-                do_hg_sample = mi.Mask(self.hg_sampling)
+                do_hg_sample = mi.Bool(self.hg_sampling)
                 pdf_bsdf_method = mi.Float(1.0)
 
             active_hg = active_next & do_hg_sample
@@ -535,7 +499,7 @@ class TransientNLOSPath(TransientADIntegrator):
 
             # ---- Update loop variables based on current interaction -----
 
-            L = (L + Lr_dir) if primal else (L - Lr_dir)
+            L = (L + Le + Lr_dir) if primal else (L - Le - Lr_dir)
             ray = si.spawn_ray(si.to_world(bsdf_sample.wo))
             η *= bsdf_sample.eta
             β *= bsdf_weight / pdf_bsdf_method
@@ -551,7 +515,7 @@ class TransientNLOSPath(TransientADIntegrator):
 
             # Don't run another iteration if the throughput has reached zero
             β_max = dr.max(β)
-            active_next &= dr.neq(β_max, 0)
+            active_next &= (β_max != 0)
 
             # Russian roulette stopping probability (must cancel out ior^2
             # to obtain unitless throughput, enforces a minimum probability)
@@ -566,7 +530,7 @@ class TransientNLOSPath(TransientADIntegrator):
 
             # ------------------ Differential phase only ------------------
 
-            if not primal:
+            if dr.hint(not primal, mode='scalar'):
                 with dr.resume_grad():
                     # 'L' stores the indirectly reflected radiance at the
                     # current vertex but does not track parameter derivatives.
@@ -585,19 +549,23 @@ class TransientNLOSPath(TransientADIntegrator):
 
                     # Detached version of the above term and inverse
                     bsdf_val_det = bsdf_weight * bsdf_sample.pdf
-                    inv_bsdf_val_det = dr.select(dr.neq(bsdf_val_det, 0),
+                    inv_bsdf_val_det = dr.select(bsdf_val_det != 0,
                                                  dr.rcp(bsdf_val_det), 0)
 
                     # Differentiable version of the reflected indirect
                     # radiance. Minor optional tweak: indicate that the primal
                     # value of the second term is always 1.
-                    Lr_ind = L * \
-                        dr.replace_grad(1, inv_bsdf_val_det * bsdf_val)
+                    tmp = inv_bsdf_val_det * bsdf_val
+                    tmp_replaced = dr.replace_grad(
+                        dr.ones(mi.Float, dr.width(tmp)), tmp)  # FIXME
+                    Lr_ind = L * tmp_replaced
 
                     # Differentiable Monte Carlo estimate of all contributions
-                    Lo = Lr_dir + Lr_ind
+                    Lo = Le + Lr_dir + Lr_ind
 
-                    if dr.flag(dr.JitFlag.VCallRecord) and not dr.grad_enabled(Lo):
+                    attached_contrib = dr.flag(
+                        dr.JitFlag.VCallRecord) and not dr.grad_enabled(Lo)
+                    if dr.hint(attached_contrib, mode='scalar'):
                         raise Exception(
                             "The contribution computed by the differential "
                             "rendering phase is not attached to the AD graph! "
@@ -609,7 +577,7 @@ class TransientNLOSPath(TransientADIntegrator):
                             "derivatives in detached PRB.)")
 
                     # Propagate derivatives from/to 'Lo' based on 'mode'
-                    if mode == dr.ADMode.Backward:
+                    if dr.hint(mode == dr.ADMode.Backward, mode='scalar'):
                         dr.backward_from(δL * Lo)
                     else:
                         δL += dr.forward_to(Lo)
@@ -619,10 +587,13 @@ class TransientNLOSPath(TransientADIntegrator):
 
         return (
             L if primal else δL,  # Radiance/differential radiance
-            dr.neq(depth, 0),    # Ray validity flag for alpha blending
-            L                    # State for the differential phase
+            (depth != 0),         # Ray validity flag for alpha blending
+            [],                   # Empty typle of AOVs
+            L                     # State for the differential phase
         )
 
 
 mi.register_integrator("transient_nlos_path",
                        lambda props: TransientNLOSPath(props))
+
+del TransientADIntegrator

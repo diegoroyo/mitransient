@@ -1,5 +1,5 @@
 from __future__ import annotations  # Delayed parsing of type annotations
-from typing import Optional, Tuple, List, Callable, Any
+from typing import Optional, Tuple, List, Callable
 
 import drjit as dr
 import mitsuba as mi
@@ -10,10 +10,58 @@ from .common import TransientADIntegrator
 
 class TransientPath(TransientADIntegrator):
     r"""
-        .. _integrator-transient_path:
+    .. _integrator-transient_path:
 
-        Transient Path (:monosp:`transient_path`)
-        -----------------------------------------
+    Transient Path (:monosp:`transient_path`)
+    -----------------------------------------
+
+    Standard path tracing algorithm which now includes the time dimension.
+    This can render line-of-sight (LOS) scenes. The `transient_nlos_path` 
+    plugin contains different sampling routines specific to NLOS setups.
+    Choose one or the other depending on if you have a LOS or NLOS scene.
+
+    .. pluginparameters::
+
+     * - camera_unwarp
+       - |bool|
+       - If True, does not take into account the distance from the camera origin 
+         to the camera ray's first intersection point. This allows you to see 
+         the transient video with the events happening in world time. If False, 
+         this distance is taken into account, so you see the same thing that you 
+         would see with a real-world ultra-fast camera. (default: false)
+
+     * - temporal_filter
+       - |string|
+       - Can be either:
+         - 'box' for a box filter (no parameters)
+         - 'gaussian' for a Gaussian filter (see gaussian_stddev below)
+         - Empty string to use the same filter in the temporal domain as 
+         the rfilter used in the spatial domain.
+         (default: empty string)
+
+     * - gaussian_stddev
+       - |float|
+       - When temporal_filter == 'gaussian', this marks the standard deviation 
+         of the Gaussian filter. (default: 2.0)
+
+     * - block_size
+       - |int|
+       - Size of (square) image blocks to render in parallel (in scalar mode).
+         Should be a power of two. (default: 0 i.e. let Mitsuba decide for you)
+
+     * - max_depth
+       - |int|
+       - Specifies the longest path depth in the generated output image (where -1
+         corresponds to infinity). A value of 1 will only render directly
+         visible light sources. 2 will lead to single-bounce (direct-only)
+         illumination, and so on. (default: 6)
+
+     * - rr_depth
+       - |int|
+       - Specifies the path depth, at which the implementation will begin to use
+         the *russian roulette* path termination criterion. For example, if set to
+         1, then path generation many randomly cease after encountering directly
+         visible surfaces. (default: 5)
     """
 
     @dr.syntax
@@ -25,8 +73,8 @@ class TransientPath(TransientADIntegrator):
                δL: Optional[mi.Spectrum],
                state_in: Optional[mi.Spectrum],
                active: mi.Bool,
-               # TODO (JORGE): revise
-               add_transient: Callable[[Any, Any, Any, Any], None],
+               # add_transient accepts (spec, distance, wavelengths, active)
+               add_transient: Callable[[mi.Spectrum, mi.Float, mi.UnpolarizedSpectrum, mi.Mask], None],
                **kwargs  # Absorbs unused arguments
                ) -> Tuple[mi.Spectrum, mi.Bool, List[mi.Float], mi.Spectrum]:
         """
@@ -170,10 +218,11 @@ class TransientPath(TransientADIntegrator):
             # Russian roulette stopping probability (must cancel out ior^2
             # to obtain unitless throughput, enforces a minimum probability)
             rr_prob = dr.minimum(β_max * η**2, .95)
+            active_next &= rr_prob > 0
 
             # Apply only further along the path since, this introduces variance
             rr_active = depth >= self.rr_depth
-            β[rr_active] *= dr.rcp(rr_prob)
+            β[rr_active] *= dr.rcp(rr_prob) & (rr_prob > 0)
             rr_continue = sampler.next_1d() < rr_prob
             active_next &= ~rr_active | rr_continue
 
@@ -236,9 +285,9 @@ class TransientPath(TransientADIntegrator):
 
         return (
             L if primal else δL,  # Radiance/differential radiance
-            (depth != 0),        # Ray validity flag for alpha blending
-            [],                  # Empty typle of AOVs
-            L                    # State for the differential phase
+            (depth != 0),         # Ray validity flag for alpha blending
+            [],                   # Empty typle of AOVs
+            L                     # State for the differential phase
         )
 
 

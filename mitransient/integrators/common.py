@@ -12,14 +12,27 @@ from ..films.transient_hdr_film import TransientHDRFilm
 
 
 class TransientADIntegrator(ADIntegrator):
+    r"""
+    .. _integrator-transientadintegrator:
+
+    Transient AD Integrator
+    -----------------------
+
+    Abstract base class for transient integrators in ``mitransient``.
+    """
 
     def __init__(self, props: mi.Properties):
         super().__init__(props)  # initialize props: max_depth and rr_depth
 
         self.camera_unwarp = props.get("camera_unwarp", False)
-        # TODO (JORGE): remove these attributes
+        # TODO (diego): Figure out how to move these parameters to filter properties
         _ = props.get("gaussian_stddev", 0.5)
         _ = props.get("temporal_filter", "")
+
+    # NOTE(diego): We need to pass the scene to transientnlospath's prepare method.
+    # This ensures compatibility with other integrators.
+    def prepare(self, scene, sensor, seed, spp, aovs):
+        return super().prepare(sensor, seed, spp, aovs)
 
     def render(self: mi.SamplingIntegrator,
                scene: mi.Scene,
@@ -28,7 +41,6 @@ class TransientADIntegrator(ADIntegrator):
                spp: int = 0,
                develop: bool = True,
                evaluate: bool = True) -> Tuple[mi.TensorXf, mi.TensorXf]:
-
         if not develop:
             raise Exception("develop=True must be specified when "
                             "invoking AD integrators")
@@ -44,6 +56,7 @@ class TransientADIntegrator(ADIntegrator):
         with dr.suspend_grad():
             # Prepare the film and sample generator for rendering
             sampler, spp = self.prepare(
+                scene=scene,
                 sensor=sensor,
                 seed=seed,
                 spp=spp,

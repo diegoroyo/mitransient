@@ -18,7 +18,7 @@ setup(
     author_email='droyo@unizar.es',
     license='BSD',
     packages=find_packages(),
-    install_requires=[f"mitsuba>={__mi_version__}"],
+    install_requires=[f"mitsuba>={__mi_version_min__},<={__mi_version_max__}"],
     long_description=readme,
     long_description_content_type="text/markdown",
     python_requires=">=3.8"

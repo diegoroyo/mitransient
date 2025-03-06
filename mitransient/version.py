@@ -1,8 +1,9 @@
-# MiTransient version
-__version__ = '1.0.4'
+# mitransient version
+__version__ = '1.0.5'
 
-# Mitsuba minimum compatible version
-__mi_version__ = '3.5.0'
+# Mitsuba minimum and maximum compatible versions
+__mi_version_min__ = '3.6.0'
+__mi_version_max__ = '3.6.4'
 
 
 class Version:
@@ -46,9 +47,15 @@ def check_compatibility():
 
     mitransient_version = Version(__version__)
     mitsuba_version = Version(mi.MI_VERSION)
-    mitsuba_supported = Version(__mi_version__)
+    mitsuba_supported_min = Version(__mi_version_min__)
+    mitsuba_supported_max = Version(__mi_version_max__)
 
-    if mitsuba_version < mitsuba_supported:
+    if mitsuba_version < mitsuba_supported_min:
         raise RuntimeError(
-            f'MiTransient ({mitransient_version}) supports at least Mitsuba ({mitsuba_supported}). Currently installed is Mitsuba ({mitsuba_version}). Please upgrade it.')
+            f'mitransient v{mitransient_version} only supports Mitsuba 3 v{mitsuba_supported_min} to v{mitsuba_supported_max}. '
+            f'You are using Mitsuba ({mitsuba_version}). Please upgrade Mitsuba to v{mitsuba_supported_max} (You can use the command `pip install -U mitsuba=={mitsuba_supported_max}`).')
+    elif mitsuba_version > mitsuba_supported_max:
+        raise RuntimeError(
+            f'mitransient v{mitransient_version} only supports Mitsuba 3 v{mitsuba_supported_min} to v{mitsuba_supported_max}. '
+            f'You are using Mitsuba ({mitsuba_version}). Please downgrade Mitsuba to v{mitsuba_supported_max} (You can use the command `pip install -U mitsuba=={mitsuba_supported_max}`).')
     return True
