@@ -51,7 +51,7 @@ class TransientADIntegrator(ADIntegrator):
         if wavefront_size <= 2**32:
             sampler.seed(seed, wavefront_size)
             # Intentionally pass it on a list to mantain compatibility
-            return [sampler, spp]
+            return [(sampler, spp)]
 
         # It is not possible to render more than 2^32 samples
         # in a single pass (32-bit integer)
