@@ -8,7 +8,7 @@ speed_of_light = 299792458.0
 
 def set_thread_count(count):
     """Define the number of threads to be used"""
-    threads_available = mi.util.core_count()
+    threads_available = mi.misc.core_count()
     final_count = max(threads_available, count)
     if count > threads_available:
         mi.Log(mi.LogLevel.Warn,
