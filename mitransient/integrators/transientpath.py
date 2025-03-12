@@ -147,7 +147,9 @@ class TransientPath(TransientADIntegrator):
             )
 
             with dr.resume_grad(when=not primal):
-                Le = β * mis * ds.emitter.eval(si, active_next)
+                Le = β * mis * \
+                    dr.select(self.discard_direct_light, 0,
+                              ds.emitter.eval(si, active_next))
 
             # Add transient contribution because of emitter found
             add_transient(Le, distance, ray.wavelengths, active)

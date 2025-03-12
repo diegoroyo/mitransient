@@ -25,6 +25,8 @@ class TransientADIntegrator(ADIntegrator):
         super().__init__(props)  # initialize props: max_depth and rr_depth
 
         self.camera_unwarp = props.get("camera_unwarp", False)
+        # FIXME document this and add to other integrators maybe
+        self.discard_direct_light = props.get("discard_direct_light", False)
         # TODO (diego): Figure out how to move these parameters to filter properties
         _ = props.get("gaussian_stddev", 0.5)
         _ = props.get("temporal_filter", "")
@@ -218,10 +220,11 @@ class TransientADIntegrator(ADIntegrator):
         del NLOSCaptureMeter
 
         from mitransient.films.transient_hdr_film import TransientHDRFilm
+        from mitransient.films.phasor_hdr_film import PhasorHDRFilm
 
-        if not isinstance(sensor.film(), TransientHDRFilm):
+        if not (isinstance(sensor.film(), TransientHDRFilm) or isinstance(sensor.film(), PhasorHDRFilm)):
             raise AssertionError(
-                "The film of the sensor must be of type transient_hdr_film"
+                "The film of the sensor must be of type transient_hdr_film or phasor_hdr_film"
             )
 
         del TransientHDRFilm

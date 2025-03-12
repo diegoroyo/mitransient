@@ -59,7 +59,7 @@ class TransientHDRFilm(mi.Film):
         super().__init__(props)
         self.temporal_bins = props.get("temporal_bins", mi.UInt32(2048))
         self.bin_width_opl = props.get("bin_width_opl", mi.Float(0.003))
-        self.start_opl = props.get("start_opl", mi.UInt32(0))
+        self.start_opl = props.get("start_opl", mi.Float(0))
 
     def end_opl(self):
         return self.start_opl + self.bin_width_opl * self.temporal_bins
