@@ -48,9 +48,12 @@ class PhasorImageBlock(mi.ImageBlock):
         opl = pos.z
         active &= dr.isfinite(opl)
 
+        def fmod(x, y):
+            return x - y * dr.floor(x / y)
+
         values = []
         for freq in self.frequencies:
-            phase = -2 * dr.pi * freq * opl
+            phase = fmod(-2 * dr.pi * freq * opl, 2 * dr.pi)
             values.append(mi.Float(spec * dr.cos(phase)))
             values.append(mi.Float(spec * dr.sin(phase)))
 

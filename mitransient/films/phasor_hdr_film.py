@@ -38,7 +38,7 @@ class PhasorHDRFilm(mi.Film):
         self.wl_mean = props.get("wl_mean", mi.Float(100.0))
         self.wl_sigma = props.get("wl_sigma", mi.Float(1000.0))
         self.temporal_bins = props.get("temporal_bins", mi.UInt32(4096))
-        self.delta_t = props.get("delta_t", mi.Float(0.003))
+        self.bin_width_opl = props.get("bin_width_opl", mi.Float(0.003))
         self.start_opl = props.get("start_opl", mi.Float(0))
 
         # FIXME: use mi.Log ERROR
@@ -50,22 +50,22 @@ class PhasorHDRFilm(mi.Film):
             "PhasorHDRFilm: sample_border must be False"
 
         import numpy as np
-        t_6sigma = int(np.ceil(6 * self.wl_sigma / self.delta_t))
+        t_6sigma = int(np.ceil(6 * self.wl_sigma / self.bin_width_opl))
         padding = 2 * t_6sigma
         nf = self.temporal_bins + 2 * padding
 
-        mean_idx = (nf * self.delta_t) / self.wl_mean
-        sigma_idx = (nf * self.delta_t) / (self.wl_sigma * 6)
+        mean_idx = (nf * self.bin_width_opl) / self.wl_mean
+        sigma_idx = (nf * self.bin_width_opl) / (self.wl_sigma * 6)
         # shift to center at zero, easier for low negative frequencies
         freq_min_idx = np.maximum(0, int(np.floor(mean_idx - 3 * sigma_idx)))
         freq_max_idx = np.minimum(
             nf // 2, int(np.ceil(mean_idx + 3 * sigma_idx)))
 
-        frequencies = np.fft.fftfreq(nf, d=self.delta_t)[
+        frequencies = np.fft.fftfreq(nf, d=self.bin_width_opl)[
             freq_min_idx:freq_max_idx+1].astype(np.float32)
 
-        mi.Log(mi.LogLevel.Warn,
-               f"PhasorHDRFilm: Using {len(frequencies)} wavelengths from {1/frequencies[-1]:.3f}m to {1/frequencies[0]:.3f}m")
+        mi.Log(mi.LogLevel.Info,
+               f"PhasorHDRFilm: Using {len(frequencies)} wavelengths from {1/frequencies[-1]:.4f}m to {1/frequencies[0]:.4f}m")
         self.frequencies = ArrayXf([mi.Float(f) for f in frequencies])
 
     def prepare(self, aovs: Sequence[str]):
