@@ -22,7 +22,7 @@ class PhasorImageBlock(mi.ImageBlock):
         warn_negative: bool = False,
         warn_invalid: bool = False
     ):
-        self.frequencies = frequencies
+        self.frequencies = ArrayXf(frequencies)
         self.alpha = alpha
         # alpha = mi.has_flag(self.flags(), mi.FilmFlags.Alpha)
         # assert channel_count == 2 * len(frequencies) + (2 if alpha else 1), \

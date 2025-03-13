@@ -182,8 +182,9 @@ class NLOSCaptureMeter(NLOSSensor):
         callback.put_parameter(
             "laser_target", self.laser_target, mi.ParamFlags.NonDifferentiable)
 
-    def parameters_changed(self, keys):
-        super().parameters_changed(keys)
+    # NOTE(diego): fails on cuda_mono_double versions
+    # def parameters_changed(self, keys):
+    #     super().parameters_changed(keys)
 
     def to_string(self):
         string = f"{type(self).__name__}[\n"

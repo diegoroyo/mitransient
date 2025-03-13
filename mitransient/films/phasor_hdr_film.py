@@ -41,27 +41,23 @@ class PhasorHDRFilm(mi.Film):
         self.bin_width_opl = props.get("bin_width_opl", mi.Float(0.003))
         self.start_opl = props.get("start_opl", mi.Float(0))
 
-        # FIXME: use mi.Log ERROR
-        assert self.crop_size().x == self.size().x and self.crop_size().y == self.size().y, \
-            "PhasorHDRFilm: crop_size must match size"
-        assert self.crop_offset().x == 0 and self.crop_offset().y == 0, \
-            "PhasorHDRFilm: crop_offset must be (0, 0)"
-        assert self.sample_border() == False, \
-            "PhasorHDRFilm: sample_border must be False"
+        if not (self.crop_size().x == self.size().x and self.crop_size().y == self.size().y):
+            mi.Log(mi.LogLevel.Error, "PhasorHDRFilm: crop_size must match size")
+        if not (self.crop_offset().x == 0 and self.crop_offset().y == 0):
+            mi.Log(mi.LogLevel.Error, "PhasorHDRFilm: crop_offset must be (0, 0)")
+        if self.sample_border():
+            mi.Log(mi.LogLevel.Error, "PhasorHDRFilm: sample_border must be False")
 
         import numpy as np
-        t_6sigma = int(np.ceil(6 * self.wl_sigma / self.bin_width_opl))
-        padding = 2 * t_6sigma
-        nf = self.temporal_bins + 2 * padding
-
-        mean_idx = (nf * self.bin_width_opl) / self.wl_mean
-        sigma_idx = (nf * self.bin_width_opl) / (self.wl_sigma * 6)
+        nt = self.temporal_bins
+        mean_idx = (nt * self.bin_width_opl) / self.wl_mean
+        sigma_idx = (nt * self.bin_width_opl) / (self.wl_sigma * 6)
         # shift to center at zero, easier for low negative frequencies
         freq_min_idx = np.maximum(0, int(np.floor(mean_idx - 3 * sigma_idx)))
         freq_max_idx = np.minimum(
-            nf // 2, int(np.ceil(mean_idx + 3 * sigma_idx)))
+            nt // 2, int(np.ceil(mean_idx + 3 * sigma_idx)))
 
-        frequencies = np.fft.fftfreq(nf, d=self.bin_width_opl)[
+        frequencies = np.fft.fftfreq(nt, d=self.bin_width_opl)[
             freq_min_idx:freq_max_idx+1].astype(np.float32)
 
         mi.Log(mi.LogLevel.Info,
@@ -69,8 +65,11 @@ class PhasorHDRFilm(mi.Film):
         self.frequencies = ArrayXf([mi.Float(f) for f in frequencies])
 
     def prepare(self, aovs: Sequence[str]):
-        assert mi.is_monochromatic, "PhasorHDRFilm: Only monochromatic rendering supported"
-        assert len(aovs) == 0, "PhasorHDRFilm: AOVs not supported"
+        if not mi.is_monochromatic:
+            mi.Log(mi.LogLevel.Error,
+                   "PhasorHDRFilm: Only monochromatic rendering supported")
+        if len(aovs) != 0:
+            mi.Log(mi.LogLevel.Error, "PhasorHDRFilm: AOVs not supported")
         alpha = mi.has_flag(self.flags(), mi.FilmFlags.Alpha)
 
         # Prepare steady film
@@ -104,6 +103,7 @@ class PhasorHDRFilm(mi.Film):
         for i in range(len(extra_channels)):
             channels.append(extra_channels[i])
 
+        # NOTE(diego): aovs would go here
         # for i in range(len(aovs)):
         #     channels.append(aovs[i])
 
