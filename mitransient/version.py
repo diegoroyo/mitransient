@@ -3,6 +3,7 @@ __version__ = '1.1.1'
 
 # Mitsuba minimum and maximum compatible versions
 __mi_version_min__ = '3.6.0'
+__mi_version_latest__ = '3.6.4'
 __mi_version_max__ = '3.7.0'
 
 
@@ -48,14 +49,15 @@ def check_compatibility():
     mitransient_version = Version(__version__)
     mitsuba_version = Version(mi.MI_VERSION)
     mitsuba_supported_min = Version(__mi_version_min__)
+    mitsuba_supported_latest = Version(__mi_version_latest__)
     mitsuba_supported_max = Version(__mi_version_max__)
 
     if mitsuba_version < mitsuba_supported_min:
         raise RuntimeError(
-            f'mitransient v{mitransient_version} only supports Mitsuba 3 v{mitsuba_supported_min} to v{mitsuba_supported_max}. '
-            f'You are using Mitsuba ({mitsuba_version}). Please upgrade Mitsuba to v{mitsuba_supported_max} (You can use the command `pip install -U mitsuba=={mitsuba_supported_max}`).')
+            f'mitransient v{mitransient_version} only supports Mitsuba 3 at least v{mitsuba_supported_min} and strictly less than v{mitsuba_supported_max}. '
+            f'You are using Mitsuba ({mitsuba_version}). Please upgrade Mitsuba to v{mitsuba_supported_latest} (You can use the command `pip install -U mitsuba=={mitsuba_supported_max}`).')
     elif mitsuba_version > mitsuba_supported_max:
         raise RuntimeError(
-            f'mitransient v{mitransient_version} only supports Mitsuba 3 v{mitsuba_supported_min} to v{mitsuba_supported_max}. '
-            f'You are using Mitsuba ({mitsuba_version}). Please downgrade Mitsuba to v{mitsuba_supported_max} (You can use the command `pip install -U mitsuba=={mitsuba_supported_max}`).')
+            f'mitransient v{mitransient_version} only supports Mitsuba 3 at least v{mitsuba_supported_min} and strictly less than v{mitsuba_supported_max}. '
+            f'You are using Mitsuba ({mitsuba_version}). Please downgrade Mitsuba to v{mitsuba_supported_latest} (You can use the command `pip install -U mitsuba=={mitsuba_supported_max}`).')
     return True
