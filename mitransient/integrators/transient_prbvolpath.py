@@ -239,7 +239,7 @@ class TransientPRBVolpathIntegrator(TransientADIntegrator):
                 intersect = active_surface & needs_intersection
                 si[intersect] = scene.ray_intersect(ray, intersect)
 
-                distance[intersect] += si.t * η
+                distance[active_surface] += si.t * η
 
                 # ----------------- Intersection with emitters -----------------
 
