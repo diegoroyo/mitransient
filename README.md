@@ -170,3 +170,27 @@ mitr.vis.show_video(
 ## Testing
 
 Our test suite can be run using `pytest` on the root folder of the repo.
+
+# Contributors
+
+<!-- ALL-CONTRIBUTORS-LIST:START - Do not remove or modify this section -->
+<!-- prettier-ignore-start -->
+<!-- markdownlint-disable -->
+<table>
+  <tbody>
+    <tr>
+      <td align="center" valign="top" width="14.28%"><a href="https://diego.contact/"><img src="https://avatars.githubusercontent.com/u/17049331?v=4?s=100" width="100px;" alt="Diego Royo"/><br /><sub><b>Diego Royo</b></sub></a><br /><a href="#design-diegoroyo" title="Design">🎨</a> <a href="https://github.com/diegoroyo/mitransient/commits?author=diegoroyo" title="Code">💻</a> <a href="#promotion-diegoroyo" title="Promotion">📣</a> <a href="https://github.com/diegoroyo/mitransient/commits?author=diegoroyo" title="Documentation">📖</a></td>
+      <td align="center" valign="top" width="14.28%"><a href="https://github.com/mcrescas"><img src="https://avatars.githubusercontent.com/u/62649574?v=4?s=100" width="100px;" alt="Miguel Crespo"/><br /><sub><b>Miguel Crespo</b></sub></a><br /><a href="#design-mcrescas" title="Design">🎨</a> <a href="https://github.com/diegoroyo/mitransient/commits?author=mcrescas" title="Code">💻</a> <a href="#promotion-mcrescas" title="Promotion">📣</a></td>
+      <td align="center" valign="top" width="14.28%"><a href="https://jgarciapueyo.github.io/"><img src="https://avatars.githubusercontent.com/u/35239547?v=4?s=100" width="100px;" alt="Jorge Garcia Pueyo"/><br /><sub><b>Jorge Garcia Pueyo</b></sub></a><br /><a href="#design-jgarciapueyo" title="Design">🎨</a> <a href="https://github.com/diegoroyo/mitransient/commits?author=jgarciapueyo" title="Code">💻</a> <a href="#promotion-jgarciapueyo" title="Promotion">📣</a> <a href="https://github.com/diegoroyo/mitransient/commits?author=jgarciapueyo" title="Documentation">📖</a></td>
+      <td align="center" valign="top" width="14.28%"><a href="https://github.com/DiegoBielsa"><img src="https://avatars.githubusercontent.com/u/71701253?v=4?s=100" width="100px;" alt="DiegoBielsa"/><br /><sub><b>DiegoBielsa</b></sub></a><br /><a href="https://github.com/diegoroyo/mitransient/issues?q=author%3ADiegoBielsa" title="Bug reports">🐛</a></td>
+      <td align="center" valign="top" width="14.28%"><a href="https://github.com/p-luesia"><img src="https://avatars.githubusercontent.com/u/93714843?v=4?s=100" width="100px;" alt="p-luesia"/><br /><sub><b>p-luesia</b></sub></a><br /><a href="https://github.com/diegoroyo/mitransient/commits?author=p-luesia" title="Documentation">📖</a></td>
+    </tr>
+  </tbody>
+</table>
+
+<!-- markdownlint-restore -->
+<!-- prettier-ignore-end -->
+
+<!-- ALL-CONTRIBUTORS-LIST:END -->
+
+See [emoji key](https://allcontributors.org/docs/en/emoji-key) for details.

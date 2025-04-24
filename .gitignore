@@ -1,5 +1,9 @@
 notebooks/transientFrames/**
 scripts/pypi_publish.sh
+node_modules
+package.json
+package-lock.json
+.all-contributorsrc
 
 .vscode
 scenes/old/test/t-compare-with-mitsuba2/tal_Z/
