@@ -1,0 +1,99 @@
+<scene version="3.3.0">
+    <default name="spp" value="512"/>
+    <default name="res" value="512"/>
+    <default name="integrator" value="transient_path"/>
+
+    <integrator type='$integrator'>
+      <boolean name="camera_unwarp" value="false"/>
+      <integer name="max_depth" value="8"/>
+      <string name="temporal_filter" value="box"/>
+    </integrator>
+    <sensor type="perspective" id="sensor">
+        <string name="fov_axis" value="smaller"/>
+        <float name="near_clip" value="10"/>
+        <float name="far_clip" value="2800"/>
+        <float name="focus_distance" value="1000"/>
+        <float name="fov" value="39.3077"/>
+        <transform name="to_world">
+            <lookat origin="0, 50, 10"
+                    target="0, 0, 0"
+                    up    ="  0,   0,    1"/>
+        </transform>
+        <sampler type="independent">
+            <integer name="sample_count" value="$spp"/>
+        </sampler>
+        <film type="transient_hdr_film">
+            <integer name="width"  value="$res"/>
+            <integer name="height" value="$res"/>
+            <integer name="temporal_bins" value="400"/>
+            <float name="start_opl" value="150"/>  <!-- 15 105 -->
+            <float name="bin_width_opl" value="6.5"/>  <!-- 15 105 -->
+            <rfilter type="box">
+              <!-- <float name="stddev" value="1.0"/> -->
+            </rfilter>
+        </film>
+    </sensor>
+
+    <!-- BSDFs -->
+
+    <bsdf type="diffuse" id="gray">
+        <rgb name="reflectance" value="0.85, 0.85, 0.85"/>
+    </bsdf>
+
+    <bsdf type="diffuse" id="white">
+        <rgb name="reflectance" value="0.885809, 0.698859, 0.666422"/>
+    </bsdf>
+
+     <!-- Light -->
+
+    <shape type="obj" id="light">
+        <string name="filename" value="meshes/light1.obj"/>
+        <transform name="to_world">
+            <translate x="0" y="0" z="0"/>
+        </transform>
+        <ref id="white"/>
+        <emitter type="area">
+            <rgb name="radiance" value="18.387, 10.9873, 2.75357"/>
+        </emitter>
+    </shape>
+
+    <shape type="obj" id="light">
+        <string name="filename" value="meshes/light2.obj"/>
+        <transform name="to_world">
+            <translate x="0" y="0" z="0"/>
+        </transform>
+        <ref id="white"/>
+        <emitter type="area">
+            <rgb name="radiance" value="18.387, 10.9873, 2.75357"/>
+        </emitter>
+    </shape>
+
+    <shape type="obj" id="light">
+        <string name="filename" value="meshes/light3.obj"/>
+        <transform name="to_world">
+            <translate x="0" y="0" z="0"/>
+        </transform>
+        <ref id="white"/>
+        <emitter type="area">
+            <rgb name="radiance" value="18.387, 10.9873, 2.75357"/>
+        </emitter>
+    </shape>
+
+    <shape type="obj" id="light">
+        <string name="filename" value="meshes/light4.obj"/>
+        <transform name="to_world">
+            <translate x="0" y="0" z="0"/>
+        </transform>
+        <ref id="white"/>
+        <emitter type="area">
+            <rgb name="radiance" value="18.387, 10.9873, 2.75357"/>
+        </emitter>
+    </shape>
+
+    <!-- Shapes -->
+
+    <shape type="obj" id="floor">
+        <string name="filename" value="meshes/floor10x10.obj"/>
+        <ref id="gray"/>
+    </shape>
+</scene>
