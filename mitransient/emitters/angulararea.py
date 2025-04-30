@@ -56,22 +56,27 @@ class AngularAreaLight(mi.Emitter):
     def sample_direction(self, ref: mi.Interaction3f, sample: mi.Point2f, active: mi.Bool) -> Tuple[mi.DirectionSample3f, mi.Spectrum]:
         # Sample position in shape and weight by the square distance (solid angle)
         ds: mi.DirectionSample3f = self.get_shape().sample_direction(ref, sample, active)
-        active &= dr.dot(ds.d, ds.n) > 0.0 & (ds.pdf != 0.0)
+        active &= (dr.dot(ds.d, ds.n) < 0.0) & (ds.pdf != 0.0)
         si: mi.SurfaceInteraction3f = mi.SurfaceInteraction3f(ds, ref.wavelengths)
 
+        # Compute falloff in local frame
+        frame = mi.Frame3f(ds.n)
+        local_d = frame.to_local(-ds.d)
+
         # Evaluate emitted radiance & fallof profile
-        falloff: mi.Float = self._fallof_curve(ds.d)
+        falloff: mi.Float = self._fallof_curve(local_d)
         active &= falloff > 0.0
 
         # Weight radiance by falloff, pdf and cosine (included in pdf)
         spec = self.radiance.eval(si, active) * falloff / ds.pdf
+        ds.emitter = mi.EmitterPtr(self)
  
-        return ds, spec & active
+        return ds, dr.select(active, spec, 0.0)
 
 
     def pdf_direction(self, ref: mi.Interaction3f, ds: mi.DirectionSample3f, active: mi.Bool) -> mi.Float:
         dp: mi.Float = dr.dot(ds.d, ds.n)
-        active &= dp > 0.0
+        active &= dp < 0.0
         
         value = self.get_shape().pdf_direction(ref, ds, active)
 
@@ -80,10 +85,14 @@ class AngularAreaLight(mi.Emitter):
 
     def eval_direction(self, ref: mi.Interaction3f, ds: mi.DirectionSample3f, active: mi.Bool) -> mi.Spectrum:
         dp: mi.Float = dr.dot(ds.d, ds.n)
-        active &= dp > 0.0
+        active &= dp < 0.0
+
+        # Compute falloff in local frame
+        frame = mi.Frame3f(ds.n)
+        local_d = frame.to_local(-ds.d)
 
         # Evaluate emitted radiance & fallof profile
-        falloff: mi.Float = self._fallof_curve(ds.d)
+        falloff: mi.Float = self._fallof_curve(local_d)
         active &= falloff > 0.0
         
         # Weight radiance by falloff and cosine
