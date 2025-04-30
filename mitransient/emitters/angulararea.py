@@ -62,13 +62,14 @@ class AngularAreaLight(mi.Emitter):
         # Compute falloff in local frame
         frame = mi.Frame3f(ds.n)
         local_d = frame.to_local(-ds.d)
+        inv_dist = dr.rcp(ds.dist)
 
         # Evaluate emitted radiance & fallof profile
         falloff: mi.Float = self._fallof_curve(local_d)
         active &= falloff > 0.0
 
         # Weight radiance by falloff, pdf and cosine (included in pdf)
-        spec = self.radiance.eval(si, active) * falloff / ds.pdf
+        spec = (self.radiance.eval(si, active) * (falloff * dr.square(inv_dist))) / ds.pdf
         ds.emitter = mi.EmitterPtr(self)
  
         return ds, dr.select(active, spec, 0.0)
@@ -90,6 +91,7 @@ class AngularAreaLight(mi.Emitter):
         # Compute falloff in local frame
         frame = mi.Frame3f(ds.n)
         local_d = frame.to_local(-ds.d)
+        inv_dist = dr.rcp(ds.dist)
 
         # Evaluate emitted radiance & fallof profile
         falloff: mi.Float = self._fallof_curve(local_d)
@@ -97,7 +99,7 @@ class AngularAreaLight(mi.Emitter):
         
         # Weight radiance by falloff and cosine
         si: mi.SurfaceInteraction3f = mi.SurfaceInteraction3f(ds, ref.wavelengths)
-        spec = self.radiance.eval(si, active) * falloff * dp
+        spec = (self.radiance.eval(si, active) * (falloff * dr.square(inv_dist))) * dp
 
         return dr.select(active, spec, 0.0)
 
