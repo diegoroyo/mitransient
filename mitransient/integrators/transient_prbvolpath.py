@@ -128,6 +128,14 @@ class TransientPRBVolpathIntegrator(TransientADIntegrator):
         η = mi.Float(1)                               # Index of refraction
         active = mi.Bool(active)
 
+        def read_δL(distance):
+            get_pos = kwargs.get('get_pos', None)
+            assert get_pos
+            indices = get_pos(distance)
+            active_g = (indices > 0) & (indices < dr.prod(δL.shape) // 3)
+            result = dr.gather(mi.Spectrum, δL, indices, active=active_g)
+            return result
+
         si = dr.zeros(mi.SurfaceInteraction3f)
         needs_intersection = mi.Bool(True)
         last_scatter_event = dr.zeros(mi.Interaction3f)
@@ -305,7 +313,9 @@ class TransientPRBVolpathIntegrator(TransientADIntegrator):
                                             δL=δL, mode=mode)
 
                         if dr.hint(dr.grad_enabled(nee_weight) or dr.grad_enabled(emitted), mode='scalar'):
-                            dr.backward(δL * contrib)
+                            # dr.backward(δL * contrib)
+                            δL_read = read_δL(distance + ds.dist * η)
+                            dr.backward(δL_read * contrib)
 
                     add_transient(contrib, distance + ds.dist *
                                   η, ray.wavelengths, active_e)
@@ -357,7 +367,11 @@ class TransientPRBVolpathIntegrator(TransientADIntegrator):
                         dr.detach(dr.select(active_surface, L /
                                   dr.maximum(1e-8, bsdf_eval), 0.0))
                     if dr.hint(mode == dr.ADMode.Backward, mode='scalar'):
-                        dr.backward_from(δL * Lo)
+                        # steady ver.
+                        # dr.backward_from(δL * Lo)
+                        # transient ver.
+                        δL_read = read_δL(distance)
+                        dr.backward_from(δL_read * Lo)
                     else:
                         δL += dr.forward_to(Lo)
 

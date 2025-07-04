@@ -165,6 +165,17 @@ class TransientHDRFilm(mi.Film):
 
         return TensorXf(values, tuple(list(data.shape[0:-1]) + [target_ch]))
 
+    def get_splat_3d_indices(self, pos, distance):
+        pos_distance = (distance - self.start_opl) / self.bin_width_opl
+        coords = mi.Vector3f(pos.x, pos.y, pos_distance)
+        return coords
+
+    def get_splat_1d_indices(self, pos, distance):
+        coords = self.get_splat_3d_indices(pos, distance)
+        idx = dr.fma(coords.x, self.size().y * self.temporal_bins,
+                     dr.fma(coords.y, self.temporal_bins, coords.z))
+        return idx
+
     def add_transient_data(self, pos: mi.Vector2f, distance: mi.Float,
                            wavelengths: mi.UnpolarizedSpectrum, spec: mi.Spectrum,
                            ray_weight: mi.Float, active: mi.Bool):
@@ -177,9 +188,8 @@ class TransientHDRFilm(mi.Film):
         * ray_weight: weight of the ray given by the sensor
         * active: mask
         """
-        pos_distance = (distance - self.start_opl) / self.bin_width_opl
-        coords = mi.Vector3f(pos.x, pos.y, pos_distance)
-        mask = (pos_distance >= 0) & (pos_distance < self.temporal_bins)
+        coords = self.get_splat_3d_indices(pos, distance)
+        mask = (coords.z >= 0) & (coords.z < self.temporal_bins)
         self.transient_storage.put(
             pos=coords,
             wavelengths=wavelengths,
