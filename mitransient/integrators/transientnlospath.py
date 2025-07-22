@@ -236,6 +236,7 @@ class TransientNLOSPath(TransientADIntegrator):
 
         return ps
 
+    @dr.syntax
     def emitter_nee_sample(
             self, mode: dr.ADMode, scene: mi.Scene, sampler: mi.Sampler,
             si: mi.SurfaceInteraction3f, bsdf: mi.BSDF, bsdf_ctx: mi.BSDFContext,
@@ -273,6 +274,7 @@ class TransientNLOSPath(TransientADIntegrator):
 
         return Lr_dir
 
+    @dr.syntax
     def emitter_laser_sample(
             self, mode: dr.ADMode, scene: mi.Scene, sampler: mi.Sampler,
             si: mi.SurfaceInteraction3f, bsdf: mi.BSDF, bsdf_ctx: mi.BSDFContext,
@@ -328,6 +330,7 @@ class TransientNLOSPath(TransientADIntegrator):
             bsdf=bsdf_next, bsdf_ctx=bsdf_ctx, β=β * bsdf_spec, distance=distance + distance_laser * η, η=η,
             depth=depth+1, active_e=active_e, add_transient=add_transient)
 
+    @dr.syntax
     def hidden_geometry_sample(
             self, scene: mi.Scene, sampler: mi.Sampler, bsdf: mi.BSDF, bsdf_ctx: mi.BSDFContext, si: mi.SurfaceInteraction3f,
             _: mi.Float, sample2: mi.Point2f, active: mi.Bool) -> Tuple[mi.BSDFSample3f, mi.Spectrum]:

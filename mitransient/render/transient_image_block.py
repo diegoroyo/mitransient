@@ -78,6 +78,8 @@ class TransientImageBlock(mi.Object):
         if mi.is_spectral:
             rgb = mi.spectrum_to_srgb(spec_u, wavelengths, active)
             values = [rgb.x, rgb.y, rgb.z, alpha, weight]
+        elif mi.is_monochromatic and mi.is_polarized:
+            values = [value[0,0,0], value[1,0,0], value[2,0,0], value[3,0,0], alpha, weight]
         elif mi.is_monochromatic:
             values = [spec_u.x, alpha, weight]
         else:

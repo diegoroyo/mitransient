@@ -91,7 +91,9 @@ class TransientHDRFilm(mi.Film):
     def prepare_transient_(self, aovs: Sequence[str]):
         alpha = mi.has_flag(self.flags(), mi.FilmFlags.Alpha)
 
-        if mi.is_monochromatic:
+        if mi.is_monochromatic and mi.is_polarized:
+            base_channels = "0123" + ("AW" if alpha else "W")
+        elif mi.is_monochromatic:
             base_channels = "LAW" if alpha else "LW"
         else:
             # RGB
@@ -103,6 +105,8 @@ class TransientHDRFilm(mi.Film):
 
         for i in range(len(aovs)):
             channels.append(aovs[i])
+        
+        print('Channels', channels)
 
         crop_offset_xyt = mi.ScalarPoint3i(
             self.crop_offset().x, self.crop_offset().y, 0)
@@ -116,7 +120,6 @@ class TransientHDRFilm(mi.Film):
             rfilter=self.rfilter()
         )
         self.channels = channels
-
         if len(set(channels)) != len(channels):
             mi.Log(mi.LogLevel.Error,
                    "Film::prepare_transient_(): duplicate channel name.")
