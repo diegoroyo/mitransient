@@ -163,7 +163,6 @@ class TransientHDRFilm(mi.Film):
 
         weight = dr.gather(Float, data.array, weight_idx)
         values_ = dr.gather(Float, data.array, values_idx)
-        # print('Shape weight and values', dr.shape(weight), dr.shape(values_))
 
         values = values_ / dr.select((weight == 0.0), 1.0, weight)
 

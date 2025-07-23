@@ -27,4 +27,7 @@ from .sensors import *
 
 from .utils import speed_of_light, cornell_box
 from . import nlos
-from . import visualization as vis
+if mi.is_polarized:
+    from . import polarized_visualization as vis
+else:
+    from . import unpolarized_visualization as vis

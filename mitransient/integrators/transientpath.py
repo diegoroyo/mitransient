@@ -70,6 +70,7 @@ class TransientPath(TransientADIntegrator):
                scene: mi.Scene,
                sampler: mi.Sampler,
                ray: mi.Ray3f,
+               β: mi.Spectrum,
                δL: Optional[mi.Spectrum],
                state_in: Optional[mi.Spectrum],
                active: mi.Bool,
@@ -96,11 +97,11 @@ class TransientPath(TransientADIntegrator):
         L = mi.Spectrum(0 if primal else state_in)    # Radiance accumulator
         # Differential/adjoint radiance
         δL = mi.Spectrum(δL if δL is not None else 0)
-        β = mi.Spectrum(1)                            # Path throughput weight
+
         η = mi.Float(1)                               # Index of refraction
         active = mi.Bool(active)                      # Active SIMD lanes
         distance = mi.Float(0.0)                      # Distance of the path
-
+    
         # Variables caching information from the previous bounce
         prev_si = dr.zeros(mi.SurfaceInteraction3f)
         prev_bsdf_pdf = mi.Float(1.0)

@@ -104,6 +104,7 @@ class TransientPRBVolpathIntegrator(TransientADIntegrator):
                scene: mi.Scene,
                sampler: mi.Sampler,
                ray: mi.Ray3f,
+               β: mi.Spectrum,
                δL: Optional[mi.Spectrum],
                state_in: Optional[mi.Spectrum],
                active: mi.Bool,
@@ -124,7 +125,6 @@ class TransientPRBVolpathIntegrator(TransientADIntegrator):
         L = mi.Spectrum(0 if is_primal else state_in)  # Radiance accumulator
         # Differential/adjoint radiance
         δL = mi.Spectrum(δL if δL is not None else 0)
-        throughput = mi.Spectrum(1)                   # Path throughput weight
         η = mi.Float(1)                               # Index of refraction
         active = mi.Bool(active)
 
@@ -155,14 +155,14 @@ class TransientPRBVolpathIntegrator(TransientADIntegrator):
 
         while dr.hint(active,
                       label=f"Path Replay Backpropagation ({mode.name})"):
-            active &= dr.any(throughput != 0.0)
+            active &= dr.any(β != 0.0)
 
             # --------------------- Perform russian roulette --------------------
 
-            q = dr.minimum(dr.max(throughput) * dr.square(η), 0.99)
+            q = dr.minimum(dr.max(β) * dr.square(η), 0.99)
             perform_rr = (depth > self.rr_depth)
             active &= (sampler.next_1d(active) < q) | ~perform_rr
-            throughput[perform_rr] = throughput * dr.rcp(q)
+            β[perform_rr] = β * dr.rcp(q)
 
             active_medium = active & (medium != None)
             active_surface = active & ~active_medium
@@ -221,7 +221,7 @@ class TransientPRBVolpathIntegrator(TransientADIntegrator):
 
                 weight[act_medium_scatter] *= mei.sigma_s / \
                     dr.detach(scatter_prob)
-                throughput *= dr.detach(weight)
+                β *= dr.detach(weight)
 
                 mei = dr.detach(mei)
                 if dr.hint(not is_primal and dr.grad_enabled(weight), mode='scalar'):
@@ -257,8 +257,8 @@ class TransientPRBVolpathIntegrator(TransientADIntegrator):
                 else:
                     emitter_pdf = 0.0
                 emitted = emitter.eval(si, active_e)
-                contrib = dr.select(count_direct, throughput * emitted,
-                                    throughput * mis_weight(last_scatter_direction_pdf, emitter_pdf) * emitted)
+                contrib = dr.select(count_direct, β * emitted,
+                                    β * mis_weight(last_scatter_direction_pdf, emitter_pdf) * emitted)
                 L[active_e] += dr.detach(contrib if is_primal else -contrib)
                 if dr.hint(not is_primal and dr.grad_enabled(contrib), mode='scalar'):
                     dr.backward(δL * contrib)
@@ -295,7 +295,7 @@ class TransientPRBVolpathIntegrator(TransientADIntegrator):
                     nee_directional_pdf = dr.select(ds.delta, 0.0, dr.select(
                         active_e_surface, bsdf_pdf, phase_pdf))
 
-                    contrib = throughput * nee_weight * \
+                    contrib = β * nee_weight * \
                         mis_weight(ds.pdf, nee_directional_pdf) * emitted
                     L[active_e] += dr.detach(contrib if is_primal else -contrib)
 
@@ -334,7 +334,7 @@ class TransientPRBVolpathIntegrator(TransientADIntegrator):
                     else:
                         δL += dr.forward_to(Lo)
 
-                throughput[act_medium_scatter] *= phase_weight
+                β[act_medium_scatter] *= phase_weight
                 ray[act_medium_scatter] = mei.spawn_ray(wo)
                 needs_intersection |= act_medium_scatter
                 last_scatter_direction_pdf[act_medium_scatter] = phase_pdf
@@ -361,7 +361,7 @@ class TransientPRBVolpathIntegrator(TransientADIntegrator):
                     else:
                         δL += dr.forward_to(Lo)
 
-                throughput[active_surface] *= bsdf_weight
+                β[active_surface] *= bsdf_weight
                 η[active_surface] *= bs.eta
                 bsdf_ray = si.spawn_ray(si.to_world(bs.wo))
                 ray[active_surface] = bsdf_ray

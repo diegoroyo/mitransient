@@ -2,19 +2,10 @@ import mitsuba as mi
 import numpy as np
 
 
-def tonemap_transient(transient, scaling=1.0, normalize_M00=False):
+def tonemap_transient(transient, scaling=1.0):
     """Applies a linear tonemapping to the transient image."""
     tnp = np.array(transient)
     channel_top = np.quantile(np.abs(tnp), 0.99)
-    if transient.shape[-1] == 1:
-        return tnp / channel_top * scaling
-
-    # Polarized case
-    if normalize_M00:
-        tnp[...,1:] = tnp[...,1:] / tnp[...,[0]]
-
-    tnp[np.isnan(tnp)] = 0
-
     return tnp / channel_top * scaling
         
 
