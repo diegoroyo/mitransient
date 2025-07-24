@@ -105,8 +105,6 @@ class TransientHDRFilm(mi.Film):
 
         for i in range(len(aovs)):
             channels.append(aovs[i])
-        
-        print('Channels', channels)
 
         crop_offset_xyt = mi.ScalarPoint3i(
             self.crop_offset().x, self.crop_offset().y, 0)
