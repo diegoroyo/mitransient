@@ -236,6 +236,7 @@ class TransientNLOSPath(TransientADIntegrator):
 
         return ps
 
+    @dr.syntax
     def emitter_nee_sample(
             self, mode: dr.ADMode, scene: mi.Scene, sampler: mi.Sampler,
             si: mi.SurfaceInteraction3f, bsdf: mi.BSDF, bsdf_ctx: mi.BSDFContext,
@@ -273,6 +274,7 @@ class TransientNLOSPath(TransientADIntegrator):
 
         return Lr_dir
 
+    @dr.syntax
     def emitter_laser_sample(
             self, mode: dr.ADMode, scene: mi.Scene, sampler: mi.Sampler,
             si: mi.SurfaceInteraction3f, bsdf: mi.BSDF, bsdf_ctx: mi.BSDFContext,
@@ -328,6 +330,7 @@ class TransientNLOSPath(TransientADIntegrator):
             bsdf=bsdf_next, bsdf_ctx=bsdf_ctx, β=β * bsdf_spec, distance=distance + distance_laser * η, η=η,
             depth=depth+1, active_e=active_e, add_transient=add_transient)
 
+    @dr.syntax
     def hidden_geometry_sample(
             self, scene: mi.Scene, sampler: mi.Sampler, bsdf: mi.BSDF, bsdf_ctx: mi.BSDFContext, si: mi.SurfaceInteraction3f,
             _: mi.Float, sample2: mi.Point2f, active: mi.Bool) -> Tuple[mi.BSDFSample3f, mi.Spectrum]:
@@ -368,6 +371,7 @@ class TransientNLOSPath(TransientADIntegrator):
                scene: mi.Scene,
                sampler: mi.Sampler,
                ray: mi.Ray3f,
+               β: mi.Spectrum,
                δL: Optional[mi.Spectrum],
                state_in: Optional[mi.Spectrum],
                active: mi.Bool,
@@ -394,7 +398,6 @@ class TransientNLOSPath(TransientADIntegrator):
         L = mi.Spectrum(0 if primal else state_in)    # Radiance accumulator
         # Differential/adjoint radiance
         δL = mi.Spectrum(δL if δL is not None else 0)
-        β = mi.Spectrum(1)                            # Path throughput weight
         η = mi.Float(1)                               # Index of refraction
         active = mi.Bool(active)                      # Active SIMD lanes
         distance = mi.Float(ray.time)                 # Distance of the path

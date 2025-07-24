@@ -4,8 +4,10 @@ import numpy as np
 
 def tonemap_transient(transient, scaling=1.0):
     """Applies a linear tonemapping to the transient image."""
-    channel_top = np.quantile(np.array(transient), 0.99)
-    return transient / channel_top * scaling
+    tnp = np.array(transient)
+    channel_top = np.quantile(np.abs(tnp), 0.99)
+    return tnp / channel_top * scaling
+        
 
 
 def save_video(path, transient, axis_video, fps=24, display_video=False):

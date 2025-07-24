@@ -70,6 +70,7 @@ class TransientPath(TransientADIntegrator):
                scene: mi.Scene,
                sampler: mi.Sampler,
                ray: mi.Ray3f,
+               β: mi.Spectrum,
                δL: Optional[mi.Spectrum],
                state_in: Optional[mi.Spectrum],
                active: mi.Bool,
@@ -96,11 +97,11 @@ class TransientPath(TransientADIntegrator):
         L = mi.Spectrum(0 if primal else state_in)    # Radiance accumulator
         # Differential/adjoint radiance
         δL = mi.Spectrum(δL if δL is not None else 0)
-        β = mi.Spectrum(1)                            # Path throughput weight
+
         η = mi.Float(1)                               # Index of refraction
         active = mi.Bool(active)                      # Active SIMD lanes
         distance = mi.Float(0.0)                      # Distance of the path
-
+    
         # Variables caching information from the previous bounce
         prev_si = dr.zeros(mi.SurfaceInteraction3f)
         prev_bsdf_pdf = mi.Float(1.0)
@@ -147,7 +148,7 @@ class TransientPath(TransientADIntegrator):
             )
 
             with dr.resume_grad(when=not primal):
-                Le = β * mis * \
+                Le = β * mi.Spectrum(mis) * \
                     dr.select(self.discard_direct_light, 0,
                               ds.emitter.eval(si, active_next))
 
@@ -182,9 +183,10 @@ class TransientPath(TransientADIntegrator):
                 wo = si.to_local(ds.d)
                 bsdf_value_em, bsdf_pdf_em = bsdf.eval_pdf(
                     bsdf_ctx, si, wo, active_em)
+                bsdf_value_em = si.to_world_mueller(bsdf_value_em, -wo, si.wi)
                 mis_em = dr.select(
                     ds.delta, 1, mis_weight(ds.pdf, bsdf_pdf_em))
-                Lr_dir = β * mis_em * bsdf_value_em * em_weight
+                Lr_dir = β * mi.Spectrum(mis_em) * bsdf_value_em * em_weight
 
             # Add contribution direct emitter sampling
             add_transient(Lr_dir, distance + ds.dist *
@@ -196,13 +198,13 @@ class TransientPath(TransientADIntegrator):
                                                    sampler.next_1d(),
                                                    sampler.next_2d(),
                                                    active_next)
+            bsdf_weight = si.to_world_mueller(bsdf_weight, -bsdf_sample.wo, si.wi)
 
             # ---- Update loop variables based on current interaction -----
-
             L = (L + Le + Lr_dir) if primal else (L - Le - Lr_dir)
             ray = si.spawn_ray(si.to_world(bsdf_sample.wo))
             η *= bsdf_sample.eta
-            β *= bsdf_weight
+            β = β * bsdf_weight
 
             # Information about the current vertex needed by the next iteration
 
@@ -214,7 +216,7 @@ class TransientPath(TransientADIntegrator):
             # -------------------- Stopping criterion ---------------------
 
             # Don't run another iteration if the throughput has reached zero
-            β_max = dr.max(β)
+            β_max = dr.max(mi.unpolarized_spectrum(β))
             active_next &= (β_max != 0)
 
             # Russian roulette stopping probability (must cancel out ior^2
@@ -246,6 +248,7 @@ class TransientPath(TransientADIntegrator):
 
                     # Re-evaluate BSDF * cos(theta) differentiably
                     bsdf_val = bsdf.eval(bsdf_ctx, si, wo, active_next)
+                    bsdf_val = si.to_world_mueller(bsdf_val, -wo, si.wi)
 
                     # Detached version of the above term and inverse
                     bsdf_val_det = bsdf_weight * bsdf_sample.pdf
