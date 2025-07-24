@@ -71,7 +71,7 @@ class NLOSCaptureMeter(NLOSSensor):
         self.account_first_and_last_bounces: bool = \
             props.get('account_first_and_last_bounces', True)
 
-        self.world_transform: Transform4f = \
+        self._world_transform: Transform4f = \
             Transform4f().translate(
                 props.get('sensor_origin', ScalarArray3f(0)))
 
@@ -98,8 +98,12 @@ class NLOSCaptureMeter(NLOSSensor):
         dr.make_opaque(self.laser_bounce_opl,
                        self.laser_target, self.film_size)
 
+    # @property
+    def world_transform(self):
+        return self._world_transform
+
     def _sensor_origin(self) -> ScalarArray3f:
-        return self.world_transform.translation()
+        return self._world_transform.translation()
 
     def _pixel_to_sample(self, pixel: mi.Point2f) -> mi.Point2f:
         return pixel / self.film_size

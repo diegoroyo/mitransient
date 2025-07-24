@@ -1,0 +1,80 @@
+<scene version="3.3.0">
+    <integrator type="transient_nlos_path">
+        <integer name="block_size" value="1"/>
+        <integer name="max_depth" value="-1"/>
+        <integer name="filter_depth" value="-1"/>
+        <boolean name="discard_direct_paths" value="false"/>
+        <boolean name="nlos_laser_sampling" value="true"/>
+        <boolean name="nlos_hidden_geometry_sampling" value="true"/>
+        <boolean name="nlos_hidden_geometry_sampling_do_rroulette" value="false"/>
+        <boolean name="nlos_hidden_geometry_sampling_includes_relay_wall" value="false"/>
+        <string name="temporal_filter" value="box"/>
+    </integrator>
+
+    <bsdf type="roughconductor" id="gold">
+        <string name="material" value="Au"/>
+        <string name="distribution" value="ggx"/>
+        <float name="alpha_u" value="0.9"/>
+        <float name="alpha_v" value="0.9"/>
+    </bsdf>
+
+    <!-- Z -->
+    <shape type="obj">
+        <string name="filename" value="./Z.obj"/>
+
+        <ref id="gold"/>
+
+        <transform name="to_world">
+            <scale x="1" y="1" z="1"/>
+            <rotate x="1" angle="0.0"/>
+            <rotate y="1" angle="0.0"/>
+            <rotate z="1" angle="0.0"/>
+            <translate x="0.0" y="0.0" z="1.0"/>
+        </transform>
+    </shape>
+
+    <!-- Laser emitter -->
+    <emitter type="projector">
+        <rgb name="irradiance" value="1.0, 1.0, 1.0"/>
+        <float name="fov" value="0.2"/>
+    </emitter>
+
+    <!-- relay_wall (RELAY WALL) -->
+    <shape type="rectangle" id="relay_wall">
+        <ref id="gold"/>
+        <transform name="to_world">
+            <scale x="1" y="1" z="1"/>
+            <rotate x="1" angle="0.0"/>
+            <rotate y="1" angle="0.0"/>
+            <rotate z="1" angle="0.0"/>
+            <translate x="0.0" y="0.0" z="0.0"/>
+        </transform>
+        <sensor type="nlos_capture_meter">
+            <sampler type="independent">
+                <integer name="sample_count" value="25000"/>
+                <integer name="seed" value="0"/>
+            </sampler>
+
+            <!-- <emitter type="projector">
+                <rgb name="irradiance" value="1.0, 1.0, 1.0"/>
+                <float name="fov" value="0.2"/>
+            </emitter> -->
+
+            <boolean name="confocal" value="false"/>
+            <boolean name="account_first_and_last_bounces" value="false"/>
+            <point name="sensor_origin" x="-0.5" y="0.0" z="0.25"/>
+            <point name="laser_origin" x="-0.5" y="0.0" z="0.25"/>
+            <point name="laser_lookat_pixel" x="32" y="32" z="0"/>
+            <film type="transient_hdr_film">
+                <integer name="width" value="64"/>
+                <integer name="height" value="64"/>
+
+                <integer name="temporal_bins" value="300"/>
+                <!-- <boolean name="auto_detect_bins" value="false"/> -->
+                <float name="bin_width_opl" value="0.006"/>
+                <float name="start_opl" value="1.85"/>
+                <rfilter type="box"/>
+            </film>
+        </sensor>
+    </shape>
+</scene>

@@ -450,8 +450,8 @@ class TransientNLOSPath(TransientADIntegrator):
             )
 
             with dr.resume_grad(when=not primal):
-                Le = β * mis * ds.emitter.eval(si, active_next)
-
+                Le = β * mi.Spectrum(mis) * ds.emitter.eval(si, active_next)
+            dr.print('{Le=}', Le=Le)
             # Add transient contribution because of emitter found
             add_transient(Le, distance, ray.wavelengths, active)
 
@@ -508,7 +508,7 @@ class TransientNLOSPath(TransientADIntegrator):
             L = (L + Le + Lr_dir) if primal else (L - Le - Lr_dir)
             ray = si.spawn_ray(si.to_world(bsdf_sample.wo))
             η *= bsdf_sample.eta
-            β = β * bsdf_weight / pdf_bsdf_method
+            β = mi.Spectrum(β * bsdf_weight / pdf_bsdf_method)
 
             # Information about the current vertex needed by the next iteration
 
@@ -520,7 +520,7 @@ class TransientNLOSPath(TransientADIntegrator):
             # -------------------- Stopping criterion ---------------------
 
             # Don't run another iteration if the throughput has reached zero
-            β_max = dr.max(β)
+            β_max = dr.max(mi.unpolarized_spectrum(β))
             active_next &= (β_max != 0)
 
             # Russian roulette stopping probability (must cancel out ior^2

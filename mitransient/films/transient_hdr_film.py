@@ -168,6 +168,7 @@ class TransientHDRFilm(mi.Film):
 
         return TensorXf(values, tuple(list(data.shape[0:-1]) + [target_ch]))
 
+
     def add_transient_data(self, pos: mi.Vector2f, distance: mi.Float,
                            wavelengths: mi.UnpolarizedSpectrum, spec: mi.Spectrum,
                            ray_weight: mi.Float, active: mi.Bool):
@@ -186,7 +187,7 @@ class TransientHDRFilm(mi.Film):
         self.transient_storage.put(
             pos=coords,
             wavelengths=wavelengths,
-            value=spec * ray_weight,
+            value=spec * mi.Spectrum(ray_weight),
             alpha=mi.Float(0.0),
             # value should have the sample scale already multiplied
             weight=mi.Float(0.0),

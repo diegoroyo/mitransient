@@ -154,7 +154,7 @@ class TransientADIntegrator(ADIntegrator):
                 # Accumulate into the image block
                 ADIntegrator._splat_to_block(
                     block, film, pos,
-                    value=L * weight,
+                    value=L * mi.Spectrum(weight),
                     weight=1.0,
                     alpha=dr.select(valid, mi.Float(1), mi.Float(0)),
                     aovs=aovs,
