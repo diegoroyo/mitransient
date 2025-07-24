@@ -261,6 +261,7 @@ class TransientNLOSPath(TransientADIntegrator):
             wo = si.to_local(ds.d)
             bsdf_spec, bsdf_pdf = bsdf.eval_pdf(
                 ctx=bsdf_ctx, si=si, wo=wo, active=active_e)
+            bsdf_spec = si.to_world_mueller(bsdf_spec, -wo, si.wi)
 
             Lr_dir = mi.Spectrum(0)
             if self.filter_depth != -1:
@@ -311,7 +312,7 @@ class TransientNLOSPath(TransientADIntegrator):
         si_bsdf: mi.SurfaceInteraction3f = scene.ray_intersect(
             ray_bsdf, active_e)
         active_e &= si_bsdf.is_valid()
-        active_e &= dr.any(mi.depolarizer(bsdf_spec) > dr.epsilon(mi.Float))
+        active_e &= dr.any(mi.unpolarized_spectrum(bsdf_spec) > dr.epsilon(mi.Float))
 
         wl = si_bsdf.to_local(-d)
         active_e &= mi.Frame3f.cos_theta(wl) > 0.0
@@ -490,10 +491,12 @@ class TransientNLOSPath(TransientADIntegrator):
             bsdf_sample_hg, bsdf_weight_hg = self.hidden_geometry_sample(
                 scene, sampler, bsdf,
                 bsdf_ctx, si, sampler.next_1d(), sampler.next_2d(), active_hg)
+            bsdf_weight_hg = si.to_world_mueller(bsdf_weight_hg, -bsdf_sample_hg.wo, si.wi)
 
             active_nhg = active_next & (~do_hg_sample)
             bsdf_sample_nhg, bsdf_weight_nhg = bsdf.sample(
                 bsdf_ctx, si, sampler.next_1d(), sampler.next_2d(), active_nhg)
+            bsdf_weight_nhg = si.to_world_mueller(bsdf_weight_nhg, -bsdf_sample_nhg.wo, si.wi)
 
             bsdf_sample = dr.select(
                 do_hg_sample, bsdf_sample_hg, bsdf_sample_nhg)
@@ -505,7 +508,7 @@ class TransientNLOSPath(TransientADIntegrator):
             L = (L + Le + Lr_dir) if primal else (L - Le - Lr_dir)
             ray = si.spawn_ray(si.to_world(bsdf_sample.wo))
             η *= bsdf_sample.eta
-            β *= bsdf_weight / pdf_bsdf_method
+            β = β * bsdf_weight / pdf_bsdf_method
 
             # Information about the current vertex needed by the next iteration
 
@@ -549,6 +552,7 @@ class TransientNLOSPath(TransientADIntegrator):
 
                     # Re-evaluate BSDF * cos(theta) differentiably
                     bsdf_val = bsdf.eval(bsdf_ctx, si, wo, active_next)
+                    bsdf_val = si.to_world_mueller(bsdf_val, -wo, si.wi)
 
                     # Detached version of the above term and inverse
                     bsdf_val_det = bsdf_weight * bsdf_sample.pdf

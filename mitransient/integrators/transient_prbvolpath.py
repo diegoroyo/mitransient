@@ -155,11 +155,11 @@ class TransientPRBVolpathIntegrator(TransientADIntegrator):
 
         while dr.hint(active,
                       label=f"Path Replay Backpropagation ({mode.name})"):
-            active &= dr.any(β != 0.0)
+            active &= dr.any(mi.unpolarized_spectrum(β) != 0.0)
 
             # --------------------- Perform russian roulette --------------------
 
-            q = dr.minimum(dr.max(β) * dr.square(η), 0.99)
+            q = dr.minimum(dr.max(mi.unpolarized_spectrum(β)) * dr.square(η), 0.99)
             perform_rr = (depth > self.rr_depth)
             active &= (sampler.next_1d(active) < q) | ~perform_rr
             β[perform_rr] = β * dr.rcp(q)
@@ -186,6 +186,7 @@ class TransientPRBVolpathIntegrator(TransientADIntegrator):
                 # Evaluate ratio of transmittance and free-flight PDF
                 tr, free_flight_pdf = medium.transmittance_eval_pdf(
                     mei, si, active_medium)
+                
                 tr_pdf = index_spectrum(free_flight_pdf, channel)
                 weight = mi.Spectrum(1.0)
                 weight[active_medium] *= dr.select(tr_pdf >
