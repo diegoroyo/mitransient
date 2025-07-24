@@ -451,7 +451,7 @@ class TransientNLOSPath(TransientADIntegrator):
 
             with dr.resume_grad(when=not primal):
                 Le = β * mi.Spectrum(mis) * ds.emitter.eval(si, active_next)
-            dr.print('{Le=}', Le=Le)
+
             # Add transient contribution because of emitter found
             add_transient(Le, distance, ray.wavelengths, active)
 
