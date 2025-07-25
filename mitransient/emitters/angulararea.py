@@ -27,21 +27,7 @@ class AngularAreaLight(mi.Emitter):
 
         self.m_flags = mi.EmitterFlags.Surface
 
-
-    """
-    def sample_wavelengths(self, si: mi.SurfaceInteraction3f, sample: mi.Float, active: mi.Mask) -> Tuple[mi.Wavelength, mi.Spectrum]:
-        raise NotImplementedError
-
-
-    def pdf_wavelengths():
-        raise NotImplementedError
-    """
-
-
-    def sample_ray(self, time: mi.Float, sample1: mi.Float, sample2: mi.Float, sample3: mi.Float, active: mi.Bool) -> Tuple[mi.Ray3f, mi.Spectrum]:
-        raise NotImplementedError
-
-
+    
     def _fallof_curve(self, d: mi.Vector3f) -> mi.Float:
         local_dir: mi.Vector3f = dr.normalize(d)
         cos_theta: mi.Float = local_dir.z
@@ -51,7 +37,30 @@ class AngularAreaLight(mi.Emitter):
         )
 
         return dr.select(cos_theta > self.cos_cutoff_angle, beam_res, 0.0)
+    
+    
+    def traverse(self, callback: mi.TraversalCallback):
+        # NOTE: all the parameters are set as NonDifferentiable by default
+        super().traverse(callback)
+        callback.put_parameter("radiance", self.radiance, mi.ParamFlags.NonDifferentiable)
+        callback.put_parameter("cutoff_angle", self.cutoff_angle, mi.ParamFlags.NonDifferentiable)
+        callback.put_parameter("beam_width", self.beam_width, mi.ParamFlags.NonDifferentiable)
 
+
+    def eval(self, si: mi.SurfaceInteraction3f, active: mi.Bool) -> mi.Spectrum:
+        # Evaluate emitted radiance & fallof profile
+        falloff: mi.Float = self._fallof_curve(si.wi)
+        spec = self.radiance.eval(si, active) * falloff
+        active &= falloff > 0.0
+
+        active &= mi.Frame3f.cos_theta(si.wi) > 0
+
+        return dr.select(active, spec, 0.0)
+
+
+    def sample_ray(self, time: mi.Float, sample1: mi.Float, sample2: mi.Float, sample3: mi.Float, active: mi.Bool) -> Tuple[mi.Ray3f, mi.Spectrum]:
+        raise NotImplementedError
+    
 
     def sample_direction(self, ref: mi.Interaction3f, sample: mi.Point2f, active: mi.Bool) -> Tuple[mi.DirectionSample3f, mi.Spectrum]:
         # Sample position in shape and weight by the square distance (solid angle)
@@ -73,17 +82,23 @@ class AngularAreaLight(mi.Emitter):
         ds.emitter = mi.EmitterPtr(self)
  
         return ds, dr.select(active, spec, 0.0)
-
-
+    
     def pdf_direction(self, ref: mi.Interaction3f, ds: mi.DirectionSample3f, active: mi.Bool) -> mi.Float:
         dp: mi.Float = dr.dot(ds.d, ds.n)
         active &= dp < 0.0
+
+        # Compute falloff in local frame
+        frame = mi.Frame3f(ds.n)
+        local_d = frame.to_local(-ds.d)
+
+        # Evaluate emitted radiance & fallof profile
+        falloff: mi.Float = self._fallof_curve(local_d)
+        active &= falloff > 0.0
         
         value = self.get_shape().pdf_direction(ref, ds, active)
 
         return dr.select(active, value, 0.0)
-
-
+    
     def eval_direction(self, ref: mi.Interaction3f, ds: mi.DirectionSample3f, active: mi.Bool) -> mi.Spectrum:
         dp: mi.Float = dr.dot(ds.d, ds.n)
         active &= dp < 0.0
@@ -102,36 +117,15 @@ class AngularAreaLight(mi.Emitter):
         spec = (self.radiance.eval(si, active) * (falloff * dr.square(inv_dist))) * dp
 
         return dr.select(active, spec, 0.0)
-
-
+    
+    
     def sample_position(self, time: mi.Float, sample: mi.Point2f, active: mi.Bool) -> Tuple[mi.PositionSample3f, mi.Float]:
         raise NotImplementedError
-
-
-    def pdf_position(self, ps: mi.PositionSample3f, active: mi.Bool) -> mi.Float:
-        raise NotImplementedError
-
-
-    def eval(self, si: mi.SurfaceInteraction3f, active: mi.Bool) -> mi.Spectrum:
-        # Evaluate emitted radiance & fallof profile
-        falloff: mi.Float = self._fallof_curve(si.wi)
-        spec = self.radiance.eval(si, active) * falloff
-        active &= falloff > 0.0
-
-        active &= mi.Frame3f.cos_theta(si.wi) > 0
-
-        return spec & active
-
-    def traverse(self, callback: mi.TraversalCallback):
-        # NOTE: all the parameters are set as NonDifferentiable by default
-        super().traverse(callback)
-        callback.put_parameter("radiance", self.radiance, mi.ParamFlags.NonDifferentiable)
-        callback.put_parameter("cutoff_angle", self.cutoff_angle, mi.ParamFlags.NonDifferentiable)
-        callback.put_parameter("beam_width", self.beam_width, mi.ParamFlags.NonDifferentiable)
 
     
     def parameters_changed(self, keys):
         super().parameters_changed(keys)
+
 
     def to_string(self):
         string = f"{type(self).__name__}[\n"
