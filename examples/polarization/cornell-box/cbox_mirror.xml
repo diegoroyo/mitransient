@@ -4,7 +4,6 @@
     <default name="integrator" value="transient_path"/>
 
     <!-- Transient Integrator -->
-
     <integrator type='$integrator'>
       <boolean name="camera_unwarp" value="false"/>
       <integer name="max_depth" value="5"/>
