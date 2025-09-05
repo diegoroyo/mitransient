@@ -155,7 +155,7 @@ class PhasorHDRFilm(mi.Film):
 
         values = values_ / dr.select((weight == 0.0), 1.0, weight)
 
-        return TensorXf(values, tuple(list(data.shape[0:-1]) + [target_ch]))
+        return TensorXf(values, tuple(list(data.shape[0:-1]) + [target_ch // 2, 2]))
 
     def add_transient_data(self, pos: mi.Vector2f, distance: mi.Float,
                            wavelengths: mi.UnpolarizedSpectrum, spec: mi.Spectrum,
