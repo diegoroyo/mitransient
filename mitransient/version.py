@@ -1,10 +1,10 @@
 # mitransient version
-__version__ = '1.1.2'
+__version__ = '1.2.0'
 
 # Mitsuba minimum and maximum compatible versions
 __mi_version_min__ = '3.6.0'
-__mi_version_latest__ = '3.6.4'
-__mi_version_max__ = '3.7.0'
+__mi_version_latest__ = '3.7.0'
+__mi_version_max__ = '3.8.0'
 
 
 class Version:
