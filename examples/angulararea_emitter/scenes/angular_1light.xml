@@ -1,6 +1,6 @@
 <scene version="3.3.0">
     <default name="spp" value="64"/>
-    <default name="res" value="512"/>
+    <default name="res" value="200"/>
     <default name="integrator" value="transient_path"/>
 
     <integrator type='$integrator'>
@@ -25,9 +25,9 @@
         <film type="transient_hdr_film">
             <integer name="width"  value="$res"/>
             <integer name="height" value="$res"/>
-            <integer name="temporal_bins" value="1000"/>
+            <integer name="temporal_bins" value="200"/>
             <float name="start_opl" value="0"/>  <!-- 15 105 -->
-            <float name="bin_width_opl" value="0.1"/>  <!-- 15 105 -->
+            <float name="bin_width_opl" value="0.5"/>  <!-- 15 105 -->
             <rfilter type="box">
               <!-- <float name="stddev" value="1.0"/> -->
             </rfilter>
@@ -44,6 +44,10 @@
         <rgb name="reflectance" value="0.885809, 0.698859, 0.666422"/>
     </bsdf>
 
+    <bsdf type="diffuse" id="black">
+        <rgb name="reflectance" value="0.0, 0.0, 0.0"/>
+    </bsdf>
+
     <!-- Light -->
 
     <shape type="obj" id="light">
@@ -51,7 +55,7 @@
         <transform name="to_world">
             <translate x="0" y="0" z="0"/>
         </transform>
-        <ref id="white"/>
+        <ref id="black"/>
         <emitter type="angulararea">
             <rgb name="radiance" value="18.387, 10.9873, 2.75357"/>
             <float name="cutoff_angle" value="35"/>

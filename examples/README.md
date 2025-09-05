@@ -1,9 +1,17 @@
 # Examples
 
-* `transient`: Examples on how to render images using Mitsuba 3 (for more info on Mitsuba 3 [watch this](https://www.youtube.com/watch?v=LCsjK6Cbv6Q) or [read the docs](https://mitsuba.readthedocs.io/en/latest/)), and how to render the same scene in transient state or steady state.
-* `transient-nlos`: Example on how to render NLOS simulations from the Python interface. For easier setups you can also check [tal](https://github.com/diegoroyo/tal), a Python library with a shell interface that simplifies this process.
+> [!IMPORTANT]
+> If this is your first time, we strongly recommend that you start with the examples in the `transient` folder. Going through these in order will give you an idea of the main features of `mitransient`.
 
-## Transient-NLOS
+> [!CAUTION]
+> Most of the tutorials assume that you've read the `transient/0-render_cbox_diffuse.ipynb` tutorial, which gives the basics on how to create/edit/render/visualize a scene.
+
+* `transient`: First steps with `mitransient` (+Mitsuba 3): creating a scene, editing the scene and visualizing the transient result. There are more advanced tutorials for transient volumetric rendering, frequency space rendering and advanced visualization.
+* `transient-nlos`: Example on how to render NLOS simulations from the Python interface. For easier setups you can also check [tal](https://github.com/diegoroyo/tal), a Python library with a shell interface that simplifies this process.
+* `polarization`: Most of the tutorials do not simulate the polarization of the light. This folder contains multiple samples for how to simulate time-resolved polarization of light, and how to visualize the result/Stokes vectors.
+* `angulararea-emitter`: Examples for our `angulararea` plugin, which acts as an area light that emits within a restricted angular range.
+
+## Documentation: Non-Line-of-Sight rendering
 
 To create a scene and simulate a NLOS setup, you will need to set up the following components:
 

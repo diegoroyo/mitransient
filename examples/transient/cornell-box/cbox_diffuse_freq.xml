@@ -1,13 +1,13 @@
 <scene version="3.3.0">
     <default name="spp" value="16"/>
-    <default name="res" value="400"/>
+    <default name="res" value="200"/>
     <default name="integrator" value="transient_path"/>
 
     <!-- Transient Integrator -->
 
     <integrator type='$integrator'>
       <boolean name="camera_unwarp" value="false"/>
-      <integer name="max_depth" value="8"/>
+      <integer name="max_depth" value="5"/>
       <string name="temporal_filter" value="box"/>
       <float name="gaussian_stddev" value="2.0"/>
       <boolean name="discard_direct_light" value="true"/>
