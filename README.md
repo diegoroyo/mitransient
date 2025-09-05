@@ -33,24 +33,26 @@
 
 *mitransient* is a library adds support to [Mitsuba 3](https://github.com/mitsuba-renderer/mitsuba3) for doing transient simulations, with amazing support for non-line-of-sight (NLOS) data capture simulations.
 
+<br>
+
+> [!TIP]
+> **Check out our <a href="https://mitransient.readthedocs.io">online documentation (mitransient.readthedocs.io)</a> and our code examples:** <br>
+> * [Quickstart: your first time-resolved render](https://github.com/diegoroyo/mitransient/blob/main/examples/transient/render_cbox_diffuse.ipynb)
+> * [Overview of all examples](https://github.com/diegoroyo/mitransient/tree/main/examples)
+> * [Non-line-of-sight (NLOS) transient rendering](https://github.com/diegoroyo/mitransient/blob/main/examples/transient-nlos/mitsuba3-transient-nlos.ipynb)
+> * [Time-resolved polarization simulations](https://github.com/diegoroyo/mitransient/tree/main/examples/polarization)
+
 ### Main features
 * **Foundation ready to use:** easy interface to convert your algorithms to the transient domain.
 * **Python-only** library for doing transient rendering in both CPU and GPU.
 * **Several integrators already implemented:** transient pathtracing (also adapted for NLOS scenes) and transient volumetric pathtracing.
 * **Cross-platform:** Mitsuba 3 has been tested on Linux (x86_64), macOS (aarch64, x86_64), and Windows (x86_64).
-* **Temporal domain** filtering.
-
-<br>
-
-> [!TIP]
-> **Check out our <a href="https://mitransient.readthedocs.io">online documentation (mitransient.readthedocs.io)</a> and our code examples:** <br>
-> Featuring [General Usage](https://github.com/diegoroyo/mitransient/tree/main/examples), [Transient rendering](https://github.com/diegoroyo/mitransient/blob/main/examples/transient/render_cbox_diffuse.ipynb), and [Non-line-of-sight (NLOS) transient rendering](https://github.com/diegoroyo/mitransient/blob/main/examples/transient-nlos/mitsuba3-transient-nlos.ipynb)
 
 <br>
 
 # License and citation
 
-This project was created by [Miguel Crespo](https://mcrespo.me) and expanded by [Diego Royo](https://diego.contact) and [Jorge Garcia-Pueyo](https://jgarciapueyo.github.io/). Also see the [original Mitsuba 3 license and contributors](https://github.com/mitsuba-renderer/mitsuba3).
+This project was started by [Diego Royo](https://diego.contact), [Miguel Crespo](https://mcrespo.me) and [Jorge Garcia-Pueyo](https://jgarciapueyo.github.io/). See below for the full list of `mitransient` contributors. Also see the [original Mitsuba 3 license and contributors](https://github.com/mitsuba-renderer/mitsuba3).
 
 If you use our code in your project, please consider citing us using the following:
 
@@ -58,7 +60,7 @@ If you use our code in your project, please consider citing us using the followi
 @misc{mitransient,
   title        = {mitransient},
   author       = {Royo, Diego and Crespo, Miguel and Garcia-Pueyo, Jorge},
-  year         = 2023,
+  year         = 2024,
   journal      = {GitHub repository},
   doi          = {https://doi.org/10.5281/zenodo.11032518},
   publisher    = {GitHub},
@@ -66,7 +68,7 @@ If you use our code in your project, please consider citing us using the followi
 }
 ```
 
-Additionally, the NLOS features were re-implemented from our publication [Non-line-of-sight transient rendering](https://doi.org/10.1016/j.cag.2022.07.003). Please also consider citing us if you use them:
+Additionally, the NLOS features were implemented from our publication [Non-line-of-sight transient rendering](https://doi.org/10.1016/j.cag.2022.07.003). Please also consider citing us if you use them:
 
 ```bibtex
 @article{royo2022non,
@@ -96,13 +98,18 @@ We provide the package via PyPI. To install `mitransient` you need to run:
 pip install mitransient
 ```
 
+which will also install the `mitsuba` Python package as a dependency.
+
 > [!IMPORTANT]
-> **In order to run `mitransient` you also need to install Mitsuba 3.** If you have installed Mitsuba 3 via `pip` (`pip install mitsuba`) you will only have access to the `llvm_ad_rgb` and `cuda_ad_rgb` variants. If you want to use other variants (e.g. NLOS simulations can greatly benefit from the `llvm_mono` variant which only propagates one wavelength), then we recommend that you compile Mitsuba 3 yourself [following this tutorial](https://mitsuba.readthedocs.io/en/latest/src/developer_guide/compiling.html) and enable the following variants: `["scalar_mono", "llvm_mono", "llvm_ad_mono", "cuda_mono", "cuda_ad_mono", "scalar_rgb", "llvm_rgb", "llvm_ad_rgb", "cuda_rgb", "cuda_ad_rgb"]`.
+> `mitransient` and `mitsuba` have different *variants* that specify the number of channels (RGB image, monochromatic, etc.), hardware acceleration (execution in CPU, GPU, etc.). If you install `mitransient`/`mitsuba` via `pip`, you will have access to [the following variants specified in this website](https://mitsuba.readthedocs.io/en/stable/src/key_topics/variants.html). There are more variants available, but you will have to compile Mitsuba 3 yourself.
+
+> [!TIP]
+> If you wish to use your own compiled Mitsuba 3, see the section below "If you use your own Mitsuba 3".
 
 ## Requirements
 
 - `Python >= 3.8`
-- `Mitsuba3 >= 3.5.0`
+- `mitsuba >= 3.6.0`
 - (optional) For computation on the GPU: `Nvidia driver >= 495.89`
 - (optional) For vectorized / parallel computation on the CPU: `LLVM >= 11.1`
 
@@ -114,7 +121,13 @@ For NLOS data capture simulations, see https://github.com/diegoroyo/tal. `tal` i
 
 ### If you use your own Mitsuba 3
 
-If you have opted for using a custom (non-default installation through `pip`) Mitsuba 3, you have several options for it. The idea here is to be able to control which version of Mitsuba will be loaded on demand.
+First, you will want to install `mitransient` without the `mitsuba` dependency:
+
+```
+pip install mitransient --no-dependencies
+```
+
+Then you will need to `import mitsuba` in your Python scripts. Concretely, the `PYTHONPATH` variable should point to the Mitsuba module that is built upon compilation. There are different ways to do so:
 
 * One solution is to directly execute `setpath.sh` provided after the compilation of the Mitsuba 3 repo [(More info)](https://mitsuba.readthedocs.io/en/latest/src/developer_guide/compiling.html). This shell script will modify the `PATH` and `PYTHONPATH` variables to load first this version of Mitsuba.
 * Another solution following the previous one is to directly set yourself the `PYTHONPATH` environment variable as you wish.
@@ -157,15 +170,31 @@ mitr.vis.show_video(
 
 ## Plugins implemented
 
-`mitransient` implements the following plugins which can be used in scene XML files. To view a description of their parameters, click on the name of your desired plugin.
+`mitransient` implements the following plugins which can be used in scene XML files and dictionaries. To view a description of their parameters, click on the name of your desired plugin.
 * `film`:
   * [`transient_hdr_film`](https://github.com/diegoroyo/mitransient/blob/main/mitransient/films/transient_hdr_film.py): Transient equivalent of Mitsuba 3's `hdrfilm` plugin.
+  * [`phasor_hdr_film`](https://github.com/diegoroyo/mitransient/blob/main/mitransient/films/phasor_hdr_film.py): Similar to `transient_hdr_film`, but stores the result in the frequency domain instead of the time domain.
 * `integrators`:
   * [`transient_path`](https://github.com/diegoroyo/mitransient/blob/main/mitransient/integrators/transientpath.py): Transient path tracing for line-of-sight scenes. If you want to do NLOS simulations, use `transientnlospath` instead.
   * [`transient_nlos_path`](https://github.com/diegoroyo/mitransient/blob/main/mitransient/integrators/transientnlospath.py): Transient path tracing with specific sampling routines for NLOS scenes (e.g. laser sampling and hidden geometry sampling of the ["Non-Line-of-Sight Transient Rendering" paper](https://diego.contact/publications/nlos-render)).
-  * [`transient_prbvolpath`](https://github.com/diegoroyo/mitransient/blob/main/mitransient/integrators/transient_prb_volpath.py): Path Replay Backpropagation for volumetric path tracing. Implemented by Miguel Crespo, untested.
-* `sensor`:
+  * [`transient_prbvolpath`](https://github.com/diegoroyo/mitransient/blob/main/mitransient/integrators/transient_prb_volpath.py): Path Replay Backpropagation for time-resolved volumetric path tracing.
+* `emitters`:
+  * [`angulararea`](https://github.com/diegoroyo/mitransient/blob/main/mitransient/emitters/angulararea.py): Similar to an `area` emitter, but emits within a restricted angular range. 
+* `sensors`:
   * [`nlos_capture_meter`](https://github.com/diegoroyo/mitransient/blob/main/mitransient/sensors/nloscapturemeter.py): Can be attached to one of the scene's geometries, and measures uniformly-spaced points on such geometry (e.g. relay wall).
+
+## Other useful functions
+
+* Utility
+  * `mitr.set_thread_count(count)`: Number of cores used in LLVM mode.
+  * `mitr.cornell_box()`: Returns a Python dictionary with a Cornell Box and a transient path tracing integrator (`transientpath`).
+* Visualization (`vis`)
+  * `mitr.vis.tonemap_transient(t)`: Applies tonemapping to the resulting video of `mi.render(...)`·
+  * `mitr.vis.save_{frames|video}(...)`: Saves the transient render as different frames (images) or as a whole video (.mp4).
+  * `mitr.vis.show_video(...)`: Displays an interactive video player with the transient render (e.g. in Jupyter notebooks).
+* Non-line-of-sight (`nlos`)
+  * `mitr.nlos.focus_emitter_at_relay_wall_{3dpoint|uv|pixel}(...)`: If the scene has only one emitter (hopefully a projector emitter that emulates a laser), modifies its world transform so that it points towards the relay wall at the specified 3D point / UV coordinate / pixel coordinate.
+
 
 ## Testing
 
@@ -182,8 +211,13 @@ Our test suite can be run using `pytest` on the root folder of the repo.
       <td align="center" valign="top" width="14.28%"><a href="https://diego.contact/"><img src="https://avatars.githubusercontent.com/u/17049331?v=4?s=100" width="100px;" alt="Diego Royo"/><br /><sub><b>Diego Royo</b></sub></a><br /><a href="#design-diegoroyo" title="Design">🎨</a> <a href="https://github.com/diegoroyo/mitransient/commits?author=diegoroyo" title="Code">💻</a> <a href="#promotion-diegoroyo" title="Promotion">📣</a> <a href="https://github.com/diegoroyo/mitransient/commits?author=diegoroyo" title="Documentation">📖</a></td>
       <td align="center" valign="top" width="14.28%"><a href="https://github.com/mcrescas"><img src="https://avatars.githubusercontent.com/u/62649574?v=4?s=100" width="100px;" alt="Miguel Crespo"/><br /><sub><b>Miguel Crespo</b></sub></a><br /><a href="#design-mcrescas" title="Design">🎨</a> <a href="https://github.com/diegoroyo/mitransient/commits?author=mcrescas" title="Code">💻</a> <a href="#promotion-mcrescas" title="Promotion">📣</a></td>
       <td align="center" valign="top" width="14.28%"><a href="https://jgarciapueyo.github.io/"><img src="https://avatars.githubusercontent.com/u/35239547?v=4?s=100" width="100px;" alt="Jorge Garcia Pueyo"/><br /><sub><b>Jorge Garcia Pueyo</b></sub></a><br /><a href="#design-jgarciapueyo" title="Design">🎨</a> <a href="https://github.com/diegoroyo/mitransient/commits?author=jgarciapueyo" title="Code">💻</a> <a href="#promotion-jgarciapueyo" title="Promotion">📣</a> <a href="https://github.com/diegoroyo/mitransient/commits?author=jgarciapueyo" title="Documentation">📖</a></td>
-      <td align="center" valign="top" width="14.28%"><a href="https://github.com/DiegoBielsa"><img src="https://avatars.githubusercontent.com/u/71701253?v=4?s=100" width="100px;" alt="DiegoBielsa"/><br /><sub><b>DiegoBielsa</b></sub></a><br /><a href="https://github.com/diegoroyo/mitransient/issues?q=author%3ADiegoBielsa" title="Bug reports">🐛</a></td>
+      <td align="center" valign="top" width="14.28%"><a href="https://github.com/DiegoBielsa"><img src="https://avatars.githubusercontent.com/u/71701253?v=4?s=100" width="100px;" alt="DiegoBielsa"/><br /><sub><b>DiegoBielsa</b></sub></a><br /><a href="https://github.com/diegoroyo/mitransient/issues?q=author%3ADiegoBielsa" title="Bug reports">🐛</a> <a href="https://github.com/diegoroyo/mitransient/commits?author=DiegoBielsa" title="Code">💻</a> <a href="https://github.com/diegoroyo/mitransient/commits?author=DiegoBielsa" title="Documentation">📖</a></td>
       <td align="center" valign="top" width="14.28%"><a href="https://github.com/p-luesia"><img src="https://avatars.githubusercontent.com/u/93714843?v=4?s=100" width="100px;" alt="p-luesia"/><br /><sub><b>p-luesia</b></sub></a><br /><a href="https://github.com/diegoroyo/mitransient/commits?author=p-luesia" title="Documentation">📖</a></td>
+      <td align="center" valign="top" width="14.28%"><a href="https://opueyociutad.github.io/"><img src="https://avatars.githubusercontent.com/u/24795695?v=4?s=100" width="100px;" alt="Óscar Pueyo Ciutad"/><br /><sub><b>Óscar Pueyo Ciutad</b></sub></a><br /><a href="https://github.com/diegoroyo/mitransient/commits?author=opueyociutad" title="Code">💻</a> <a href="https://github.com/diegoroyo/mitransient/commits?author=opueyociutad" title="Documentation">📖</a></td>
+      <td align="center" valign="top" width="14.28%"><a href="https://github.com/Guilleuz"><img src="https://avatars.githubusercontent.com/u/90970380?v=4?s=100" width="100px;" alt="Guillermo Enguita Lahoz"/><br /><sub><b>Guillermo Enguita Lahoz</b></sub></a><br /><a href="https://github.com/diegoroyo/mitransient/commits?author=Guilleuz" title="Code">💻</a> <a href="https://github.com/diegoroyo/mitransient/commits?author=Guilleuz" title="Documentation">📖</a></td>
+    </tr>
+    <tr>
+      <td align="center" valign="top" width="14.28%"><a href="https://github.com/lyd405121"><img src="https://avatars.githubusercontent.com/u/16344694?v=4?s=100" width="100px;" alt="蕉太狼"/><br /><sub><b>蕉太狼</b></sub></a><br /><a href="https://github.com/diegoroyo/mitransient/issues?q=author%3Alyd405121" title="Bug reports">🐛</a></td>
     </tr>
   </tbody>
 </table>
