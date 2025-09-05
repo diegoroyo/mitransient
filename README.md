@@ -5,20 +5,13 @@
 <!-- PROJECT LOGO -->
 <p align="center">
   <h1 align="center">mitransient</h1>
-  <h3 align="center">Transient light transport in Mitsuba 3&nbsp;&nbsp;<a href='https://mitransient.readthedocs.io/en/latest/?badge=latest'>
-      <img src='https://readthedocs.org/projects/mitransient/badge/?version=latest' alt='Documentation Status' />
+  <h3 align="center">Transient light transport in Mitsuba 3
+  <br><br>
+<a href='https://mitransient.readthedocs.io/en/latest/?badge=latest'>
+      <img src='https://readthedocs.org/projects/mitransient/badge/?version=latest' alt='Documentation Status' /><a href='https://pypi.org/project/mitransient/'>
+      <img src='https://img.shields.io/pypi/v/mitransient.svg?color=green' alt='PyPI version' />
   </a></h3>
-
-  <p align="center">
-    <a href="https://diego.contact"><strong>Diego Royo</strong></a>
-    &nbsp;&nbsp;&nbsp;&nbsp;
-    <a href="https://mcrespo.me"><strong>Miguel Crespo</strong></a>
-    &nbsp;&nbsp;&nbsp;&nbsp;
-    <a href="https://jgarciapueyo.github.io/"><strong>Jorge Garcia-Pueyo</strong></a>
-  </p>
 </p>
-
-<br />
 
 <div align="center">
   <img src="https://raw.githubusercontent.com/diegoroyo/mitransient/main/.images/cornell-box.png" width="200" height="200"/>
