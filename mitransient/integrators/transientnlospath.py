@@ -236,6 +236,7 @@ class TransientNLOSPath(TransientADIntegrator):
 
         return ps
 
+    @dr.syntax
     def emitter_nee_sample(
             self, mode: dr.ADMode, scene: mi.Scene, sampler: mi.Sampler,
             si: mi.SurfaceInteraction3f, bsdf: mi.BSDF, bsdf_ctx: mi.BSDFContext,
@@ -260,6 +261,7 @@ class TransientNLOSPath(TransientADIntegrator):
             wo = si.to_local(ds.d)
             bsdf_spec, bsdf_pdf = bsdf.eval_pdf(
                 ctx=bsdf_ctx, si=si, wo=wo, active=active_e)
+            bsdf_spec = si.to_world_mueller(bsdf_spec, -wo, si.wi)
 
             Lr_dir = mi.Spectrum(0)
             if self.filter_depth != -1:
@@ -273,6 +275,7 @@ class TransientNLOSPath(TransientADIntegrator):
 
         return Lr_dir
 
+    @dr.syntax
     def emitter_laser_sample(
             self, mode: dr.ADMode, scene: mi.Scene, sampler: mi.Sampler,
             si: mi.SurfaceInteraction3f, bsdf: mi.BSDF, bsdf_ctx: mi.BSDFContext,
@@ -309,7 +312,7 @@ class TransientNLOSPath(TransientADIntegrator):
         si_bsdf: mi.SurfaceInteraction3f = scene.ray_intersect(
             ray_bsdf, active_e)
         active_e &= si_bsdf.is_valid()
-        active_e &= dr.any(mi.depolarizer(bsdf_spec) > dr.epsilon(mi.Float))
+        active_e &= dr.any(mi.unpolarized_spectrum(bsdf_spec) > dr.epsilon(mi.Float))
 
         wl = si_bsdf.to_local(-d)
         active_e &= mi.Frame3f.cos_theta(wl) > 0.0
@@ -328,6 +331,7 @@ class TransientNLOSPath(TransientADIntegrator):
             bsdf=bsdf_next, bsdf_ctx=bsdf_ctx, β=β * bsdf_spec, distance=distance + distance_laser * η, η=η,
             depth=depth+1, active_e=active_e, add_transient=add_transient)
 
+    @dr.syntax
     def hidden_geometry_sample(
             self, scene: mi.Scene, sampler: mi.Sampler, bsdf: mi.BSDF, bsdf_ctx: mi.BSDFContext, si: mi.SurfaceInteraction3f,
             _: mi.Float, sample2: mi.Point2f, active: mi.Bool) -> Tuple[mi.BSDFSample3f, mi.Spectrum]:
@@ -368,6 +372,7 @@ class TransientNLOSPath(TransientADIntegrator):
                scene: mi.Scene,
                sampler: mi.Sampler,
                ray: mi.Ray3f,
+               β: mi.Spectrum,
                δL: Optional[mi.Spectrum],
                state_in: Optional[mi.Spectrum],
                active: mi.Bool,
@@ -394,7 +399,6 @@ class TransientNLOSPath(TransientADIntegrator):
         L = mi.Spectrum(0 if primal else state_in)    # Radiance accumulator
         # Differential/adjoint radiance
         δL = mi.Spectrum(δL if δL is not None else 0)
-        β = mi.Spectrum(1)                            # Path throughput weight
         η = mi.Float(1)                               # Index of refraction
         active = mi.Bool(active)                      # Active SIMD lanes
         distance = mi.Float(ray.time)                 # Distance of the path
@@ -446,7 +450,7 @@ class TransientNLOSPath(TransientADIntegrator):
             )
 
             with dr.resume_grad(when=not primal):
-                Le = β * mis * ds.emitter.eval(si, active_next)
+                Le = β * mi.Spectrum(mis) * ds.emitter.eval(si, active_next)
 
             # Add transient contribution because of emitter found
             add_transient(Le, distance, ray.wavelengths, active)
@@ -487,10 +491,12 @@ class TransientNLOSPath(TransientADIntegrator):
             bsdf_sample_hg, bsdf_weight_hg = self.hidden_geometry_sample(
                 scene, sampler, bsdf,
                 bsdf_ctx, si, sampler.next_1d(), sampler.next_2d(), active_hg)
+            bsdf_weight_hg = si.to_world_mueller(bsdf_weight_hg, -bsdf_sample_hg.wo, si.wi)
 
             active_nhg = active_next & (~do_hg_sample)
             bsdf_sample_nhg, bsdf_weight_nhg = bsdf.sample(
                 bsdf_ctx, si, sampler.next_1d(), sampler.next_2d(), active_nhg)
+            bsdf_weight_nhg = si.to_world_mueller(bsdf_weight_nhg, -bsdf_sample_nhg.wo, si.wi)
 
             bsdf_sample = dr.select(
                 do_hg_sample, bsdf_sample_hg, bsdf_sample_nhg)
@@ -502,7 +508,7 @@ class TransientNLOSPath(TransientADIntegrator):
             L = (L + Le + Lr_dir) if primal else (L - Le - Lr_dir)
             ray = si.spawn_ray(si.to_world(bsdf_sample.wo))
             η *= bsdf_sample.eta
-            β *= bsdf_weight / pdf_bsdf_method
+            β = mi.Spectrum(β * bsdf_weight / pdf_bsdf_method)
 
             # Information about the current vertex needed by the next iteration
 
@@ -514,7 +520,7 @@ class TransientNLOSPath(TransientADIntegrator):
             # -------------------- Stopping criterion ---------------------
 
             # Don't run another iteration if the throughput has reached zero
-            β_max = dr.max(β)
+            β_max = dr.max(mi.unpolarized_spectrum(β))
             active_next &= (β_max != 0)
 
             # Russian roulette stopping probability (must cancel out ior^2
@@ -546,6 +552,7 @@ class TransientNLOSPath(TransientADIntegrator):
 
                     # Re-evaluate BSDF * cos(theta) differentiably
                     bsdf_val = bsdf.eval(bsdf_ctx, si, wo, active_next)
+                    bsdf_val = si.to_world_mueller(bsdf_val, -wo, si.wi)
 
                     # Detached version of the above term and inverse
                     bsdf_val_det = bsdf_weight * bsdf_sample.pdf

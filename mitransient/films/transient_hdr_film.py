@@ -91,7 +91,9 @@ class TransientHDRFilm(mi.Film):
     def prepare_transient_(self, aovs: Sequence[str]):
         alpha = mi.has_flag(self.flags(), mi.FilmFlags.Alpha)
 
-        if mi.is_monochromatic:
+        if mi.is_monochromatic and mi.is_polarized:
+            base_channels = "0123" + ("AW" if alpha else "W")
+        elif mi.is_monochromatic:
             base_channels = "LAW" if alpha else "LW"
         else:
             # RGB
@@ -116,7 +118,6 @@ class TransientHDRFilm(mi.Film):
             rfilter=self.rfilter()
         )
         self.channels = channels
-
         if len(set(channels)) != len(channels):
             mi.Log(mi.LogLevel.Error,
                    "Film::prepare_transient_(): duplicate channel name.")
@@ -165,6 +166,7 @@ class TransientHDRFilm(mi.Film):
 
         return TensorXf(values, tuple(list(data.shape[0:-1]) + [target_ch]))
 
+
     def add_transient_data(self, pos: mi.Vector2f, distance: mi.Float,
                            wavelengths: mi.UnpolarizedSpectrum, spec: mi.Spectrum,
                            ray_weight: mi.Float, active: mi.Bool):
@@ -183,7 +185,7 @@ class TransientHDRFilm(mi.Film):
         self.transient_storage.put(
             pos=coords,
             wavelengths=wavelengths,
-            value=spec * ray_weight,
+            value=spec * mi.Spectrum(ray_weight),
             alpha=mi.Float(0.0),
             # value should have the sample scale already multiplied
             weight=mi.Float(0.0),

@@ -9,6 +9,7 @@ from typing import Union, Any, Tuple
 
 from mitsuba.ad.integrators.common import ADIntegrator  # type: ignore
 from ..films.transient_hdr_film import TransientHDRFilm
+from ..utils import β_init
 
 
 class TransientADIntegrator(ADIntegrator):
@@ -124,7 +125,9 @@ class TransientADIntegrator(ADIntegrator):
             for i, (sampler_i, spp_i) in enumerate(samplers_spps):
                 # Generate a set of rays starting at the sensor
                 ray, weight, pos = self.sample_rays(scene, sensor, sampler_i)
-
+                
+                β = β_init(sensor, ray)
+                
                 # Launch the Monte Carlo sampling process in primal mode
                 L, valid, aovs, _ = self.sample(
                     mode=dr.ADMode.Primal,
@@ -132,6 +135,7 @@ class TransientADIntegrator(ADIntegrator):
                     sampler=sampler_i,
                     ray=ray,
                     depth=mi.UInt32(0),
+                    β=β_init(sensor, ray),
                     δL=None,
                     δaovs=None,
                     state_in=None,
@@ -150,7 +154,7 @@ class TransientADIntegrator(ADIntegrator):
                 # Accumulate into the image block
                 ADIntegrator._splat_to_block(
                     block, film, pos,
-                    value=L * weight,
+                    value=L * mi.Spectrum(weight),
                     weight=1.0,
                     alpha=dr.select(valid, mi.Float(1), mi.Float(0)),
                     aovs=aovs,
