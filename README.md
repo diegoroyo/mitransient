@@ -163,6 +163,9 @@ mitr.vis.show_video(
 
 ## Plugins implemented
 
+> [!TIP]
+> You can also look at the plugins' documentation in [our online documentation](https://mitransient.readthedocs.io). Look on the left menu for Integrators, Films, Emitters and Sensors.
+
 `mitransient` implements the following plugins which can be used in scene XML files and dictionaries. To view a description of their parameters, click on the name of your desired plugin.
 * `film`:
   * [`transient_hdr_film`](https://github.com/diegoroyo/mitransient/blob/main/mitransient/films/transient_hdr_film.py): Transient equivalent of Mitsuba 3's `hdrfilm` plugin.
@@ -170,7 +173,7 @@ mitr.vis.show_video(
 * `integrators`:
   * [`transient_path`](https://github.com/diegoroyo/mitransient/blob/main/mitransient/integrators/transientpath.py): Transient path tracing for line-of-sight scenes. If you want to do NLOS simulations, use `transientnlospath` instead.
   * [`transient_nlos_path`](https://github.com/diegoroyo/mitransient/blob/main/mitransient/integrators/transientnlospath.py): Transient path tracing with specific sampling routines for NLOS scenes (e.g. laser sampling and hidden geometry sampling of the ["Non-Line-of-Sight Transient Rendering" paper](https://diego.contact/publications/nlos-render)).
-  * [`transient_prbvolpath`](https://github.com/diegoroyo/mitransient/blob/main/mitransient/integrators/transient_prb_volpath.py): Path Replay Backpropagation for time-resolved volumetric path tracing.
+  * [`transient_prbvolpath`](https://github.com/diegoroyo/mitransient/blob/main/mitransient/integrators/transient_prbvolpath.py): Path Replay Backpropagation for time-resolved volumetric path tracing.
 * `emitters`:
   * [`angulararea`](https://github.com/diegoroyo/mitransient/blob/main/mitransient/emitters/angulararea.py): Similar to an `area` emitter, but emits within a restricted angular range. 
 * `sensors`:
@@ -178,16 +181,7 @@ mitr.vis.show_video(
 
 ## Other useful functions
 
-* Utility
-  * `mitr.set_thread_count(count)`: Number of cores used in LLVM mode.
-  * `mitr.cornell_box()`: Returns a Python dictionary with a Cornell Box and a transient path tracing integrator (`transientpath`).
-* Visualization (`vis`)
-  * `mitr.vis.tonemap_transient(t)`: Applies tonemapping to the resulting video of `mi.render(...)`·
-  * `mitr.vis.save_{frames|video}(...)`: Saves the transient render as different frames (images) or as a whole video (.mp4).
-  * `mitr.vis.show_video(...)`: Displays an interactive video player with the transient render (e.g. in Jupyter notebooks).
-* Non-line-of-sight (`nlos`)
-  * `mitr.nlos.focus_emitter_at_relay_wall_{3dpoint|uv|pixel}(...)`: If the scene has only one emitter (hopefully a projector emitter that emulates a laser), modifies its world transform so that it points towards the relay wall at the specified 3D point / UV coordinate / pixel coordinate.
-
+See the full list [on this website](https://mitransient.readthedocs.io/en/latest/src/other.html)
 
 ## Testing
 

@@ -20,28 +20,62 @@ class TransientHDRFilm(mi.Film):
     Transient HDR Film (:monosp:`transient_hdr_film`)
     -------------------------------------------------
 
-    mitransient's equivalent to Mitsuba 3's HDRFilm
+    mitransient's equivalent to Mitsuba 3's HDRFilm. The HDRFilm plugin creates a data structure that stores one image.
+    Our transient version extends this idea to store a list of images (the transient video).
 
-    Stores two image blocks simultaneously:
+    **Specifying the start and end times of the video:** You need to specify the exposure time for each frame of the video,
+    and the start time of the video.
+    These values are specified in **optical path length** and not in time. All the lights of the scene emit at ``t=0``.
+    Thus, for example, if you want to capture an event in your scene that starts when light has travelled 1 meter,
+    and ends when light has travelled 2 meters, you should set ``start_opl=1.0``, ``bin_width_opl=0.01`` and ``temporal_bins=100``.
+    This will store a video of 100 frames that starts when light has travelled 1 meter, and ends when light has travelled 2 meters.
+
+    .. tabs::
+
+        .. code-tab:: xml
+
+            <film type="transient_hdr_film">
+                <integer name="width"  value="256"/>
+                <integer name="height" value="256"/>
+                <integer name="temporal_bins" value="400"/>
+                <float name="start_opl" value="1000"/>
+                <float name="bin_width_opl" value="6.5"/>
+                <rfilter type="box"/>
+            </film>
+
+        .. code-tab:: python
+
+            {
+                'type': 'transient_hdr_film',
+                'width': 256,
+                'height': 256,
+                'temporal_bins': 400,
+                'start_opl': 1000,
+                'bin_width_opl': 6.5,
+                'rfilter': {'type': 'box'}
+            }
+
+    We stores two image blocks simultaneously:
 
     * Steady block: Accumulates all samples (sum over all the time dimension)
     * Transient block: Accumulates samples separating them in time bins (histogram)
 
-    The results can be retrieved using the ``develop(raw=True)`` method, which returns a (steady, transient) tuple.
+    The results can be retrieved using the ``develop(raw=True)`` method, which returns a ``(steady, transient)`` tuple.
+    The ``transient`` image will have shape ``(width, height, temporal_bins, channels)``.
 
     .. pluginparameters::
 
      * - temporal_bins
        - |int|
-       - number of bins in the time dimension (histogram representation)
+       - Number of bins in the time dimension (histogram representation)
 
      * - bin_width_opl
        - |float|
-       - width of each bin in the time dimension (histogram representation)
+       - Width of each bin in the time dimension (histogram representation), measured in optical path length
 
      * - start_opl
        - |float|
-       - start of the time dimension (histogram representation)
+       - Start of the time dimension (histogram representation), measured in optical path length
 
     See also, from `mi.Film <https://mitsuba.readthedocs.io/en/latest/src/generated/plugins_films.html>`_:
 
@@ -165,7 +199,6 @@ class TransientHDRFilm(mi.Film):
         values = values_ / dr.select((weight == 0.0), 1.0, weight)
 
         return TensorXf(values, tuple(list(data.shape[0:-1]) + [target_ch]))
-
 
     def add_transient_data(self, pos: mi.Vector2f, distance: mi.Float,
                            wavelengths: mi.UnpolarizedSpectrum, spec: mi.Spectrum,

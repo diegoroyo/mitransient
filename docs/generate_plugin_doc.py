@@ -9,16 +9,22 @@ import os
 from pathlib import Path
 import re
 
-INTEGRATOR_ORDERING = [
-    'transientpath',
-    'transient_prb_volpath',
-    'transientnlospath',
-    'common'
+EMITTER_ORDERING = [
+    'angulararea',
 ]
 
 FILM_ORDERING = [
     'transient_hdr_film',
-    '../render/transient_block'
+    # '../render/transient_image_block',
+    'phasor_hdr_film',
+    # '../render/phasor_image_block'
+]
+
+INTEGRATOR_ORDERING = [
+    'transientpath',
+    'transient_prbvolpath',
+    'transientnlospath',
+    'common'
 ]
 
 SENSOR_ORDERING = [
@@ -35,7 +41,7 @@ def find_order_id(filename, ordering):
         return ordering.index(filename)
     else:
         return 1000
-    
+
 
 def extract(target, filename):
     f = open(filename, encoding='utf-8')
@@ -85,7 +91,7 @@ def process(f_documentation, path, ordering):
     file_list = []
     for file in ordering:
         file_list.append(path + "/" + file + ".py")
-    
+
     for file in file_list:
         extract_python(f_documentation, file)
         f_documentation.write("\n")
@@ -106,8 +112,9 @@ def generate(doc_src_dir, doc_build_dir):
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
 
     sections = [
-        ('integrators', INTEGRATOR_ORDERING),
+        ('emitters', EMITTER_ORDERING),
         ('films', FILM_ORDERING),
+        ('integrators', INTEGRATOR_ORDERING),
         ('sensors', SENSOR_ORDERING)
     ]
 

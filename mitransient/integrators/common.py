@@ -13,12 +13,7 @@ from ..utils import β_init
 
 
 class TransientADIntegrator(ADIntegrator):
-    r"""
-    .. _integrator-transientadintegrator:
-
-    Transient AD Integrator
-    -----------------------
-
+    """
     Abstract base class for transient integrators in ``mitransient``.
     """
 
@@ -125,9 +120,9 @@ class TransientADIntegrator(ADIntegrator):
             for i, (sampler_i, spp_i) in enumerate(samplers_spps):
                 # Generate a set of rays starting at the sensor
                 ray, weight, pos = self.sample_rays(scene, sensor, sampler_i)
-                
+
                 β = β_init(sensor, ray)
-                
+
                 # Launch the Monte Carlo sampling process in primal mode
                 L, valid, aovs, _ = self.sample(
                     mode=dr.ADMode.Primal,

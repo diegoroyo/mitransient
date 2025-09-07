@@ -1,14 +1,20 @@
-Other
-=====
+API reference
+=============
 
 Visualization
 -------------
 
-.. automodule:: mitransient.visualization
+.. automodule:: mitransient.unpolarized_visualization
     :members:
 
-NLOS Utils
-----------
+Visualization (polarized variants)
+----------------------------------
+
+.. automodule:: mitransient.polarized_visualization
+    :members:
+
+Non-line-of-sight utils
+-----------------------
 
 .. automodule:: mitransient.nlos
     :members:

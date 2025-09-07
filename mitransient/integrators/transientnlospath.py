@@ -18,11 +18,76 @@ class TransientNLOSPath(TransientADIntegrator):
 
     Standard path tracing algorithm which now includes the time dimension,
     and *contains multiple sampling routines specific to non-line-of-sight (NLOS)
-    scenes*. To render LOS scenes, use the `transient_path` integrator.
-    Choose one or the other depending on if you have a LOS or NLOS scene.
+    scenes*.
 
     Based on: [Royo2022] Royo, D., García, J., Muñoz, A., & Jarabo, A. (2022).
     Non-line-of-sight transient rendering. Computers & Graphics, 107, 84-92.
+
+    .. note::
+        You might be interested in using ``y-tal`` for simulating NLOS scenes.
+        ``y-tal`` can handle the creation of NLOS scenes and calibration data
+        (e.g. laser and sensor positions, bin time, etc.). ``y-tal`` also implements
+        multiple NLOS reconstruction algorithms. `You can check its GitHub page here. <https://github.com/diegoroyo/tal>`_
+
+    .. warning::
+        Make sure to use "box" spatial + temporal filters with this plugin (you can see how
+        to set up a box filter in the documentation of this plugin) which is probably
+        the behaviour that you expect with NLOS scenes.
+
+    Here we show two example configurations of this plugin. You might want to choose the first
+    one if you want to measure third-bounce illumination (i.e. single-corner NLOS setups).
+    If you want to measure higher-order bounces (e.g. looking around two corners such as in [Royo2023]),
+    you might want to choose the second configuration. Both configurations converge to the same solution,
+    although the first one is faster for third-bounce illumination.
+
+    [Royo23] Royo, Diego, et al. "Virtual mirrors: Non-line-of-sight imaging beyond the third bounce."
+    ACM Transactions on Graphics (TOG) 42.4 (2023): 1-15.
+
+    1. Single-corner NLOS setups (faster simulation for third-bounce illumination).
+
+    .. tabs::
+
+        .. code-tab:: xml
+
+            <integrator type="transient_nlos_path">
+                <boolean name="nlos_laser_sampling" value="true"/>
+                <boolean name="nlos_hidden_geometry_sampling" value="true"/>
+                <boolean name="nlos_hidden_geometry_sampling_includes_relay_wall" value="false"/>
+                <string name="temporal_filter" value="box"/>
+            </integrator>
+
+        .. code-tab:: python
+
+            {
+                "type": "transient_nlos_path",
+                "nlos_laser_sampling": True,
+                "nlos_hidden_geometry_sampling": True,
+                "nlos_hidden_geometry_sampling_includes_relay_wall": False,
+                "temporal_filter": "box",
+            }
+
+    2. For higher-order bounces (e.g. looking around two corners).
+
+    .. tabs::
+
+        .. code-tab:: xml
+
+            <integrator type="transient_nlos_path">
+                <boolean name="nlos_laser_sampling" value="true"/>
+                <boolean name="nlos_hidden_geometry_sampling" value="true"/>
+                <boolean name="nlos_hidden_geometry_sampling_includes_relay_wall" value="true"/>
+                <string name="temporal_filter" value="box"/>
+            </integrator>
+
+        .. code-tab:: python
+
+            {
+                "type": "transient_nlos_path",
+                "nlos_laser_sampling": True,
+                "nlos_hidden_geometry_sampling": True,
+                "nlos_hidden_geometry_sampling_includes_relay_wall": True,
+                "temporal_filter": "box",
+            }
 
     .. pluginparameters::
 
@@ -312,7 +377,8 @@ class TransientNLOSPath(TransientADIntegrator):
         si_bsdf: mi.SurfaceInteraction3f = scene.ray_intersect(
             ray_bsdf, active_e)
         active_e &= si_bsdf.is_valid()
-        active_e &= dr.any(mi.unpolarized_spectrum(bsdf_spec) > dr.epsilon(mi.Float))
+        active_e &= dr.any(mi.unpolarized_spectrum(
+            bsdf_spec) > dr.epsilon(mi.Float))
 
         wl = si_bsdf.to_local(-d)
         active_e &= mi.Frame3f.cos_theta(wl) > 0.0
@@ -491,12 +557,14 @@ class TransientNLOSPath(TransientADIntegrator):
             bsdf_sample_hg, bsdf_weight_hg = self.hidden_geometry_sample(
                 scene, sampler, bsdf,
                 bsdf_ctx, si, sampler.next_1d(), sampler.next_2d(), active_hg)
-            bsdf_weight_hg = si.to_world_mueller(bsdf_weight_hg, -bsdf_sample_hg.wo, si.wi)
+            bsdf_weight_hg = si.to_world_mueller(
+                bsdf_weight_hg, -bsdf_sample_hg.wo, si.wi)
 
             active_nhg = active_next & (~do_hg_sample)
             bsdf_sample_nhg, bsdf_weight_nhg = bsdf.sample(
                 bsdf_ctx, si, sampler.next_1d(), sampler.next_2d(), active_nhg)
-            bsdf_weight_nhg = si.to_world_mueller(bsdf_weight_nhg, -bsdf_sample_nhg.wo, si.wi)
+            bsdf_weight_nhg = si.to_world_mueller(
+                bsdf_weight_nhg, -bsdf_sample_nhg.wo, si.wi)
 
             bsdf_sample = dr.select(
                 do_hg_sample, bsdf_sample_hg, bsdf_sample_nhg)

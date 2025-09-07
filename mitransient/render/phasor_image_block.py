@@ -8,9 +8,9 @@ from ..utils import indent
 
 
 class PhasorImageBlock(mi.ImageBlock):
-    """
-    TODO(diego): docs
-    """
+    # This extends mi.ImageBlock to store phasor data
+    # It uses two image channels per frequency: the first one for the real part,
+    # the second one for the imaginary part
 
     def __init__(
         self,

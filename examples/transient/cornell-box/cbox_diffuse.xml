@@ -33,9 +33,7 @@
             <integer name="temporal_bins" value="400"/>
             <float name="start_opl" value="1000"/>
             <float name="bin_width_opl" value="6.5"/>
-            <rfilter type="box">
-              <!-- <float name="stddev" value="1.0"/> -->
-            </rfilter>
+            <rfilter type="box"/>
         </film>
     </sensor>
 

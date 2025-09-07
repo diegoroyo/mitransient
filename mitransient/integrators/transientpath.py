@@ -16,9 +16,30 @@ class TransientPath(TransientADIntegrator):
     -----------------------------------------
 
     Standard path tracing algorithm which now includes the time dimension.
-    This can render line-of-sight (LOS) scenes. The `transient_nlos_path` 
-    plugin contains different sampling routines specific to NLOS setups.
-    Choose one or the other depending on if you have a LOS or NLOS scene.
+
+    .. note::
+        If you want to simulate a Non-Line-of-Sight (NLOS) setup, look into the 
+        ``transient_nlos_path`` plugin, which contains different sampling routines
+        specific to NLOS setups that greatly increase the quality of your results.
+
+    .. note::
+        This integrator does not handle participating media. Instead, you should use
+        our ``transient_prbvolpath`` plugin.
+
+    .. tabs::
+
+        .. code-tab:: xml
+
+            <integrator type="transient_path">
+                <integer name="max_depth" value="8"/>
+            </integrator>
+
+        .. code-tab:: python
+
+            {
+                'type': 'transient_path',
+                'max_depth': 8
+            }
 
     .. pluginparameters::
 
@@ -52,7 +73,7 @@ class TransientPath(TransientADIntegrator):
      * - max_depth
        - |int|
        - Specifies the longest path depth in the generated output image (where -1
-         corresponds to infinity). A value of 1 will only render directly
+         corresponds to :math:`\infty`). A value of 1 will only render directly
          visible light sources. 2 will lead to single-bounce (direct-only)
          illumination, and so on. (default: 6)
 
@@ -101,7 +122,7 @@ class TransientPath(TransientADIntegrator):
         η = mi.Float(1)                               # Index of refraction
         active = mi.Bool(active)                      # Active SIMD lanes
         distance = mi.Float(0.0)                      # Distance of the path
-    
+
         # Variables caching information from the previous bounce
         prev_si = dr.zeros(mi.SurfaceInteraction3f)
         prev_bsdf_pdf = mi.Float(1.0)
@@ -198,7 +219,8 @@ class TransientPath(TransientADIntegrator):
                                                    sampler.next_1d(),
                                                    sampler.next_2d(),
                                                    active_next)
-            bsdf_weight = si.to_world_mueller(bsdf_weight, -bsdf_sample.wo, si.wi)
+            bsdf_weight = si.to_world_mueller(
+                bsdf_weight, -bsdf_sample.wo, si.wi)
 
             # ---- Update loop variables based on current interaction -----
             L = (L + Le + Lr_dir) if primal else (L - Le - Lr_dir)

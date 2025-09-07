@@ -19,9 +19,8 @@ Main features
 * **Python-only** library for doing transient rendering in both CPU and GPU.
 * **Several integrators already implemented:** *transient pathtracing*  (also adapted for NLOS scenes) and *transient volumetric pathtracing*.
 * **Cross-platform:** Mitsuba 3 has been tested on Linux (x86_64), macOS (aarch64, x86_64), and Windows (x86_64).
-* **Temporal domain** filtering.
 
-The following video showcases the potential application of ``mitransient`` to simulate light at a trillion frames per second, imitating a femto-photography experiment.
+The following video showcases ``mitransient`` simulating light at a trillion frames per second, `imitating a femto-photography experiment <https://youtu.be/EtsXgODHMWk?t=106>`_.
 
 ..  youtube:: wZfS19i6qkA
       :align: center
@@ -30,40 +29,83 @@ The following video showcases the potential application of ``mitransient`` to si
 Installation
 ------------
 
-We provide the package via PyPI. To install ``mitransient`` you need to run:
+We provide the package via PyPI. Latest release: |pypi-badge|.
+
+.. |pypi-badge| image:: https://img.shields.io/pypi/v/mitransient.svg?color=green
+   :target: https://pypi.org/project/mitransient/
+   :alt: PyPI version
+
+To install ``mitransient`` you need to run:
 
 .. code-block:: python
 
       pip install mitransient
 
-If you have installed Mitsuba 3 via ``pip`` you will only have access to the ``llvm_ad_rgb`` and ``cuda_ad_rgb`` variants. If you want to use other variants (e.g. NLOS simulations can greatly benefit from the ``llvm_mono`` variant which only propagates one wavelength), then we recommend that you compile Mitsuba 3 yourself `following this tutorial <https://mitsuba.readthedocs.io/en/latest/src/developer_guide/compiling.html>`_ and enable the following variants: ``["scalar_mono", "llvm_mono", "llvm_ad_mono", "cuda_mono", "cuda_ad_mono", "scalar_rgb", "llvm_rgb", "llvm_ad_rgb", "cuda_rgb", "cuda_ad_rgb"]``.
-For more information about requirements or using a custom Mitsuba 3 compilation, see :doc:`src/installation`.
+which will also install the ``mitsuba`` Python package as a dependency.
+
+**Using your own compiled Mitsuba:** ``mitransient`` and ``mitsuba`` have different *variants* that specify the number of channels (RGB image, monochromatic, etc.), hardware acceleration (execution in CPU, GPU, etc.). If you install ``mitransient``/``mitsuba`` via ``pip``, you will have access to `the following variants specified in this website <https://mitsuba.readthedocs.io/en/stable/src/key_topics/variants.html>`_. There are more variants available, but you will have to compile Mitsuba 3 yourself. For more information on using a custom Mitsuba 3 compilation, see :doc:`src/installation`.
+
+
+Requirements
+~~~~~~~~~~~~
+
+- ``Python >= 3.8``
+- ``mitsuba >= 3.6.0``
+- (optional) For computation on the GPU: ``Nvidia driver >= 495.89``
+- (optional) For vectorized / parallel computation on the CPU: ``LLVM >= 11.1``
+
 
 Usage
 -----
 
-You should be able to render your first transient scene with ``mitransient``. Running the code below will render the famous Cornell Box scene in transient domain and show a video.
+Rendering your first transient scene with ``mitransient`` is easy. The code below will render the famous Cornell Box scene in transient domain and show a video of the results:
 
 .. code-block:: python
 
       import mitsuba as mi
-      mi.set_variant('scalar_rgb')
+      mi.set_variant('llvm_ad_rgb')
       import mitransient as mitr
 
       scene = mi.load_dict(mitr.cornell_box())
-      transient_integrator = scene.integrator()
-      transient_integrator.prepare_transient(scene, sensor=0)
-      img_steady, img_transient = transient_integrator.render(scene)
+      img_steady, img_transient = mi.render(scene, spp=1024)
 
-      mitr.utils.show_video(
-            np.moveaxis(img_transient, 0, 1),
-            axis_video=2,
+      img_transient = mitr.vis.tonemap_transient(img_transient)
+      mitr.vis.show_video(
+      img_transient,
+      axis_video=2,
       )
+
+**Important:** ``mitransient`` needs to be imported after ``mitsuba``. The moment you add ``mitransient`` to the code, all of our transient-related plugins are registered in Mitsuba 3. At that point you can call ``mitsuba``'s functions as normal (e.g. ``mi.render`` in the example above), and our additional utility functions (``mitr.cornell_box``, ``mitr.vis.tonemap_transient``, etc.).
+
+Tutorials
+~~~~~~~~~
+
+If this is your first time, we strongly recommend that you start with the *Transient rendering* tutorials. Going through these in order will give you an idea of the main features of ``mitransient``. The rest of the tutorials assume that you've gone through :doc:`the first tutorial in that series <src/examples/transient/0-render_cbox_diffuse>`. You can find a full list of all tutorials on the sidebar.
+
+.. grid:: 2
+
+    .. grid-item-card:: Transient rendering
+        :class-title: sd-text-center sd-font-weight-bold
+        :link: src/tutorials/transient_rendering_tutorials.html
+
+        .. image:: ../.images/cornell-box.png
+            :height: 200
+            :align: center
+
+
+    .. grid-item-card:: Non-line-of-sight rendering
+        :class-title: sd-text-center sd-font-weight-bold
+        :link: src/tutorials/nlos_tutorials.html
+
+        .. image:: ../.images/nlos-Z.png
+            :height: 200
+            :align: center
+
 
 License and citation
 --------------------
 
-This project was created by `Miguel Crespo <https://mcrespo.me>`_ and expanded by `Diego Royo <https://diego.contact>`_ and `Jorge García-Pueyo <https://jgarciapueyo.github.io/>`_. Also see the `original Mitsuba 3 license and contributors <https://github.com/mitsuba-renderer/mitsuba3>`_.
+This project was started by `Diego Royo <https://diego.contact>`_, `Miguel Crespo <https://mcrespo.me>`_ and `Jorge Garcia-Pueyo <https://jgarciapueyo.github.io/>`_. See the GitHub page for the full list of ``mitransient`` contributors. Also see the `original Mitsuba 3 license and contributors <https://github.com/mitsuba-renderer/mitsuba3>`_.
 If you use our code in your project, please consider citing us using the following:
 
 .. code-block:: bibtex
@@ -71,7 +113,7 @@ If you use our code in your project, please consider citing us using the followi
       @misc{mitransient,
             title        = {mitransient},
             author       = {Royo, Diego and Crespo, Miguel and Garcia-Pueyo, Jorge},
-            year         = 2023,
+            year         = 2024,
             journal      = {GitHub repository},
             doi          = {https://doi.org/10.5281/zenodo.11032518},
             publisher    = {GitHub},
@@ -117,15 +159,24 @@ Note: note that the time values we need to compute are very small (e.g. light ta
       :caption: Tutorials
       :hidden:
       
-      src/transient_rendering_tutorials
-      src/nlos_tutorials
+      src/tutorials/transient_rendering_tutorials
+      src/tutorials/nlos_tutorials
+      src/tutorials/polarization_tutorials
+      src/tutorials/angulararea_tutorials
 
 .. toctree::
       :maxdepth: 1
-      :caption: References
+      :caption: API reference
       :hidden:
 
-      generated/plugin_reference/section_integrators
-      generated/plugin_reference/section_films
-      generated/plugin_reference/section_sensors
       src/other
+
+.. toctree::
+      :maxdepth: 1
+      :caption: Pulgin reference
+      :hidden:
+
+      generated/plugin_reference/section_emitters
+      generated/plugin_reference/section_films
+      generated/plugin_reference/section_integrators
+      generated/plugin_reference/section_sensors

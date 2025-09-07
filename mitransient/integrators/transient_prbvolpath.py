@@ -18,10 +18,53 @@ def index_spectrum(spec, idx):
 
 class TransientPRBVolpathIntegrator(TransientADIntegrator):
     r"""
-    .. _integrator-prbvolpath:
+    .. _integrator-transient_prbvolpath:
 
-    Path Replay Backpropagation Volumetric Integrator (:monosp:`prbvolpath`)
+    Transient Volumetric Integrator (:monosp:`transient_prbvolpath`)
     -------------------------------------------------------------------------
+
+    This integrator is very similar to ``transient_path`` but mainly it handles
+    participative media (e.g. fog, smoke, etc.).
+
+    .. note::
+        You might want to look at our tutorial for how to set up a scene for
+        this plugin with participative media (medium plugins) on the **transient rendering**
+        section of our tutorials. 
+
+    This class implements a volumetric Path Replay Backpropagation (PRB) integrator
+    with the following properties:
+
+    - Differentiable delta tracking for free-flight distance sampling
+
+    - Emitter sampling (a.k.a. next event estimation).
+
+    - Russian Roulette stopping criterion.
+
+    - No projective sampling. This means that the integrator cannot be used for
+      shape optimization (it will return incorrect/biased gradients for
+      geometric parameters like vertex positions.)
+
+    - Detached sampling. This means that the properties of ideal specular
+      objects (e.g., the IOR of a glass vase) cannot be optimized.
+
+    See the paper "Path Replay Backpropagation: Differentiating Light Paths
+    using Constant Memory and Linear Time" (Vicini et al. 2021) for details
+    on PRB and differentiable delta tracking.
+
+    .. tabs::
+
+        .. code-tab:: xml
+
+            <integrator type="transient_prbvolpath">
+                <integer name="max_depth" value="8"/>
+            </integrator>
+
+        .. code-tab:: python
+
+            {
+                'type': 'transient_path',
+                'max_depth': 8
+            }
 
     .. pluginparameters::
 
@@ -42,37 +85,6 @@ class TransientPRBVolpathIntegrator(TransientADIntegrator):
      * - hide_emitters
        - |bool|
        - Hide directly visible emitters. (Default: no, i.e. |false|)
-
-
-    This class implements a volumetric Path Replay Backpropagation (PRB) integrator
-    with the following properties:
-
-    - Differentiable delta tracking for free-flight distance sampling
-
-    - Emitter sampling (a.k.a. next event estimation).
-
-    - Russian Roulette stopping criterion.
-
-    - No projective sampling. This means that the integrator cannot be used for
-      shape optimization (it will return incorrect/biased gradients for
-      geometric parameters like vertex positions.)
-
-    - Detached sampling. This means that the properties of ideal specular
-      objects (e.g., the IOR of a glass vase) cannot be optimized.
-
-    See the paper :cite:`Vicini2021` for details on PRB and differentiable delta
-    tracking.
-
-    .. warning::
-        This integrator is not supported in variants which track polarization
-        states.
-
-    .. tabs::
-
-        .. code-tab:: python
-
-            'type': 'prbvolpath',
-            'max_depth': 8
     """
 
     def __init__(self, props: mi.Properties):
@@ -159,7 +171,8 @@ class TransientPRBVolpathIntegrator(TransientADIntegrator):
 
             # --------------------- Perform russian roulette --------------------
 
-            q = dr.minimum(dr.max(mi.unpolarized_spectrum(β)) * dr.square(η), 0.99)
+            q = dr.minimum(dr.max(mi.unpolarized_spectrum(β))
+                           * dr.square(η), 0.99)
             perform_rr = (depth > self.rr_depth)
             active &= (sampler.next_1d(active) < q) | ~perform_rr
             β[perform_rr] = β * dr.rcp(q)
@@ -186,7 +199,7 @@ class TransientPRBVolpathIntegrator(TransientADIntegrator):
                 # Evaluate ratio of transmittance and free-flight PDF
                 tr, free_flight_pdf = medium.transmittance_eval_pdf(
                     mei, si, active_medium)
-                
+
                 tr_pdf = index_spectrum(free_flight_pdf, channel)
                 weight = mi.Spectrum(1.0)
                 weight[active_medium] *= dr.select(tr_pdf >

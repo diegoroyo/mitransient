@@ -1,28 +1,47 @@
 Installation
 ============
 
-We provide the package via PyPI. To install ``mitransient`` you need to run:
+We provide the package via PyPI. Latest release: |pypi-badge|.
+
+.. |pypi-badge| image:: https://img.shields.io/pypi/v/mitransient.svg?color=green
+   :target: https://pypi.org/project/mitransient/
+   :alt: PyPI version
+
+To install ``mitransient`` you need to run:
 
 .. code-block:: python
 
       pip install mitransient
 
-If you have installed Mitsuba 3 via ``pip`` you will only have access to the ``llvm_ad_rgb`` and ``cuda_ad_rgb`` variants. If you want to use other variants (e.g. NLOS simulations can greatly benefit from the ``llvm_mono`` variant which only propagates one wavelength), then we recommend that you compile Mitsuba 3 yourself `following this tutorial <https://mitsuba.readthedocs.io/en/latest/src/developer_guide/compiling.html>`_ and enable the following variants: ``["scalar_mono", "llvm_mono", "llvm_ad_mono", "cuda_mono", "cuda_ad_mono", "scalar_rgb", "llvm_rgb", "llvm_ad_rgb", "cuda_rgb", "cuda_ad_rgb"]``.
+which will also install the ``mitsuba`` Python package as a dependency. With this, you should be able to import ``mitsuba`` and ``mitransient`` in your Python code.
+
+.. code-block:: python
+
+      import mitsuba as mi
+      mi.set_variant('llvm_ad_rgb')  # Need to set variant before importing mitransient
+      import mitransient as mitr     # Registers all necessary mitransient plugins
+
+And you are ready to go! Feel free to take a look at our tutorials on the sidebar of this website. If this is your first time, the *transient rendering* section will be especially useful.
+
+**Using your own compiled Mitsuba:** ``mitransient`` and ``mitsuba`` have different *variants* that specify the number of channels (RGB image, monochromatic, etc.), hardware acceleration (execution in CPU, GPU, etc.). If you install ``mitransient``/``mitsuba`` via ``pip``, you will have access to `the following variants specified in this website <https://mitsuba.readthedocs.io/en/stable/src/key_topics/variants.html>`_. There are more variants available, but you will have to compile Mitsuba 3 yourself. For more information on using a custom Mitsuba 3 compilation, see *"If you use your own Mitsuba"* below.
+
 
 Requirements
 ------------
 
-* ``Python >= 3.8``
-* ``Mitsuba3 >= 3.5.0``
-* (optional) For computation on the GPU: ``Nvidia driver >= 495.89``
-* (optional) For vectorized / parallel computation on the CPU: ``LLVM >= 11.1``
+- ``Python >= 3.8``
+- ``mitsuba >= 3.6.0``
+- (optional) For computation on the GPU: ``Nvidia driver >= 495.89``
+- (optional) For vectorized / parallel computation on the CPU: ``LLVM >= 11.1``
+
 
 After installation
 ------------------
 
-At this point, you should be able to ``import mitsuba`` and ``import mitransient`` in your Python code (careful about setting the correct ``PATH`` environment variable if you have compiled Mitsuba 3 yourself, see the section below).
+At this point, you should be able to ``import mitsuba`` and ``import mitransient`` in your Python code (careful about setting the correct ``PYTHONPATH`` environment variable if you have compiled Mitsuba 3 yourself, see the section below).
 
 For NLOS data capture simulations, see `https://github.com/diegoroyo/tal <https://github.com/diegoroyo/tal>`_. ``tal`` is a toolkit that allows you to create and simulate NLOS scenes with an easier shell interface instead of directly from Python.
+
 
 If you use your own Mitsuba 3
 -----------------------------

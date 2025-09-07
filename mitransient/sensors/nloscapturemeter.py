@@ -19,20 +19,47 @@ class NLOSCaptureMeter(NLOSSensor):
     NLOS Capture Meter (:monosp:`nlos_capture_meter`)
     -------------------------------------------------
 
-    Attaches to a geometry (sensor should be child of the geometry). It measures uniformly-spaced points on such geometry.
-    It is recommended to use a `rectangle` shape because the UV coordinates work better.
+    This sensor replicates a non-line-of-sight (NLOS) transient capture device.
+    In order to work, it needs to be attached to a geometry (sensor should be child of the geometry).
+    Doing so, the NLOS capture meter measures uniformly-spaced points on such geometry based on UV coordiantes.
+    It is recommended to use a ``rectangle`` shape for the geometry because the UV coordinates work better.
 
-    The `nlos_capture_meter` should have a `film` children, which acts as the storage for the transient image. It is recommended to use `transient_hdr_film`.
+    The ``nlos_capture_meter`` should also have a ``film`` children, which acts as the storage for the transient image.
+    It is recommended to use :doc:`transient_hdr_film (click here for more info) <../../generated/plugin_reference/section_films>`.
 
-    .. code-block:: python
+    Here's an example code for how to setup a relay wall with a capture device:
 
-        <shape type="rectangle">
-            <sensor type="nlos_capture_meter">
-                <film type="transient_hdr_film">
-                    ...
-                </film>
-            </sensor>
-        </shape>
+    .. tabs::
+
+        .. code-tab:: xml
+
+            <shape type="rectangle" id="relay_wall">
+                <bsdf type="diffuse">
+                    <reflectance type="rgb" value="1.0,1.0,1.0"/>
+                </bsdf>
+                <sensor type="nlos_capture_meter">
+                    <film type="transient_hdr_film">
+                        ...
+                    </film>
+                </sensor>
+            </shape>
+
+        .. code-tab:: python
+
+            {
+                'type': 'rectangle',
+                'id': 'relay_wall',
+                'bsdf': { 'type': 'diffuse', 'reflectance': 1.0},
+                'nlos_sensor': {
+                    'type': 'nlos_capture_meter',
+                    'film': {
+                        'type': 'transient_hdr_film',
+                        ...
+                    }
+                }
+            }
+
+    See also the parameters for :doc:`transient_hdr_film (click here for more info) <../../generated/plugin_reference/section_films>`.
 
     .. pluginparameters::
 
@@ -52,10 +79,8 @@ class NLOSCaptureMeter(NLOSSensor):
          film instead of NxM, and point the laser to the point that you 
          want to capture. Then you should repeat the capture NxM times. We
          strongly recommend using TAL (see https://github.com/diegoroyo/tal), 
-         and set `scan_type: confocal` in the tal render YAML configuration 
+         and set ``scan_type: confocal`` in the tal render YAML configuration 
          file, which will handle all this automatically.
-
-    See also the parameters for `transient_hdr_film`.
     """
 
     # TODO(diego): we assume the rays start in a vacuum
@@ -98,7 +123,6 @@ class NLOSCaptureMeter(NLOSSensor):
         dr.make_opaque(self.laser_bounce_opl,
                        self.laser_target, self.film_size)
 
-    # @property
     def world_transform(self):
         return self._world_transform
 

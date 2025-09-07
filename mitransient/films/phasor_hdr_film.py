@@ -16,18 +16,92 @@ from mitransient.utils import ArrayXf
 class PhasorHDRFilm(mi.Film):
     r"""
 
-    .. film-fourier_hdr_film:
+    .. film-phasor_hdr_film:
 
-    Fourier HDR Film
+    Phasor HDR Film (:monosp:`phasor_hdr_film`)
+    -------------------------------------------------
 
-    TODO(diego): docs
+    Equivalent to ``transient_hdr_film``, but stores the transient information in the frequency domain for a sparse set
+    of frequencies.
 
-    See also:
-        - width/height (uint32)
-        - crop_width/crop_height (uint32)
-        - crop_offset_x/crop_offset_y (uint32)
-        - sample_border (bool)
-        - rfilters?
+    **Specifying the start and end times of the video:** See the documentation for ``transient_hdr_film``.
+
+    **Choosing which frequencies to store:** This plugin was made with the work
+    "Non-line-of-sight imaging using phasor-field virtual wave optics" in mind. Thus, the parameters
+    ``wl_mean`` and ``wl_sigma``, which appear in that work, are used to choose which frequencies to store
+    based on a Morlet wavelet filter. Roughly speaking, ``wl_mean`` is the central wavelength of the filter,
+    and ``6*wl_sigma`` will be be width of the filter. That way you can choose a range of frequencies to store.
+
+    .. tabs::
+
+        .. code-tab:: xml
+
+            <film type="phasor_hdr_film">
+                <float name="wl_mean" value="100"/>
+                <float name="wl_sigma" value="100"/>
+                <integer name="width"  value="256"/>
+                <integer name="height" value="256"/>
+                <integer name="temporal_bins" value="400"/>
+                <float name="start_opl" value="1000"/>
+                <float name="bin_width_opl" value="6.5"/>
+                <rfilter type="box"/>
+            </film>
+
+        .. code-tab:: python
+
+            {
+                'type': 'phasor_hdr_film',
+                'wl_mean': 100,
+                'wl_sigma': 100,
+                'width': 256,
+                'height': 256,
+                'temporal_bins': 400,
+                'start_opl': 1000,
+                'bin_width_opl': 6.5,
+                'rfilter': {'type': 'box'}
+            }
+
+    We stores two image blocks simultaneously:
+
+    * Steady block: Accumulates all samples (sum over all the time dimension)
+    * Phasor block: Accumulates samples separating them in frequency components
+
+    The results can be retrieved using the ``develop(raw=True)`` method, which returns a (steady, phasors) tuple.
+    The ``transient`` image will have shape ``(width, height, num_frequencies, 2)``.
+    The last dimension stores the real and imaginary components of the phasors for their respective frequencies.
+
+    .. pluginparameters::
+
+     * - wl_mean
+       - |float|
+       - Central wavelength for the Morlet wavelet filter, measured in optical path length
+
+     * - wl_sigma
+       - |float|
+       - Width of the Morlet wavelet filter, measured in optical path length
+
+     * - temporal_bins
+       - |int|
+       - Number of bins in the time dimension (histogram representation)
+
+     * - bin_width_opl
+       - |float|
+       - Width of each bin in the time dimension (histogram representation), measured in optical path length
+
+     * - start_opl
+       - |float|
+       - Start of the time dimension (histogram representation), measured in optical path length
+
+    See also, from `mi.Film <https://mitsuba.readthedocs.io/en/latest/src/generated/plugins_films.html>`_:
+
+    * `width` (integer)
+    * `height` (integer)
+    * `crop_width` (integer)
+    * `crop_height` (integer)
+    * `crop_offset_x` (integer)
+    * `crop_offset_y` (integer)
+    * `sample_border` (bool)
+    * `rfilter` (rfilter)
     """
 
     def __init__(self, props: mi.Properties):

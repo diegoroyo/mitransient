@@ -5,7 +5,7 @@
 
 # Setup mitsuba and add mitransient to path
 
-
+# fmt: off
 import sys
 import os
 
@@ -18,6 +18,7 @@ import mitransient as mitr
 
 # Add for custom plugins / directives
 sys.path.append(os.path.abspath('exts'))
+# fmt: on
 
 rst_prolog = r"""
 .. role:: paramtype
@@ -39,6 +40,7 @@ rst_prolog = r"""
 .. |transform| replace:: :paramtype:`transform`
 .. |volume| replace:: :paramtype:`volume`
 .. |tensor| replace:: :paramtype:`tensor`
+.. |spectrum_or_texture| replace:: :paramtype:`spectrum or texture`
 
 .. |drjit| replace:: :monosp:`drjit`
 .. |numpy| replace:: :monosp:`numpy`
@@ -63,7 +65,7 @@ release = mitr.__version__
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
 
-extensions = []
+extensions = ['sphinx_tabs.tabs', 'sphinx_design']
 extensions.append('sphinx.ext.autodoc')
 extensions.append('sphinx.ext.coverage')
 extensions.append('sphinx.ext.napoleon')
@@ -77,7 +79,8 @@ extensions.append('pluginparameters')
 
 
 templates_path = ['_templates']
-exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store', 'src/plugin_reference/section_*.rst']
+exclude_patterns = ['_build', 'Thumbs.db',
+                    '.DS_Store', 'src/plugin_reference/section_*.rst']
 
 
 # -- Options for HTML output -------------------------------------------------
@@ -94,12 +97,11 @@ pygments_dark_style = 'tango'
 html_show_sourcelink = False
 
 html_theme_options = {
-   # Disable edit button on read the docs
-   "top_of_page_button": None,
+    # Disable edit button on read the docs
+    #  "top_of_page_button": None,  # NOTE(diego): Not required in furo 2025 version I think
 }
 
 # Generate the documentation from the source files
-from docs import generate_plugin_doc
-
+from docs import generate_plugin_doc  # fmt: off
 generate_plugin_doc.generate(
     'src/plugin_reference', 'generated/plugin_reference')

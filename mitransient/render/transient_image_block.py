@@ -7,13 +7,11 @@ from ..utils import indent
 
 
 class TransientImageBlock(mi.Object):
-    """
-    mitransient's equivalent for ImageBlock class
+    # mitransient's equivalent for ImageBlock class
 
-    See Mitsuba 3's ImageBlock class for more information.
-    - https://github.com/diegoroyo/mitsuba3/blob/master/include/mitsuba/render/imageblock.h
-    See ``transient_hdr_film`` plugin for more information.
-    """
+    # See Mitsuba 3's ImageBlock class for more information.
+    # - https://github.com/diegoroyo/mitsuba3/blob/master/include/mitsuba/render/imageblock.h
+    # See ``transient_hdr_film`` plugin for more information.
 
     def __init__(
         self,
@@ -79,7 +77,8 @@ class TransientImageBlock(mi.Object):
             rgb = mi.spectrum_to_srgb(spec_u, wavelengths, active)
             values = [rgb.x, rgb.y, rgb.z, alpha, weight]
         elif mi.is_monochromatic and mi.is_polarized:
-            values = [value[0,0,0], value[1,0,0], value[2,0,0], value[3,0,0], alpha, weight]
+            values = [value[0, 0, 0], value[1, 0, 0],
+                      value[2, 0, 0], value[3, 0, 0], alpha, weight]
         elif mi.is_monochromatic:
             values = [spec_u.x, alpha, weight]
         else:

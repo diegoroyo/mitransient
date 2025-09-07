@@ -5,19 +5,21 @@ import mitsuba as mi
 speed_of_light = 299792458.0
 """Speed of light in meters/second"""
 
+
 @dr.syntax
 def β_init(sensor, ray):
-    """ Initializes β taking polarization into account """
+    # Initializes β taking polarization into account
     β = mi.Spectrum(1)
     if mi.is_polarized:
         current_basis = mi.mueller.stokes_basis(-ray.d)
         vertical = sensor.world_transform() @ mi.Vector3f(0, 1, 0)
         target_basis = dr.cross(ray.d, vertical)
         β = mi.mueller.rotate_stokes_basis(-ray.d,
-                                        current_basis,
-                                        target_basis)
+                                           current_basis,
+                                           target_basis)
         β = mi.Spectrum(β)
     return β
+
 
 def set_thread_count(count):
     """Define the number of threads to be used"""
@@ -32,7 +34,7 @@ def set_thread_count(count):
 
 
 def indent(obj, amount=2):
-    """Indent output of subobjects"""
+    # Indent output of subobjects
     output = str(obj)
     result = ""
     lines = output.splitlines(keepends=True)
@@ -83,7 +85,7 @@ def cornell_box():
         'integrator': {
             'type': 'transient_path',
             'camera_unwarp': False,
-            'max_depth': 100,
+            'max_depth': 8,
             'temporal_filter': 'box',
             'gaussian_stddev': 2.0,
         },
@@ -102,7 +104,7 @@ def cornell_box():
             ),
             'sampler': {
                 'type': 'independent',
-                'sample_count': 128
+                'sample_count': 256
             },
             'film': {
                 'type': 'transient_hdr_film',
