@@ -1,3 +1,12 @@
+"""
+    General visualization utilities for transient rendering.
+
+    .. warning::
+        This module is accesible through ``mitransient.vis``, NOT ``mitransient.unpolarized_visualization``.
+        The functions are accessible through ``mitransient.vis`` when Mitsuba is NOT running with a ``*_polarized`` variant.
+        Else it uses the functions from ``mitransient.polarized_visualization``.
+"""
+
 import mitsuba as mi
 import numpy as np
 
@@ -7,7 +16,6 @@ def tonemap_transient(transient, scaling=1.0):
     tnp = np.array(transient)
     channel_top = np.quantile(np.abs(tnp), 0.99)
     return tnp / channel_top * scaling
-        
 
 
 def save_video(path, transient, axis_video, fps=24, display_video=False):
