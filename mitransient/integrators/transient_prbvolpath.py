@@ -122,6 +122,8 @@ class TransientPRBVolpathIntegrator(TransientADIntegrator):
                active: mi.Bool,
                # TODO (JORGE): revise
                add_transient: Callable[[Any, Any, Any, Any], None],
+               gather_derivatives_at_distance: Callable[[
+                   Any, Any], Any] = None,
                **kwargs  # Absorbs unused arguments
                ) -> Tuple[mi.Spectrum, mi.Bool, List[mi.Float], mi.Spectrum]:
         self.prepare_scene(scene)
@@ -277,7 +279,8 @@ class TransientPRBVolpathIntegrator(TransientADIntegrator):
                 if dr.hint(not is_primal and dr.grad_enabled(contrib), mode='scalar'):
                     dr.backward(δL * contrib)
 
-                add_transient(contrib, distance, ray.wavelengths, active_e)
+                if is_primal:
+                    add_transient(contrib, distance, ray.wavelengths, active_e)
 
                 active_surface &= si.is_valid()
                 ctx = mi.BSDFContext()
@@ -319,10 +322,13 @@ class TransientPRBVolpathIntegrator(TransientADIntegrator):
                                             δL=δL, mode=mode)
 
                         if dr.hint(dr.grad_enabled(nee_weight) or dr.grad_enabled(emitted), mode='scalar'):
-                            dr.backward(δL * contrib)
+                            δL_read = gather_derivatives_at_distance(
+                                δL, distance + ds.dist * η)
+                            dr.backward(δL_read * contrib)
 
-                    add_transient(contrib, distance + ds.dist *
-                                  η, ray.wavelengths, active_e)
+                    if is_primal:
+                        add_transient(contrib, distance + ds.dist *
+                                      η, ray.wavelengths, active_e)
 
                 # -------------------- Phase function sampling ------------------
 
@@ -371,9 +377,13 @@ class TransientPRBVolpathIntegrator(TransientADIntegrator):
                         dr.detach(dr.select(active_surface, L /
                                   dr.maximum(1e-8, bsdf_eval), 0.0))
                     if dr.hint(mode == dr.ADMode.Backward, mode='scalar'):
-                        dr.backward_from(δL * Lo)
+                        δL_read = gather_derivatives_at_distance(δL, distance)
+                        dr.backward_from(δL_read * Lo)
                     else:
-                        δL += dr.forward_to(Lo)
+                        δL_part = dr.forward_to(Lo)
+                        add_transient(δL_part, distance,
+                                      ray.wavelengths, True)
+                        δL += δL_part
 
                 β[active_surface] *= bsdf_weight
                 η[active_surface] *= bs.eta

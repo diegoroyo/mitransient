@@ -198,16 +198,16 @@ class NLOSCaptureMeter(NLOSSensor):
 
     def traverse(self, callback: mi.TraversalCallback):
         super().traverse(callback)
-        callback.put_parameter(
+        callback.put(
             "needs_sample_3", self.needs_sample_3, mi.ParamFlags.NonDifferentiable)
-        callback.put_parameter(
+        callback.put(
             "account_first_and_last_bounces",
             self.account_first_and_last_bounces, mi.ParamFlags.NonDifferentiable)
-        callback.put_parameter(
+        callback.put(
             "is_confocal", self.is_confocal, mi.ParamFlags.NonDifferentiable)
-        callback.put_parameter(
+        callback.put(
             "laser_bounce_opl", self.laser_bounce_opl, mi.ParamFlags.NonDifferentiable)
-        callback.put_parameter(
+        callback.put(
             "laser_target", self.laser_target, mi.ParamFlags.NonDifferentiable)
 
     # NOTE(diego): fails on cuda_mono_double versions

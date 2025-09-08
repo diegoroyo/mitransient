@@ -18,7 +18,28 @@ def tonemap_transient(transient, scaling=1.0):
     return tnp / channel_top * scaling
 
 
-def save_video(path, transient, axis_video, fps=24, display_video=False):
+def tonemap_grad_transient(transient, axis_video=2):
+    """Converts a gradient video to the coolwarm colormap."""
+    assert axis_video == 2
+    tnp = np.array(transient)
+    if tnp.ndim == 4:
+        tnp = np.mean(tnp, axis=-1)
+    max_val = np.quantile(np.abs(tnp), 0.99)
+    tnp_tonemapped = np.zeros((*tnp.shape[0:3], 3), dtype=np.float32)
+    tnp_tonemapped[..., 0] = tnp
+    tnp_tonemapped /= max_val
+    tnp_tonemapped = np.clip(tnp_tonemapped, -1, 1)
+    nt = tnp.shape[axis_video]
+    from matplotlib import cm
+    colormap = cm.get_cmap('coolwarm')
+    for i in range(nt):
+        frame = tnp_tonemapped[:, :, i, 0]
+        frame_norm = (frame + 1) / 2
+        tnp_tonemapped[:, :, i, :] = colormap(frame_norm)[:, :, :3]
+    return tnp_tonemapped
+
+
+def save_video(path, transient, axis_video=2, fps=24, display_video=False):
     """Saves the transient image in video format (.mp4)."""
     import cv2
 
@@ -41,7 +62,7 @@ def save_video(path, transient, axis_video, fps=24, display_video=False):
         return display(Video(path, embed=True, width=size[0], height=size[1]))
 
 
-def save_frames(data, axis_video, folder):
+def save_frames(data, folder, axis_video=2):
     """Saves the transient image in separate frames (.exr format for each frame)."""
     import os
     os.makedirs(folder, exist_ok=True)
@@ -55,7 +76,7 @@ def save_frames(data, axis_video, folder):
             f'{folder}/{i:03d}.exr')
 
 
-def show_video(input_sample, axis_video, uint8_srgb=True):
+def show_video(input_sample, axis_video=2, uint8_srgb=True):
     """
     Shows the transient video in a IPython/Jupyter environment.
 

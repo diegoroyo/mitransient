@@ -7,6 +7,7 @@ import drjit as dr
 
 from typing import Union, Any, Tuple
 
+from mitsuba import Log, LogLevel
 from mitsuba.ad.integrators.common import ADIntegrator  # type: ignore
 from ..films.transient_hdr_film import TransientHDRFilm
 from ..utils import β_init
@@ -121,8 +122,6 @@ class TransientADIntegrator(ADIntegrator):
                 # Generate a set of rays starting at the sensor
                 ray, weight, pos = self.sample_rays(scene, sensor, sampler_i)
 
-                β = β_init(sensor, ray)
-
                 # Launch the Monte Carlo sampling process in primal mode
                 L, valid, aovs, _ = self.sample(
                     mode=dr.ADMode.Primal,
@@ -175,10 +174,100 @@ class TransientADIntegrator(ADIntegrator):
                        sensor: Union[int, mi.Sensor] = 0,
                        seed: mi.UInt32 = 0,
                        spp: int = 0) -> mi.TensorXf:
-        # TODO implement render_forward (either here or move this function to RBIntegrator)
-        raise NotImplementedError(
-            "Check https://github.com/mitsuba-renderer/mitsuba3/blob/1e513ef94db0534f54a884f2aeab7204f6f1e3ed/src/python/python/ad/integrators/common.py"
-        )
+        if isinstance(sensor, int):
+            sensor = scene.sensors()[sensor]
+        film = sensor.film()
+        self.check_transient_(scene, sensor)
+
+        # Disable derivatives in all of the following
+        with dr.suspend_grad():
+            # Prepare the film and sample generator for rendering
+            samplers_spps = self.prepare(
+                scene=scene,
+                sensor=sensor,
+                seed=seed,
+                spp=spp,
+                aovs=[],
+            )
+
+            if len(samplers_spps) > 1:
+                Log(LogLevel.ERROR,
+                    "render_forward is not implemented for >2^26 samples."
+                    "Please set spp to a lower value or reduce the dimensions of your image.")
+
+            # need to re-add in case the spp parameter was set to 0
+            # (spp was set through the xml file)
+            total_spp = 0
+            for _, spp_i in samplers_spps:
+                total_spp += spp_i
+
+            for sampler_i, spp_i in samplers_spps:
+                # Generate a set of rays starting at the sensor
+                ray, weight, pos = self.sample_rays(scene, sensor, sampler_i)
+
+                # Launch the Monte Carlo sampling process in primal mode
+                # NOTE(diego): we only do this to get state_out to pass it to the function below
+                # we dont care about add_transient
+                _, __, ___, state_out = self.sample(
+                    mode=dr.ADMode.Primal,
+                    scene=scene,
+                    sampler=sampler_i.clone(),
+                    ray=ray,
+                    depth=mi.UInt32(0),
+                    β=β_init(sensor, ray),
+                    δL=None,
+                    δaovs=None,
+                    state_in=None,
+                    active=mi.Bool(True),
+                    add_transient=lambda _, __, ___, ____: None
+                )
+
+                # Launch the Monte Carlo sampling process in backward AD mode
+                # NOTE: the integrator expects δL to have shape (num_pixels, num_spp),
+                # but in the transient domain it has shape (num_pixels * num_time_bins, num_spp)
+                # so the integrator provides a read_δL function that reads the corresponding time bin
+                # for each pixel and gives a read_δL with shape (num_pixels, num_spp)
+                # Launch the Monte Carlo sampling process in primal mode
+                δL, valid, δaovs, _ = self.sample(
+                    mode=dr.ADMode.Forward,
+                    scene=scene,
+                    sampler=sampler_i,
+                    ray=ray,
+                    depth=mi.UInt32(0),
+                    β=β_init(sensor, ray),
+                    δL=None,
+                    δaovs=None,
+                    state_in=state_out,
+                    active=mi.Bool(True),
+                    add_transient=self.add_transient_f(
+                        film=film, pos=pos, ray_weight=weight, sample_scale=1.0 / total_spp
+                    )
+                )
+
+                # Prepare an ImageBlock as specified by the film
+                block = film.steady.create_block()
+
+                # Only use the coalescing feature when rendering enough samples
+                block.set_coalesce(block.coalesce() and spp_i >= 4)
+
+                # Accumulate into the image block
+                ADIntegrator._splat_to_block(
+                    block, film, pos,
+                    value=δL * mi.Spectrum(weight),
+                    weight=1.0,
+                    alpha=dr.select(valid, mi.Float(1), mi.Float(0)),
+                    aovs=δaovs,
+                    wavelengths=ray.wavelengths
+                )
+
+                # Explicitly delete any remaining unused variables
+                del sampler_i, ray, weight, pos, δL, valid
+
+                # Perform the weight division and return an image tensor
+                film.steady.put_block(block)
+
+            steady_image, transient_image = film.develop()
+            return steady_image, transient_image
 
     def render_backward(self: mi.SamplingIntegrator,
                         scene: mi.Scene,
@@ -187,10 +276,82 @@ class TransientADIntegrator(ADIntegrator):
                         sensor: Union[int, mi.Sensor] = 0,
                         seed: mi.UInt32 = 0,
                         spp: int = 0) -> None:
-        # TODO implement render_backward (either here or move this function to RBIntegrator)
-        raise NotImplementedError(
-            "Check https://github.com/mitsuba-renderer/mitsuba3/blob/1e513ef94db0534f54a884f2aeab7204f6f1e3ed/src/python/python/ad/integrators/common.py"
-        )
+        if isinstance(sensor, int):
+            sensor = scene.sensors()[sensor]
+        film = sensor.film()
+        self.check_transient_(scene, sensor)
+
+        grad_in_steady, grad_in_transient = grad_in
+
+        # Disable derivatives in all of the following
+        with dr.suspend_grad():
+            # Prepare the film and sample generator for rendering
+            samplers_spps = self.prepare(
+                scene=scene,
+                sensor=sensor,
+                seed=seed,
+                spp=spp,
+                aovs=[],
+            )
+
+            if len(samplers_spps) > 1:
+                Log(LogLevel.ERROR,
+                    "render_backward is not implemented for >2^26 samples."
+                    "Please set spp to a lower value or reduce the dimensions of your image.")
+
+            for sampler_i, spp_i in samplers_spps:
+                # Generate a set of rays starting at the sensor
+                ray, weight, pos = self.sample_rays(scene, sensor, sampler_i)
+
+                # NOTE(diego): This assumes that the user uses a box filter
+                # (i.e. rays only affect the pixel they are in)
+                # otherwise you should use splatting_and_backward_gradient_image
+                # from the original mitsuba3 code
+                h, w, t, c = grad_in_transient.shape
+                δL = grad_in_transient + \
+                    dr.reshape(grad_in_steady, (h, w, 1, c))
+                δL = dr.reshape(dr.moveaxis(δL, -1, 0), (c, h*w*t))
+
+                # Launch the Monte Carlo sampling process in primal mode
+                # NOTE(diego): we only do this to get state_out to pass it to the function below
+                # we dont care about add_transient
+                _, __, ___, state_out = self.sample(
+                    mode=dr.ADMode.Primal,
+                    scene=scene,
+                    sampler=sampler_i.clone(),
+                    ray=ray,
+                    depth=mi.UInt32(0),
+                    β=β_init(sensor, ray),
+                    δL=None,
+                    δaovs=None,
+                    state_in=None,
+                    active=mi.Bool(True),
+                    add_transient=lambda _, __, ___, ____: None
+                )
+
+                # Launch the Monte Carlo sampling process in backward AD mode
+                # NOTE: the integrator expects δL to have shape (num_pixels, num_spp),
+                # but in the transient domain it has shape (num_pixels * num_time_bins, num_spp)
+                # so the integrator provides a read_δL function that reads the corresponding time bin
+                # for each pixel and gives a read_δL with shape (num_pixels, num_spp)
+                _ = self.sample(
+                    mode=dr.ADMode.Backward,
+                    scene=scene,
+                    sampler=sampler_i,
+                    ray=ray,
+                    depth=mi.UInt32(0),
+                    β=β_init(sensor, ray),
+                    δL=δL,
+                    δaovs=None,
+                    state_in=state_out,
+                    active=mi.Bool(True),
+                    add_transient=lambda _, __, ___, ____: None,
+                    gather_derivatives_at_distance=lambda δL, distance:
+                        film.gather_derivatives_at_distance(pos, δL, distance)
+                )
+
+                del ray, weight, pos, sampler_i
+                dr.eval()
 
     def add_transient_f(self, film: TransientHDRFilm, pos: mi.Vector2f, ray_weight: mi.Float, sample_scale: mi.Float):
         """

@@ -1,5 +1,5 @@
 from __future__ import annotations  # Delayed parsing of type annotations
-from typing import Optional, Tuple, List, Callable
+from typing import Optional, Tuple, List, Callable, Any
 
 import drjit as dr
 import mitsuba as mi
@@ -97,6 +97,8 @@ class TransientPath(TransientADIntegrator):
                active: mi.Bool,
                # add_transient accepts (spec, distance, wavelengths, active)
                add_transient: Callable[[mi.Spectrum, mi.Float, mi.UnpolarizedSpectrum, mi.Mask], None],
+               gather_derivatives_at_distance: Callable[[
+                   Any, Any], Any] = None,
                **kwargs  # Absorbs unused arguments
                ) -> Tuple[mi.Spectrum, mi.Bool, List[mi.Float], mi.Spectrum]:
         """
@@ -174,7 +176,8 @@ class TransientPath(TransientADIntegrator):
                               ds.emitter.eval(si, active_next))
 
             # Add transient contribution because of emitter found
-            add_transient(Le, distance, ray.wavelengths, active)
+            if primal:
+                add_transient(Le, distance, ray.wavelengths, active)
 
             # ---------------------- Emitter sampling ----------------------
 
@@ -210,8 +213,9 @@ class TransientPath(TransientADIntegrator):
                 Lr_dir = β * mi.Spectrum(mis_em) * bsdf_value_em * em_weight
 
             # Add contribution direct emitter sampling
-            add_transient(Lr_dir, distance + ds.dist *
-                          η, ray.wavelengths, active)
+            if primal:
+                add_transient(Lr_dir, distance + ds.dist *
+                              η, ray.wavelengths, active)
 
             # ------------------ Detached BSDF sampling -------------------
 
@@ -303,9 +307,13 @@ class TransientPath(TransientADIntegrator):
 
                     # Propagate derivatives from/to 'Lo' based on 'mode'
                     if dr.hint(mode == dr.ADMode.Backward, mode='scalar'):
-                        dr.backward_from(δL * Lo)
+                        δL_read = gather_derivatives_at_distance(δL, distance)
+                        dr.backward_from(δL_read * Lo)
                     else:
-                        δL += dr.forward_to(Lo)
+                        δL_part = dr.forward_to(Lo)
+                        add_transient(δL_part, distance,
+                                      ray.wavelengths, True)
+                        δL += δL_part
 
             depth[si.is_valid()] += 1
             active = active_next

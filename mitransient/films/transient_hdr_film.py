@@ -122,6 +122,26 @@ class TransientHDRFilm(mi.Film):
         channels = self.prepare_transient_(aovs)
         return channels
 
+    def create_block(self):
+        return TransientImageBlock(
+            size_xyt=self.crop_size_xyt,
+            offset_xyt=self.crop_offset_xyt,
+            channel_count=len(self.channels),
+            rfilter=self.rfilter()
+        )
+
+    def gather_derivatives_at_distance(self, pos, δL, distance: mi.Float):
+        pos_distance = (distance - self.start_opl) / self.bin_width_opl
+        coords = mi.Vector3f(pos.x, pos.y, pos_distance)
+        indices = dr.fma(coords.x, self.size().y * self.temporal_bins,
+                         dr.fma(coords.y, self.temporal_bins, coords.z))
+        alpha = mi.has_flag(self.flags(), mi.FilmFlags.Alpha)
+        color_channels = len(self.channels) - (2 if alpha else 1)
+        active_g = (indices > 0) & (
+            indices < dr.prod(δL.shape) // color_channels)
+        result = dr.gather(mi.Spectrum, δL, indices, active=active_g)
+        return result
+
     def prepare_transient_(self, aovs: Sequence[str]):
         alpha = mi.has_flag(self.flags(), mi.FilmFlags.Alpha)
 
@@ -140,18 +160,13 @@ class TransientHDRFilm(mi.Film):
         for i in range(len(aovs)):
             channels.append(aovs[i])
 
-        crop_offset_xyt = mi.ScalarPoint3i(
+        self.channels = channels
+        self.crop_offset_xyt = mi.ScalarPoint3i(
             self.crop_offset().x, self.crop_offset().y, 0)
-        crop_size_xyt = mi.ScalarVector3u(
+        self.crop_size_xyt = mi.ScalarVector3u(
             self.size().x, self.size().y, self.temporal_bins)
 
-        self.transient_storage = TransientImageBlock(
-            size_xyt=crop_size_xyt,
-            offset_xyt=crop_offset_xyt,
-            channel_count=len(channels),
-            rfilter=self.rfilter()
-        )
-        self.channels = channels
+        self.transient_storage = self.create_block()
         if len(set(channels)) != len(channels):
             mi.Log(mi.LogLevel.Error,
                    "Film::prepare_transient_(): duplicate channel name.")
@@ -240,11 +255,11 @@ class TransientHDRFilm(mi.Film):
 
     def traverse(self, callback):
         super().traverse(callback)
-        callback.put_parameter(
+        callback.put(
             "temporal_bins", self.temporal_bins, mi.ParamFlags.NonDifferentiable)
-        callback.put_parameter(
+        callback.put(
             "bin_width_opl", self.bin_width_opl, mi.ParamFlags.NonDifferentiable)
-        callback.put_parameter(
+        callback.put(
             "start_opl", self.start_opl, mi.ParamFlags.NonDifferentiable)
 
     def parameters_changed(self, keys):

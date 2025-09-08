@@ -138,6 +138,12 @@ class PhasorHDRFilm(mi.Film):
                f"PhasorHDRFilm: Using {len(frequencies)} wavelengths from {1/frequencies[-1]:.4f}m to {1/frequencies[0]:.4f}m")
         self.frequencies = ArrayXf([mi.Float(f) for f in frequencies])
 
+    def create_block(self):
+        raise NotImplementedError('Not implemented for phasor_hdr_film')
+
+    def gather_derivatives_at_distance(self, pos, δL, distance: mi.Float):
+        raise NotImplementedError('Not implemented for phasor_hdr_film')
+
     def prepare(self, aovs: Sequence[str]):
         if not mi.is_monochromatic:
             mi.Log(mi.LogLevel.Error,
@@ -265,9 +271,9 @@ class PhasorHDRFilm(mi.Film):
 
     def traverse(self, callback):
         super().traverse(callback)
-        callback.put_parameter(
+        callback.put(
             "frequencies", self.frequencies, mi.ParamFlags.NonDifferentiable)
-        callback.put_parameter(
+        callback.put(
             "start_opl", self.start_opl, mi.ParamFlags.NonDifferentiable)
 
     def parameters_changed(self, keys):

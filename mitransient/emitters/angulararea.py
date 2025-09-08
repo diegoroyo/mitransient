@@ -84,12 +84,12 @@ class AngularAreaLight(mi.Emitter):
     def traverse(self, callback: mi.TraversalCallback):
         # NOTE: all the parameters are set as NonDifferentiable by default
         super().traverse(callback)
-        callback.put_parameter("radiance", self.radiance,
-                               mi.ParamFlags.NonDifferentiable)
-        callback.put_parameter(
+        callback.put("radiance", self.radiance,
+                     mi.ParamFlags.NonDifferentiable)
+        callback.put(
             "cutoff_angle", self.cutoff_angle, mi.ParamFlags.NonDifferentiable)
-        callback.put_parameter("beam_width", self.beam_width,
-                               mi.ParamFlags.NonDifferentiable)
+        callback.put("beam_width", self.beam_width,
+                     mi.ParamFlags.NonDifferentiable)
 
     def eval(self, si: mi.SurfaceInteraction3f, active: mi.Bool) -> mi.Spectrum:
         # Evaluate emitted radiance & fallof profile

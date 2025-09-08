@@ -75,10 +75,11 @@
 
     <shape type="obj" id="back">
         <string name="filename" value="meshes/cbox_back.obj"/>
-        <bsdf type="conductor">
-            <!--<rgb name="reflectance" value="0.105421, 0.37798, 0.076425"/>-->
+        <ref id="white"/>
+        <!-- <bsdf type="conductor">
+            <rgb name="reflectance" value="0.105421, 0.37798, 0.076425"/>
             <string name="material" value="none"/>
-        </bsdf> 
+        </bsdf>  -->
     </shape>
 
     <shape type="obj" id="greenwall">
@@ -98,7 +99,10 @@
 
     <shape type="obj" id="smallbox">
         <string name="filename" value="meshes/cbox_smallbox.obj"/>
-        <ref id="gray"/>
+        <bsdf type="dielectric">
+        	<string name="int_ior" value="water"/>
+        	<string name="ext_ior" value="air"/>
+    	</bsdf> 
     </shape>
 
     <shape type="obj" id="largebox">
