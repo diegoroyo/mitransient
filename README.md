@@ -40,6 +40,8 @@
 * **Python-only** library for doing transient rendering in both CPU and GPU.
 * **Several integrators already implemented:** transient pathtracing (also adapted for NLOS scenes) and transient volumetric pathtracing.
 * **Cross-platform:** Mitsuba 3 has been tested on Linux (x86_64), macOS (aarch64, x86_64), and Windows (x86_64).
+* **Polarization tracking**
+* **Differentiable transient rendering**
 
 <br>
 

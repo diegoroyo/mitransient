@@ -19,6 +19,8 @@ Main features
 * **Python-only** library for doing transient rendering in both CPU and GPU.
 * **Several integrators already implemented:** *transient pathtracing*  (also adapted for NLOS scenes) and *transient volumetric pathtracing*.
 * **Cross-platform:** Mitsuba 3 has been tested on Linux (x86_64), macOS (aarch64, x86_64), and Windows (x86_64).
+* **Polarization tracking**
+* **Differentiable transient rendering**
 
 The following video showcases ``mitransient`` simulating light at a trillion frames per second, `imitating a femto-photography experiment <https://youtu.be/EtsXgODHMWk?t=106>`_.
 
@@ -101,6 +103,25 @@ If this is your first time, we strongly recommend that you start with the *Trans
             :height: 200
             :align: center
 
+.. grid:: 2
+
+    .. grid-item-card:: Transient polarization tracking
+        :class-title: sd-text-center sd-font-weight-bold
+        :link: src/tutorials/polarization_tutorials.html
+
+        .. image:: ../.images/polarization.png
+            :height: 200
+            :align: center
+
+
+    .. grid-item-card:: Differentiable transient rendering
+        :class-title: sd-text-center sd-font-weight-bold
+        :link: src/tutorials/diff_tutorials.html
+
+        .. image:: ../.images/diff.png
+            :height: 200
+            :align: center
+
 
 License and citation
 --------------------
@@ -162,6 +183,7 @@ Note: note that the time values we need to compute are very small (e.g. light ta
       src/tutorials/transient_rendering_tutorials
       src/tutorials/nlos_tutorials
       src/tutorials/polarization_tutorials
+      src/tutorials/diff_tutorials
       src/tutorials/angulararea_tutorials
 
 .. toctree::
