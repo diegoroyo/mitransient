@@ -1,5 +1,5 @@
 notebooks/transientFrames/**
-scripts/pypi_publish.sh
+scripts/*
 node_modules
 package.json
 package-lock.json
