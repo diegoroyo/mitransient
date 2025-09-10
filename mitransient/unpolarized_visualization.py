@@ -24,7 +24,7 @@ def tonemap_grad_transient(transient, axis_video=2):
     tnp = np.array(transient)
     if tnp.ndim == 4:
         tnp = np.mean(tnp, axis=-1)
-    max_val = np.quantile(np.abs(tnp), 0.99)
+    max_val = np.quantile(np.abs(tnp), 0.999)
     tnp_tonemapped = np.zeros((*tnp.shape[0:3], 3), dtype=np.float32)
     tnp_tonemapped[..., 0] = tnp
     tnp_tonemapped /= max_val

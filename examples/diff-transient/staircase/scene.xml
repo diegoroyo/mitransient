@@ -1,11 +1,12 @@
 <scene version="3.0.0">
-	<default name="integrator" value="path" />
+	<default name="integrator" value="transient_path" />
 	<default name="spp" value="64" />
 	<default name="resy" value="1280" />
 	<default name="resx" value="720" />
 	<default name="max_depth" value="65" />
 	<integrator type="$integrator">
 		<integer name="max_depth" value="$max_depth" />
+		<boolean name="camera_unwarp" value="true" />
 	</integrator>
 	<sensor type="perspective">
 		<float name="fov" value="35" />
@@ -15,12 +16,17 @@
 		<sampler type="independent">
 			<integer name="sample_count" value="$spp" />
 		</sampler>
-		<film type="hdrfilm">
+		<film type="transient_hdr_film">
 			<integer name="width" value="$resx" />
 			<integer name="height" value="$resy" />
-			<string name="file_format" value="openexr" />
-			<string name="pixel_format" value="rgb" />
-			<rfilter type="tent" />
+			<!-- <string name="file_format" value="openexr" />
+			<string name="pixel_format" value="rgb" /> -->
+            <integer name="temporal_bins" value="400"/>
+            <float name="start_opl" value="0"/>
+            <float name="bin_width_opl" value="0.1"/>
+            <rfilter type="box">
+              <!-- <float name="stddev" value="1.0"/> -->
+            </rfilter>
 		</film>
 	</sensor>
 	<bsdf type="twosided" id="WoodFloorBSDF">
@@ -5794,7 +5800,7 @@
 		</transform>
 		<ref id="EmissionBSDF" />
 	</shape>
-	<shape type="rectangle">
+	<shape type="rectangle" id="light">
 		<transform name="to_world">
 			<matrix value="-1.03225 -6.81307e-015 1.55865e-007 -0.481175 -1.55865e-007 4.51209e-008 -1.03225 7.14059 0 -1.08037 -4.72247e-008 -1.65275 0 0 0 1" />
 		</transform>

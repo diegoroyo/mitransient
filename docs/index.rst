@@ -10,7 +10,7 @@
 Getting started
 ===============
 
-``mitransient`` is a library adds support to Mitsuba 3 for doing transient simulations, with amazing support for non-line-of-sight (NLOS) data capture simulations.
+``mitransient`` is a library adds support to Mitsuba 3 for doing transient simulations, with amazing support for non-line-of-sight (NLOS) data capture simulations, polarization tracking and differentiable transient rendering.
 
 Main features
 -------------
