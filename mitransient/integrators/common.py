@@ -5,12 +5,13 @@ import mitsuba as mi
 import drjit as dr
 # import gc
 
-from typing import Union, Any, Tuple
+from typing import Union, Any, Tuple, Sequence
 
 from mitsuba import Log, LogLevel
 from mitsuba.ad.integrators.common import ADIntegrator  # type: ignore
 from ..films.transient_hdr_film import TransientHDRFilm
 from ..utils import β_init
+from ..version import Version
 
 
 class TransientADIntegrator(ADIntegrator):
@@ -180,8 +181,15 @@ class TransientADIntegrator(ADIntegrator):
                 # Only use the coalescing feature when rendering enough samples
                 block.set_coalesce(block.coalesce() and spp_i >= 4)
 
+                # NOTE(diego): Mitsuba 3.6.X needs extra care when dealing
+                # with polarized functions, so we'll our version instead
+                splat_function = (
+                    ADIntegrator._splat_to_block
+                    if Version(mi.__version__) >= Version('3.7.0')
+                    else self._splat_to_block
+                )
                 # Accumulate into the image block
-                self._splat_to_block(
+                splat_function(
                     block, film, pos,
                     value=L * mi.Spectrum(weight),
                     weight=1.0,
@@ -285,8 +293,15 @@ class TransientADIntegrator(ADIntegrator):
                 # Only use the coalescing feature when rendering enough samples
                 block.set_coalesce(block.coalesce() and spp_i >= 4)
 
+                # NOTE(diego): Mitsuba 3.6.X needs extra care when dealing
+                # with polarized functions, so we'll our version instead
+                splat_function = (
+                    ADIntegrator._splat_to_block
+                    if Version(mi.__version__) >= Version('3.7.0')
+                    else self._splat_to_block
+                )
                 # Accumulate into the image block
-                ADIntegrator._splat_to_block(
+                splat_function(
                     block, film, pos,
                     value=δL * mi.Spectrum(weight),
                     weight=1.0,
