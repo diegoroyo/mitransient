@@ -83,6 +83,41 @@ class TransientADIntegrator(ADIntegrator):
 
         return [sampler_per_pass(i) for i in range(num_passes)]
 
+    def _splat_to_block(self,
+                        block: mi.ImageBlock,
+                        film: mi.Film,
+                        pos: mi.Point2f,
+                        value: mi.Spectrum,
+                        weight: mi.Float,
+                        alpha: mi.Float,
+                        aovs: Sequence[mi.Float],
+                        wavelengths: mi.Spectrum):
+        # FIXME: Wrapper function to avoid calling mitsuba/python/ad/common.py: _splat_to_block, which fails with
+        #       the transient polarimetric integrator. The function is fixed in mitsuba 3.7, the wrapper function will
+        #       not be needed when mitransient is updated to work with mitsuba 3.7.
+        '''Helper function to splat values to a imageblock'''
+        if (dr.all(mi.has_flag(film.flags(), mi.FilmFlags.Special))):
+            aovs = film.prepare_sample(value, wavelengths,
+                                       block.channel_count(),
+                                       weight=weight,
+                                       alpha=alpha)
+            block.put(pos, aovs)
+            del aovs
+        else:
+            if mi.is_polarized:
+                value = mi.unpolarized_spectrum(value)
+            if mi.is_spectral:
+                rgb = mi.spectrum_to_srgb(value, wavelengths)
+            elif mi.is_monochromatic:
+                rgb = mi.Color3f(value.x)
+            else:
+                rgb = value
+            if mi.has_flag(film.flags(), mi.FilmFlags.Alpha):
+                aovs = [rgb.x, rgb.y, rgb.z, alpha, weight] + aovs
+            else:
+                aovs = [rgb.x, rgb.y, rgb.z, weight] + aovs
+            block.put(pos, aovs)
+
     def render(self: mi.SamplingIntegrator,
                scene: mi.Scene,
                sensor: Union[int, mi.Sensor] = 0,
@@ -146,7 +181,7 @@ class TransientADIntegrator(ADIntegrator):
                 block.set_coalesce(block.coalesce() and spp_i >= 4)
 
                 # Accumulate into the image block
-                ADIntegrator._splat_to_block(
+                self._splat_to_block(
                     block, film, pos,
                     value=L * mi.Spectrum(weight),
                     weight=1.0,

@@ -9,7 +9,8 @@
 from enum import Enum
 import mitsuba as mi
 import numpy as np
-import matplotlib.pyplot as plt
+import cv2
+import os
 
 
 def plot_to_numpy(fig):
@@ -48,10 +49,8 @@ def show_video_polarized(stokes, degree_of_polarization, angle_of_polarization, 
     :param show_false_color: if True shows the false color visualization, hidden otherwise
     """
     import logging
-    import matplotlib
-    matplotlib.use('tkagg')
-    logging.getLogger('matplotlib').setLevel(
-        logging.ERROR)  # Supress matplotlib warning
+    import matplotlib.pyplot as plt
+    logging.getLogger('matplotlib').setLevel(logging.ERROR)  # Supress matplotlib warnings
 
     stokes_np = np.array(stokes)
     timebins = stokes.shape[-2]
