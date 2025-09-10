@@ -9,6 +9,7 @@
 * `transient`: First steps with `mitransient` (+Mitsuba 3): creating a scene, editing the scene and visualizing the transient result. There are more advanced tutorials for transient volumetric rendering, frequency space rendering and advanced visualization.
 * `transient-nlos`: Example on how to render NLOS simulations from the Python interface. For easier setups you can also check [tal](https://github.com/diegoroyo/tal), a Python library with a shell interface that simplifies this process.
 * `polarization`: Most of the tutorials do not simulate the polarization of the light. This folder contains multiple samples for how to simulate time-resolved polarization of light, and how to visualize the result/Stokes vectors.
+* `diff-transient`: Differentiable transient rendering. We show examples for gradient-based optimization with a transient signal (backward-mode autodiff) and forward inverse rendering (forward-mode autodiff) in the time domain.
 * `angulararea-emitter`: Examples for our `angulararea` plugin, which acts as an area light that emits within a restricted angular range.
 
 ## Documentation: Non-Line-of-Sight rendering
