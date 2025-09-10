@@ -29,6 +29,7 @@
         <film type="hdrfilm">
             <integer name="width"  value="$res"/>
             <integer name="height" value="$res"/>
+            <string name="pixel_format" value="luminance"/>
         </film>
     </sensor>
 
