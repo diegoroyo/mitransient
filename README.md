@@ -15,22 +15,14 @@
 
 <div align="center">
   <img src="https://raw.githubusercontent.com/diegoroyo/mitransient/main/.images/cornell-box.png" width="200" height="200"/>
-  <img src="https://raw.githubusercontent.com/diegoroyo/mitransient/main/.images/cornell-box.gif" width="200" height="200"/>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+  <img src="https://raw.githubusercontent.com/diegoroyo/mitransient/main/.images/cornell-box.gif" width="200" height="200"/>
   <img src="https://raw.githubusercontent.com/diegoroyo/mitransient/main/.images/nlos-Z.png" width="200" height="200"/>
   <img src="https://raw.githubusercontent.com/diegoroyo/mitransient/main/.images/nlos-Z.gif" width="200" height="200"/>
-
-  <table cellspacing="0" cellpadding="0" border="0">
-    <tr>
-      <td>
-        <img src="https://raw.githubusercontent.com/diegoroyo/mitransient/main/.images/polarization.gif" width="320" height="240"/><br/>
-      </td>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
-      <td>
-        <img src="https://raw.githubusercontent.com/diegoroyo/mitransient/main/.images/staircase_steady.png" width="160" height="240"/>
-        <img src="https://raw.githubusercontent.com/diegoroyo/mitransient/main/.images/staircase_transient.gif" width="160" height="240"/>
-        <img src="https://raw.githubusercontent.com/diegoroyo/mitransient/main/.images/staircase_diff.gif" width="160" height="240"/>
-      </td>
-    </tr>
-  </table>
+  <br>
+  <img src="https://raw.githubusercontent.com/diegoroyo/mitransient/main/.images/polarization.gif" width="320" height="240"/>
+  <img src="https://raw.githubusercontent.com/diegoroyo/mitransient/main/.images/staircase_steady.png" width="160" height="240"/>
+  <img src="https://raw.githubusercontent.com/diegoroyo/mitransient/main/.images/staircase_transient.gif" width="160" height="240"/>
+  <img src="https://raw.githubusercontent.com/diegoroyo/mitransient/main/.images/staircase_diff.gif" width="160" height="240"/>
 </div>
 
 <br />
