@@ -154,18 +154,10 @@ mi.set_variant('llvm_ad_rgb')
 import mitransient as mitr
 
 scene = mi.load_dict(mitr.cornell_box())
-transient_integrator = scene.integrator()
-transient_integrator.prepare_transient(scene, sensor=0)
-img_steady, img_transient = transient_integrator.render(scene, spp=1024)
+img_steady, img_transient = mi.render(scene, spp=1024)
 
-import numpy as np
-img_transient_tonemap = mitr.vis.tonemap_transient(
-    np.moveaxis(img_transient, 0, 1)
-)
-mitr.vis.show_video(
-      img_transient_tonemap,
-      axis_video=2,
-)
+img_transient = mitr.vis.tonemap_transient(img_transient)
+mitr.vis.show_video(img_transient)
 ```
 
 ## Plugins implemented

@@ -72,10 +72,7 @@ Rendering your first transient scene with ``mitransient`` is easy. The code belo
       img_steady, img_transient = mi.render(scene, spp=1024)
 
       img_transient = mitr.vis.tonemap_transient(img_transient)
-      mitr.vis.show_video(
-      img_transient,
-      axis_video=2,
-      )
+      mitr.vis.show_video(img_transient)
 
 **Important:** ``mitransient`` needs to be imported after ``mitsuba``. The moment you add ``mitransient`` to the code, all of our transient-related plugins are registered in Mitsuba 3. At that point you can call ``mitsuba``'s functions as normal (e.g. ``mi.render`` in the example above), and our additional utility functions (``mitr.cornell_box``, ``mitr.vis.tonemap_transient``, etc.).
 
