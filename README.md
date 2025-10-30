@@ -7,9 +7,12 @@
   <h1 align="center">mitransient</h1>
   <h3 align="center">Transient light transport in Mitsuba 3
   <br><br>
-<a href='https://mitransient.readthedocs.io/en/latest/?badge=latest'>
+  <a href='https://mitransient.readthedocs.io/en/latest/?badge=latest'>
       <img src='https://readthedocs.org/projects/mitransient/badge/?version=latest' alt='Documentation Status' /><a href='https://pypi.org/project/mitransient/'>
       <img src='https://img.shields.io/pypi/v/mitransient.svg?color=green' alt='PyPI version' />
+  </a>
+  <a href='https://arxiv.org/abs/2510.25660'>
+	<img src='https://img.shields.io/badge/arXiv-2510.25660-b31b1b.svg' alt='arXiv Paper' />
   </a></h3>
 </p>
 
