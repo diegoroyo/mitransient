@@ -128,14 +128,14 @@ If you use our code in your project, please consider citing us using the followi
 
 .. code-block:: bibtex
 
-      @misc{mitransient,
-            title        = {mitransient},
-            author       = {Royo, Diego and Crespo, Miguel and Garcia-Pueyo, Jorge},
-            year         = 2024,
-            journal      = {GitHub repository},
-            doi          = {https://doi.org/10.5281/zenodo.11032518},
-            publisher    = {GitHub},
-            howpublished = {\url{https://github.com/diegoroyo/mitransient}}
+      @misc{royo2025mitransient,
+            title={mitransient: Transient light transport in Mitsuba 3}, 
+            author={Diego Royo and Jorge Garcia-Pueyo and Miguel Crespo and Óscar Pueyo-Ciutad and Guillermo Enguita and Diego Bielsa},
+            year={2025},
+            eprint={2510.25660},
+            archivePrefix={arXiv},
+            primaryClass={cs.GR},
+            url={https://arxiv.org/abs/2510.25660}, 
       }
 
 Additionally, the NLOS features were re-implemented from our publication `Non-line-of-sight transient rendering <https://doi.org/10.1016/j.cag.2022.07.003>`_. Please also consider citing us if you use them:
