@@ -27,8 +27,7 @@ def plot_to_numpy(fig):
     return np.moveaxis(np.asarray(buf)[:, :, :-1], [0, 1, 2], [1, 2, 0])
 
 
-DisplayMethod = Enum(
-    'DisplayMethod', [('ShowVideo', 1), ('SaveVideo', 2), ('SaveFrames', 3)])
+DisplayMethod = Enum('DisplayMethod', [('ShowVideo', 1), ('SaveVideo', 2), ('SaveFrames', 3)])
 
 
 def show_video_polarized(stokes, degree_of_polarization, angle_of_polarization, type_of_polarization, chirality, save_path=None,

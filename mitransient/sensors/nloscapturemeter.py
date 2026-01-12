@@ -156,6 +156,31 @@ class NLOSCaptureMeter(NLOSSensor):
         direction /= distance
         return distance, direction
 
+    def sample_ray(
+            self, time: mi.Float,
+            sample1: mi.Float, sample2: mi.Point2f, sample3: mi.Point2f,
+            active: mi.Bool = True) -> Tuple[mi.RayDifferential3f, mi.Color3f]:
+
+        origin = self._sensor_origin()
+        sensor_distance, direction = self._sample_direction(
+            time, sample2, active)
+
+        if is_spectral:
+            wav_sample = mi.sample_shifted(sample1)
+            wavelengths, wav_weight = mi.sample_rgb_spectrum(wav_sample)
+        else:
+            wavelengths = []
+            wav_weight = 1.0
+
+        if not self.account_first_and_last_bounces:
+            time -= self.laser_bounce_opl + sensor_distance * self.IOR_BASE
+
+        # NOTE: removed * dr.pi because there is no need to account for this
+        return (
+            mi.RayDifferential3f(origin, direction, time, wavelengths),
+            mi.unpolarized_spectrum(wav_weight)  # * dr.pi
+        )
+
     def sample_ray_differential(
             self, time: mi.Float,
             sample1: mi.Float, sample2: mi.Point2f, sample3: mi.Point2f,
