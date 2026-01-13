@@ -172,7 +172,8 @@ class TransientADIntegrator(ADIntegrator):
                     active=mi.Bool(True),
                     add_transient=self.add_transient_f(
                         film=film, pos=pos, ray_weight=weight, sample_scale=1.0 / total_spp
-                    )
+                    ),
+                    pos=pos # Origin position of the ray needed for Confocal captures
                 )
 
                 # Prepare an ImageBlock as specified by the film
@@ -262,7 +263,8 @@ class TransientADIntegrator(ADIntegrator):
                     δaovs=None,
                     state_in=None,
                     active=mi.Bool(True),
-                    add_transient=lambda _, __, ___, ____: None
+                    add_transient=lambda _, __, ___, ____: None,
+                    pos=pos
                 )
 
                 # Launch the Monte Carlo sampling process in backward AD mode
@@ -284,7 +286,8 @@ class TransientADIntegrator(ADIntegrator):
                     active=mi.Bool(True),
                     add_transient=self.add_transient_f(
                         film=film, pos=pos, ray_weight=weight, sample_scale=1.0 / total_spp
-                    )
+                    ),
+                    pos=pos
                 )
 
                 # Prepare an ImageBlock as specified by the film
@@ -376,7 +379,8 @@ class TransientADIntegrator(ADIntegrator):
                     δaovs=None,
                     state_in=None,
                     active=mi.Bool(True),
-                    add_transient=lambda _, __, ___, ____: None
+                    add_transient=lambda _, __, ___, ____: None,
+                    pos=pos
                 )
 
                 # Launch the Monte Carlo sampling process in backward AD mode
@@ -397,7 +401,8 @@ class TransientADIntegrator(ADIntegrator):
                     active=mi.Bool(True),
                     add_transient=lambda _, __, ___, ____: None,
                     gather_derivatives_at_distance=lambda δL, distance:
-                        film.gather_derivatives_at_distance(pos, δL, distance)
+                        film.gather_derivatives_at_distance(pos, δL, distance),
+                    pos=pos
                 )
 
                 del ray, weight, pos, sampler_i

@@ -207,7 +207,6 @@ class TransientNLOSPath(TransientADIntegrator):
             'capture_type', CaptureType.Single))
         self.laser_resolution: mi.ScalarVector2u = props.get(
             'laser_illumination_resolution', mi.ScalarVector2u([1, 1]))
-        dr.print(f'{self.laser_resolution=}')
         self.force_equal_grids: bool = props.get(
             'force_equal_illumination_scanning', False)
         self.laser_sampling: bool = props.get(
@@ -268,10 +267,10 @@ class TransientNLOSPath(TransientADIntegrator):
                 surface_areas)
 
         # Generate a ray for each of the sensor's "pixels"
-        scan_resolution: mi.ScalarVector2u = mi.traverse(sensor)["film.size"]
+        self.scan_resolution: mi.ScalarVector2u = mi.traverse(sensor)["film.size"]
         scan_x, scan_y = dr.meshgrid(
-            dr.linspace(mi.Float, 0.0, 1.0, scan_resolution[0], endpoint=False),
-            dr.linspace(mi.Float, 0.0, 1.0, scan_resolution[1], endpoint=False),
+            dr.linspace(mi.Float, 0.0, 1.0, self.scan_resolution[0], endpoint=False),
+            dr.linspace(mi.Float, 0.0, 1.0, self.scan_resolution[1], endpoint=False),
         )
         points: mi.Point2f = mi.Point2f(scan_x, scan_y)
         sensor_rays, _ = sensor.sample_ray(mi.Float(0.0), mi.Float(0.0), points, mi.Point2f(0.0), mi.Bool(True))
@@ -310,13 +309,12 @@ class TransientNLOSPath(TransientADIntegrator):
                         dr.linspace(mi.Float, 0.0, 1.0, self.laser_resolution[1], endpoint=False),
                     )
                     points: mi.Point2f = mi.Point2f(laser_x, laser_y)
-                    laser_rays, _ = scene.emitters()[0].sample_ray(mi.Float(0.0), mi.Float(0.0), mi.Point2f(0.0), points, mi.Bool(True))
+                    laser_rays, _ = (scene.emitters()[0].
+                                     sample_ray(mi.Float(0.0), mi.Float(0.0), mi.Point2f(0.0), points, mi.Bool(True)))
 
                     # Intersect with the scene to obtain the illuminated points
                     si = scene.ray_intersect(laser_rays, ray_flags=mi.RayFlags.All, coherent=mi.Bool(True))
                     self.laser_targets: mi.Point3f = si.p
-                    dr.print(f'{points=}')
-                    dr.print(f'{self.laser_targets=}')
 
         return super().prepare(scene, sensor, seed, spp, aovs)
 
@@ -372,7 +370,7 @@ class TransientNLOSPath(TransientADIntegrator):
             self, mode: dr.ADMode, scene: mi.Scene, sampler: mi.Sampler,
             si: mi.SurfaceInteraction3f, bsdf: mi.BSDF, bsdf_ctx: mi.BSDFContext,
             β: mi.Spectrum, distance: mi.Float, η: mi.Float, depth: mi.UInt,
-            active_e: mi.Bool, add_transient) -> mi.Spectrum:
+            active_e: mi.Bool, add_transient, **kwargs) -> mi.Spectrum:
         ds, em_weight = scene.sample_emitter_direction(
             ref=si, sample=sampler.next_2d(active_e), test_visibility=True, active=active_e)
         active_e &= (ds.pdf != 0.0)
@@ -412,7 +410,7 @@ class TransientNLOSPath(TransientADIntegrator):
             self, mode: dr.ADMode, scene: mi.Scene, sampler: mi.Sampler,
             si: mi.SurfaceInteraction3f, bsdf: mi.BSDF, bsdf_ctx: mi.BSDFContext,
             β: mi.Spectrum, distance: mi.Float, η: mi.Float, depth: mi.UInt,
-            active_e: mi.Bool, add_transient) -> mi.Spectrum:
+            active_e: mi.Bool, add_transient, **kwargs) -> mi.Spectrum:
         """
         NLOS scenes only have one laser emitter - standard
         emitter sampling techniques do not apply as most
@@ -429,10 +427,23 @@ class TransientNLOSPath(TransientADIntegrator):
 
         # 1. Obtain direction to NLOS illuminated point
         #    and test visibility with ray_test
-        d = self.laser_targets - si.p
+        laser_targets = None
+        pos = None
+        if self.capture_type == CaptureType.Single:
+            d = self.laser_targets - si.p
+            laser_targets = self.laser_targets
+        elif self.capture_type == CaptureType.Confocal:
+            # Each measured point is only illuminated by the corresponding laser point
+            pos = mi.Vector2u(kwargs.get('pos', None))
+            laser_targets = dr.gather(mi.Point3f,
+                self.laser_targets, pos[0] + pos[1] * self.scan_resolution[0])
+            d = laser_targets - si.p
+        else: # CaptureType.Exhaustive
+            print('Exhaustive captures not implemented yet!'); exit(1)
+
         distance_laser = dr.norm(d)
         d /= distance_laser
-        ray_bsdf = si.spawn_ray_to(self.laser_targets)
+        ray_bsdf = si.spawn_ray_to(laser_targets)
         active_e &= ~scene.ray_test(ray_bsdf, active_e)
 
         # 2. Evaluate BSDF to desired direction
@@ -520,6 +531,13 @@ class TransientNLOSPath(TransientADIntegrator):
         the role of the various parameters and return values.
         """
 
+        # Get the origin pixel in the sensor of each ray
+        pos = None
+        if self.capture_type == CaptureType.Confocal:
+            assert 'pos' in kwargs.keys(), \
+                'Sensor origin pixels must be defined for each ray in confocal mode'
+            pos = kwargs.get('pos', None)
+
         # Rendering a primal image? (vs performing forward/reverse-mode AD)
         primal = mode == dr.ADMode.Primal
 
@@ -605,7 +623,7 @@ class TransientNLOSPath(TransientADIntegrator):
                 mode, scene, sampler,
                 si, bsdf, bsdf_ctx,
                 β, distance, η, depth,
-                active_em, add_transient)
+                active_em, add_transient, pos=pos)
 
             # ------------------ Detached BSDF sampling -------------------
 
