@@ -63,10 +63,6 @@ class NLOSCaptureMeter(NLOSSensor):
 
     .. pluginparameters::
 
-     * - account_first_and_last_bounces
-       - |bool|
-       - if True, the first and last bounces are accounted in the computation of the optical path length of the temporal dimension. This makes sense if you think of a NLOS setup. If False, the first and last bounces are not accounted (useful!)
-
      * - sensor_origin
        - |point|
        - position of the sensor (NLOS setup) in the world coordinate system
@@ -93,8 +89,13 @@ class NLOSCaptureMeter(NLOSSensor):
 
         self.needs_sample_3: bool = False
 
+        # NOTE: unused, this statement is required so mitsuba does not error out, and we can show the deprecation warning
         self.account_first_and_last_bounces: bool = \
             props.get('account_first_and_last_bounces', True)
+
+        if 'account_first_and_last_bounces' in props.keys():
+            print('WARN: account_first_and_last_bounces in nlos_capture_meter has been deprecated. '
+                  'Please, use account_first_and_last_bounces in transient_path_nlos instead.')
 
         self._world_transform: Transform4f = \
             Transform4f().translate(
@@ -172,9 +173,6 @@ class NLOSCaptureMeter(NLOSSensor):
             wavelengths = []
             wav_weight = 1.0
 
-        if not self.account_first_and_last_bounces:
-            time -= self.laser_bounce_opl + sensor_distance * self.IOR_BASE
-
         # NOTE: removed * dr.pi because there is no need to account for this
         return (
             mi.RayDifferential3f(origin, direction, time, wavelengths),
@@ -196,9 +194,6 @@ class NLOSCaptureMeter(NLOSSensor):
         else:
             wavelengths = []
             wav_weight = 1.0
-
-        if not self.account_first_and_last_bounces:
-            time -= self.laser_bounce_opl + sensor_distance * self.IOR_BASE
 
         # NOTE: removed * dr.pi because there is no need to account for this
         return (
@@ -225,9 +220,6 @@ class NLOSCaptureMeter(NLOSSensor):
         super().traverse(callback)
         callback.put(
             "needs_sample_3", self.needs_sample_3, mi.ParamFlags.NonDifferentiable)
-        callback.put(
-            "account_first_and_last_bounces",
-            self.account_first_and_last_bounces, mi.ParamFlags.NonDifferentiable)
         callback.put(
             "is_confocal", self.is_confocal, mi.ParamFlags.NonDifferentiable)
         callback.put(

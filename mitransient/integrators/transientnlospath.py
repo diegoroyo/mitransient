@@ -105,6 +105,10 @@ class TransientNLOSPath(TransientADIntegrator):
        - If True, paths with only 1 bounce (direct illuminations) are discarded.
          If False, this parameter does not have any effect. (default: False)
 
+     * - account_first_and_last_bounces
+       - |bool|
+       - if True, the first and last bounces are accounted in the computation of the optical path length of the temporal dimension. This makes sense if you think of a NLOS setup. If False, the first and last bounces are not accounted (useful!)
+
      * - capture_type
        - |enum|
        - 'Single' performs an NLOS capture with only one illumination point.
