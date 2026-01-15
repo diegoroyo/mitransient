@@ -223,6 +223,8 @@ class TransientNLOSPath(TransientADIntegrator):
             and
             self.hg_sampling
         )
+        self.account_first_and_last_bounces: bool = props.get(
+            'account_first_and_last_bounces', False)
 
     def prepare(self, scene: mi.Scene, sensor: mi.Sensor, seed: mi.UInt32, spp: int, aovs: List):
         # prepare laser sampling
@@ -425,8 +427,10 @@ class TransientNLOSPath(TransientADIntegrator):
             Lr_dir[active_e] = β * bsdf_spec * em_weight
 
         if primal:
-            add_transient(Lr_dir, distance + ds.dist * η,
-                          si.wavelengths, active_e)
+            # Only take into account the distance of the last bounce if required
+            if self.account_first_and_last_bounces:
+                distance += ds.dist * η
+            add_transient(Lr_dir, distance, si.wavelengths, active_e)
 
         return Lr_dir
 
@@ -460,6 +464,7 @@ class TransientNLOSPath(TransientADIntegrator):
             pos = mi.Vector2u(kwargs.get('pos', None))
             laser_targets = dr.gather(mi.Point3f,
                 self.laser_targets, pos[0] + pos[1] * self.scan_resolution[0])
+            # self.laser_targets_np = np.array(laser_targets)
         else: # CaptureType.Exhaustive
             print('Exhaustive captures not implemented yet!'); exit(1)
 
@@ -605,8 +610,9 @@ class TransientNLOSPath(TransientADIntegrator):
                 si = scene.ray_intersect(ray,
                                          ray_flags=mi.RayFlags.All,
                                          coherent=(depth == 0))
-            # Update distance
-            distance += dr.select(active, si.t, 0.0) * η
+            # Update distance (only takes first bounce into account if required)
+            if self.account_first_and_last_bounces or depth > 0:
+                distance += dr.select(active, si.t, 0.0) * η
 
             # Get the BSDF, potentially computes texture-space differentials
             bsdf = si.bsdf(ray)
