@@ -103,11 +103,14 @@ class TransientNLOSPath(TransientADIntegrator):
      * - discard_direct_paths
        - |bool|
        - If True, paths with only 1 bounce (direct illuminations) are discarded.
-         If False, this parameter does not have any effect. (default: False)
+         If False, this parameter does not have any effect. (default: false)
 
      * - account_first_and_last_bounces
        - |bool|
-       - if True, the first and last bounces are accounted in the computation of the optical path length of the temporal dimension. This makes sense if you think of a NLOS setup. If False, the first and last bounces are not accounted (useful!)
+       - if True, the first and last bounces are accounted in the computation of the
+         optical path length of the temporal dimension. This makes sense if you think
+         of a NLOS setup. If False, the first and last bounces are not accounted (useful!)
+         (default: false)
 
      * - capture_type
        - |enum|
@@ -129,6 +132,7 @@ class TransientNLOSPath(TransientADIntegrator):
        - |bool|
        - Forces the illumination points to be the same as the scanned points,
          ignoring 'laser_illumination_resolution' even in 'Exhaustive captures'.
+         (default: true)
 
      * - nlos_laser_sampling
        - |bool|
@@ -212,7 +216,7 @@ class TransientNLOSPath(TransientADIntegrator):
         self.laser_resolution: mi.ScalarVector2u = props.get(
             'laser_illumination_resolution', mi.ScalarVector2u([1, 1]))
         self.force_equal_grids: bool = props.get(
-            'force_equal_illumination_scanning', False)
+            'force_equal_illumination_scanning', True)
         self.laser_sampling: bool = props.get(
             'nlos_laser_sampling', False)
         self.hg_sampling: bool = props.get(
@@ -386,7 +390,8 @@ class TransientNLOSPath(TransientADIntegrator):
 
         focus_laser = kwargs.get('focus_laser', False)
         ds = None; em_weight = None; si_in_focus = None
-        if focus_laser and (self.capture_type == CaptureType.Confocal or self.capture_type == CaptureType.Exhaustive):
+        if focus_laser and (self.capture_type == CaptureType.Confocal
+                            or self.capture_type == CaptureType.Exhaustive):
             # Focus the emitter towards each of the scanned points
             distance_to_emitter = dr.norm(emitter_origin - si.p)
             forward = emitter.world_transform() @ mi.Vector3f(0, 0, 1)
@@ -408,7 +413,8 @@ class TransientNLOSPath(TransientADIntegrator):
             if dr.hint(not primal, mode='scalar'):
                 # Given the detached emitter sample, *recompute* its
                 # contribution with AD to enable light source optimization
-                if focus_laser and (self.capture_type == CaptureType.Confocal or self.capture_type == CaptureType.Exhaustive):
+                if focus_laser and (self.capture_type == CaptureType.Confocal
+                                    or self.capture_type == CaptureType.Exhaustive):
                     ds.d = dr.replace_grad(ds.d, dr.normalize(ds.p - si_in_focus.p))
                 else:
                     ds.d = dr.replace_grad(ds.d, dr.normalize(ds.p - si.p))
@@ -439,39 +445,20 @@ class TransientNLOSPath(TransientADIntegrator):
         return Lr_dir
 
     @dr.syntax
-    def emitter_laser_sample(
+    def emitter_laser_targets_sample(
             self, mode: dr.ADMode, scene: mi.Scene, sampler: mi.Sampler,
-            si: mi.SurfaceInteraction3f, bsdf: mi.BSDF, bsdf_ctx: mi.BSDFContext,
-            β: mi.Spectrum, distance: mi.Float, η: mi.Float, depth: mi.UInt,
-            active_e: mi.Bool, add_transient, **kwargs) -> mi.Spectrum:
+            si: mi.SurfaceInteraction3f, laser_targets: mi.Point3f, bsdf: mi.BSDF,
+            bsdf_ctx: mi.BSDFContext, β: mi.Spectrum, distance: mi.Float,
+            η: mi.Float, depth: mi.UInt, active_e: mi.Bool, add_transient,
+            **kwargs) -> mi.Spectrum:
         """
-        NLOS scenes only have one laser emitter - standard
-        emitter sampling techniques do not apply as most
-        directions do not emit any radiance, it needs to be very
-        lucky to bsdf sample the exact point that the laser is
-        illuminating
-
-        this modifies the emitter sampling so instead of directly
-        sampling the laser we sample(1) the point that the laser
-        is illuminating and then(2) the laser
+        Sample the point (or points) illuminated that the laser is illuminating,
+        then, sample the laser itself with next event estimation.
+        For more details, check emitter_laser_sample.
         """
-        # TODO(diego): AD probably needs some "with dr.resume_grad(when=not primal):"
-        primal = mode == dr.ADMode.Primal
 
-        # 1. Obtain direction to NLOS illuminated point
-        #    and test visibility with ray_test
-        laser_targets = None
-        if self.capture_type == CaptureType.Single:
-            laser_targets = self.laser_targets
-        elif self.capture_type == CaptureType.Confocal:
-            # Each measured point is only illuminated by the corresponding laser point
-            pos = mi.Vector2u(kwargs.get('pos', None))
-            laser_targets = dr.gather(mi.Point3f,
-                self.laser_targets, pos[0] + pos[1] * self.scan_resolution[0])
-            # self.laser_targets_np = np.array(laser_targets)
-        else: # CaptureType.Exhaustive
-            print('Exhaustive captures not implemented yet!'); exit(1)
-
+        # 1. Given NLOS illumination point(s),
+        #   compute distance and check visibility
         d = laser_targets - si.p
         distance_laser = dr.norm(d)
         d /= distance_laser
@@ -506,6 +493,70 @@ class TransientNLOSPath(TransientADIntegrator):
             mode=mode, scene=scene, sampler=sampler, si=si_bsdf,
             bsdf=bsdf_next, bsdf_ctx=bsdf_ctx, β=β * bsdf_spec, distance=distance + distance_laser * η, η=η,
             depth=depth+1, active_e=active_e, add_transient=add_transient, focus_laser=True)
+
+    @dr.syntax(print_code=True)
+    def emitter_laser_sample(
+            self, mode: dr.ADMode, scene: mi.Scene, sampler: mi.Sampler,
+            si: mi.SurfaceInteraction3f, bsdf: mi.BSDF, bsdf_ctx: mi.BSDFContext,
+            β: mi.Spectrum, distance: mi.Float, η: mi.Float, depth: mi.UInt,
+            active_e: mi.Bool, add_transient, **kwargs) -> mi.Spectrum:
+        """
+        NLOS scenes only have one laser emitter - standard
+        emitter sampling techniques do not apply as most
+        directions do not emit any radiance, it needs to be very
+        lucky to bsdf sample the exact point that the laser is
+        illuminating
+
+        this modifies the emitter sampling so instead of directly
+        sampling the laser we sample(1) the point that the laser
+        is illuminating and then(2) the laser
+        """
+        # TODO(diego): AD probably needs some "with dr.resume_grad(when=not primal):"
+        primal = mode == dr.ADMode.Primal
+
+        # Obtain the positions of the NLOS illuminated points,
+        # given the capture configuration chosen
+        Lr_dir = mi.Spectrum(0)
+        laser_targets = None
+        if dr.hint(self.capture_type == CaptureType.Single, mode='scalar'):
+            laser_targets = self.laser_targets
+        elif dr.hint(self.capture_type == CaptureType.Confocal, mode='scalar'):
+            # Each measured point is only illuminated by the corresponding laser point
+            pos = mi.Vector2u(kwargs.get('pos', None))
+            laser_targets = dr.gather(mi.Point3f,
+                self.laser_targets, pos[0] + pos[1] * self.scan_resolution[0])
+        else: # CaptureType.Exhaustive
+            # Each measured point is illuminated by all the laser points
+            laser_resolution_x = laser_resolution_y = None
+            if self.force_equal_grids:
+                laser_resolution_x = self.scan_resolution[0]
+                laser_resolution_y = self.scan_resolution[1]
+            else:
+                laser_resolution_x = self.laser_resolution[0]
+                laser_resolution_y = self.laser_resolution[1]
+
+            i = mi.Int(0)
+            Lr_dir = mi.Spectrum(0)
+            laser_targets = mi.Point3f(0)
+            # Evaluate the contribution of each illuminated point
+            while dr.hint(i < laser_resolution_x * laser_resolution_y,
+                          max_iterations=laser_resolution_x * laser_resolution_y,
+                          label="Exhaustive emitter laser sampling (%s)" % mode.name):
+                laser_targets = dr.gather(mi.Point3f, self.laser_targets, i)
+                Lr_dir += self.emitter_laser_targets_sample(
+                    mode=mode, scene=scene, sampler=sampler, si=si, laser_targets=laser_targets,
+                    bsdf=bsdf, bsdf_ctx=bsdf_ctx, β=β, distance=distance, η=η,
+                    depth=depth+1, active_e=active_e, add_transient=add_transient)
+
+                i += 1
+            return Lr_dir / (laser_resolution_x * laser_resolution_y)
+
+        # Evaluate the contribution of only one illuminated point,
+        # in the case of Single and Confocal captures
+        return self.emitter_laser_targets_sample(
+            mode=mode, scene=scene, sampler=sampler, si=si, laser_targets=laser_targets,
+            bsdf=bsdf, bsdf_ctx=bsdf_ctx, β=β, distance=distance, η=η,
+            depth=depth+1, active_e=active_e, add_transient=add_transient)
 
     @dr.syntax
     def hidden_geometry_sample(
