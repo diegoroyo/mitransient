@@ -77,6 +77,25 @@ class TransientHDRFilm(mi.Film):
        - |float|
        - Start of the time dimension (histogram representation), measured in optical path length
 
+     * - exhaustive_scan
+       - |bool|
+       - If set to true, the transient film is modified to take into account two different scanning grids,
+         one for the points scanned by the sensor, and another for the points illuminated by the laser.
+         This is required (and supported) only for Exhaustive NLOS captures, as these captures take into account
+         the contribution of each illuminated point for each scanned point.
+         NOTE: this type of scanning does not support cropping.
+         (default: false)
+
+     * - laser_scan_width
+       - |float|
+       - Horizontal resolution of the laser scanning pattern.
+         Only used if `exhaustive_scan` is true.
+
+     * - laser_scan_height
+       - |float|
+       - Vertical resolution of the laser scanning pattern.
+         Only used if `exhaustive_scan` is true.
+
     See also, from `mi.Film <https://mitsuba.readthedocs.io/en/latest/src/generated/plugins_films.html>`_:
 
     * `width` (integer)
@@ -94,6 +113,9 @@ class TransientHDRFilm(mi.Film):
         self.temporal_bins = props.get("temporal_bins", mi.UInt32(2048))
         self.bin_width_opl = props.get("bin_width_opl", mi.Float(0.003))
         self.start_opl = props.get("start_opl", mi.Float(0))
+        self.exhaustive_scan = props.get("exhaustive_scan", False)
+        self.laser_scan_width = props.get("laser_scan_width", mi.UInt(0))
+        self.laser_scan_height = props.get("laser_scan_height", mi.UInt(0))
 
     def end_opl(self):
         return self.start_opl + self.bin_width_opl * self.temporal_bins
@@ -126,6 +148,9 @@ class TransientHDRFilm(mi.Film):
         return TransientImageBlock(
             size_xyt=self.crop_size_xyt,
             offset_xyt=self.crop_offset_xyt,
+            exhaustive_scan=self.exhaustive_scan,
+            laser_scan_width=self.laser_scan_width,
+            laser_scan_height=self.laser_scan_height,
             channel_count=len(self.channels),
             rfilter=self.rfilter()
         )
@@ -180,8 +205,12 @@ class TransientHDRFilm(mi.Film):
             self.transient_storage.clear()
 
     def develop(self, raw: bool = False):
-        steady_image = self.steady.develop(raw=raw)
         transient_image = self.develop_transient_(raw=raw)
+        steady_image = None
+        if self.exhaustive_scan:
+            steady_image = dr.mean(transient_image, axis=-1)
+        else:
+            steady_image = self.steady.develop(raw=raw)
 
         return steady_image, transient_image
 
@@ -217,7 +246,8 @@ class TransientHDRFilm(mi.Film):
 
     def add_transient_data(self, pos: mi.Vector2f, distance: mi.Float,
                            wavelengths: mi.UnpolarizedSpectrum, spec: mi.Spectrum,
-                           ray_weight: mi.Float, active: mi.Bool):
+                           ray_weight: mi.Float, active: mi.Bool,
+                           laser_x: mi.UInt = 0, laser_y: mi.UInt = 0):
         """
         Add a path's contribution to the film:
         * pos: pixel position
@@ -238,11 +268,17 @@ class TransientHDRFilm(mi.Film):
             # value should have the sample scale already multiplied
             weight=mi.Float(0.0),
             active=active & mask,
+            laser_x=laser_x,
+            laser_y=laser_y,
         )
 
     def to_string(self):
         string = "TransientHDRFilm[\n"
+        string += f"  exhaustive_scan = {self.exhaustive_scan},\n"
         string += f"  size = {self.size()},\n"
+        if self.exhaustive_scan:
+            string += f"  laser_scan_width = {self.laser_scan_width},\n"
+            string += f"  laser_scan_height = {self.laser_scan_height},\n"
         string += f"  crop_size = {self.crop_size()},\n"
         string += f"  crop_offset = {self.crop_offset()},\n"
         string += f"  sample_border = {self.sample_border()},\n"
@@ -261,6 +297,12 @@ class TransientHDRFilm(mi.Film):
             "bin_width_opl", self.bin_width_opl, mi.ParamFlags.NonDifferentiable)
         callback.put(
             "start_opl", self.start_opl, mi.ParamFlags.NonDifferentiable)
+        callback.put(
+            "exhaustive_scan", self.exhaustive_scan, mi.ParamFlags.NonDifferentiable)
+        callback.put(
+            "laser_scan_width", self.laser_scan_width, mi.ParamFlags.NonDifferentiable)
+        callback.put(
+            "laser_scan_height", self.laser_scan_height, mi.ParamFlags.NonDifferentiable)
 
     def parameters_changed(self, keys):
         super().parameters_changed(keys)

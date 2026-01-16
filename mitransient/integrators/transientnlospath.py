@@ -440,7 +440,14 @@ class TransientNLOSPath(TransientADIntegrator):
             # Only take into account the distance of the last bounce if required
             if self.account_first_and_last_bounces:
                 distance += ds.dist * η
-            add_transient(Lr_dir, distance, si.wavelengths, active_e)
+
+            # Add the transient contribution, taking into account the
+            # laser illumination position if the capture is Exhaustive
+            laser_x = laser_y = 0
+            if self.capture_type == CaptureType.Exhaustive:
+                laser_x = kwargs.get("laser_x", 0)
+                laser_y = kwargs.get("laser_y", 0)
+            add_transient(Lr_dir, distance, si.wavelengths, active_e, laser_x, laser_y)
 
         return Lr_dir
 
@@ -488,13 +495,18 @@ class TransientNLOSPath(TransientADIntegrator):
 
         bsdf_next = si_bsdf.bsdf(ray=ray_bsdf)
 
+        # If exhaustive, get the indices of the illuminated points being processed
+        laser_x = kwargs.get("laser_x", 0)
+        laser_y = kwargs.get("laser_y", 0)
+
         # 3. Combine laser + emitter sampling
         return self.emitter_nee_sample(
             mode=mode, scene=scene, sampler=sampler, si=si_bsdf,
             bsdf=bsdf_next, bsdf_ctx=bsdf_ctx, β=β * bsdf_spec, distance=distance + distance_laser * η, η=η,
-            depth=depth+1, active_e=active_e, add_transient=add_transient, focus_laser=True)
+            depth=depth+1, active_e=active_e, add_transient=add_transient, focus_laser=True,
+            laser_x=laser_x, laser_y=laser_y)
 
-    @dr.syntax(print_code=True)
+    @dr.syntax
     def emitter_laser_sample(
             self, mode: dr.ADMode, scene: mi.Scene, sampler: mi.Sampler,
             si: mi.SurfaceInteraction3f, bsdf: mi.BSDF, bsdf_ctx: mi.BSDFContext,
@@ -543,10 +555,17 @@ class TransientNLOSPath(TransientADIntegrator):
                           max_iterations=laser_resolution_x * laser_resolution_y,
                           label="Exhaustive emitter laser sampling (%s)" % mode.name):
                 laser_targets = dr.gather(mi.Point3f, self.laser_targets, i)
+
+                # Get the position of the illuminated point
+                laser_x = mi.UInt(i / mi.Float(laser_resolution_y))
+                laser_y = i % laser_resolution_y
+
+                # Sample the illuminated point
                 Lr_dir += self.emitter_laser_targets_sample(
                     mode=mode, scene=scene, sampler=sampler, si=si, laser_targets=laser_targets,
                     bsdf=bsdf, bsdf_ctx=bsdf_ctx, β=β, distance=distance, η=η,
-                    depth=depth+1, active_e=active_e, add_transient=add_transient)
+                    depth=depth+1, active_e=active_e, add_transient=add_transient,
+                    laser_x=laser_x, laser_y=laser_y)
 
                 i += 1
             return Lr_dir / (laser_resolution_x * laser_resolution_y)
@@ -691,7 +710,7 @@ class TransientNLOSPath(TransientADIntegrator):
 
             # Add transient contribution because of emitter found
             if primal:
-                add_transient(Le, distance, ray.wavelengths, active)
+                add_transient(Le, distance, ray.wavelengths, active, 0, 0)
 
             # ---------------------- Emitter sampling ----------------------
 
