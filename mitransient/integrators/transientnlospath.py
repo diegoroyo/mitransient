@@ -120,19 +120,19 @@ class TransientNLOSPath(TransientADIntegrator):
          In 'Exhaustive' captures each time the sensor scans a point, the laser illuminates
          its complete grid. (default: 'Single')
 
-     * - laser_illumination_resolution
-       - |(int, int)|
-       - Resolution of the laser illumination inside the emitter's FOV.
-         This allows to define a custom illumination grid different from
-         the scanning pattern in 'Exhaustive' captures.
-         Note that it will be ignored in 'Single' and 'Confocal' captures.
-         (default: (1, 1))
-
      * - force_equal_illumination_scanning
        - |bool|
        - Forces the illumination points to be the same as the scanned points,
          ignoring 'laser_illumination_resolution' even in 'Exhaustive captures'.
          (default: true)
+
+     * - illumination_scan_fov
+       - |float|
+       - Horizontal FOV in degrees of the illuminated scan area. If set to true,
+         the points illuminated in the scene will be obtained by tracing a grid of rays
+         beginning at the emitter, equally spaced in the scan area defined by this FOV.
+         Only required for Exhaustive captures, in case force_equal_illumination_scanning is False.
+         (default: 20)
 
      * - nlos_laser_sampling
        - |bool|
@@ -213,10 +213,10 @@ class TransientNLOSPath(TransientADIntegrator):
             'discard_direct_paths', False)
         self.capture_type: CaptureType = CaptureType(props.get(
             'capture_type', CaptureType.Single))
-        self.laser_resolution: mi.ScalarVector2u = props.get(
-            'laser_illumination_resolution', mi.ScalarVector2u([1, 1]))
         self.force_equal_grids: bool = props.get(
             'force_equal_illumination_scanning', True)
+        self.illumination_scan_fov: mi.Float = props.get(
+            'illumination_scan_fov', 20.0)
         self.laser_sampling: bool = props.get(
             'nlos_laser_sampling', False)
         self.hg_sampling: bool = props.get(
@@ -311,20 +311,43 @@ class TransientNLOSPath(TransientADIntegrator):
                 # In a confocal capture the illuminated point is always the same measured point
                 self.laser_targets: mi.Point3f = self.sensor_targets
             else: # CaptureType.Exhaustive
+                sensor_params = mi.traverse(scene.sensors()[0])
+                self.laser_resolution = mi.ScalarVector2u([sensor_params["film.laser_scan_width"],
+                                                           sensor_params["film.laser_scan_height"]])
                 if self.force_equal_grids:
+                    assert dr.all(self.scan_resolution == self.laser_resolution), \
+                        ("Sensor and laser scan resolution must be equal if "
+                         "force_equal_illumination_scanning is set to True")
                     self.laser_targets: mi.Point3f = self.sensor_targets
                 else:
+                    # Create a copy of the original emitter with a higher FOV
+                    # Illuminated points will be obtained from a discrete ray scan inside this new FOV
+                    # NOTE: the original emitter must be aimed towards the part of the scene that you want to illuminate
+                    dummy_emitter = mi.load_dict({
+                        "type": "projector",
+                        "fov": self.illumination_scan_fov,
+                        "to_world": mi.ScalarTransform4f(self.emitter.world_transform().matrix.to_numpy()[..., 0]),
+                    })
+
                     # Generate a ray for each of the illuminated points
                     laser_x, laser_y = dr.meshgrid(
                         dr.linspace(mi.Float, 0.0, 1.0, self.laser_resolution[0], endpoint=False),
                         dr.linspace(mi.Float, 0.0, 1.0, self.laser_resolution[1], endpoint=False),
                     )
                     points: mi.Point2f = mi.Point2f(laser_x, laser_y)
-                    laser_rays, _ = (scene.emitters()[0].
+                    laser_rays, _ = (dummy_emitter.
                                      sample_ray(mi.Float(0.0), mi.Float(0.0), mi.Point2f(0.0), points, mi.Bool(True)))
 
                     # Intersect with the scene to obtain the illuminated points
                     si = scene.ray_intersect(laser_rays, ray_flags=mi.RayFlags.All, coherent=mi.Bool(True))
+
+                    if not dr.all(si.is_valid()):
+                        assert dr.any(si.is_valid()), \
+                            ("The emitter did not intersect any geometry in the scene. "
+                             "Please, make sure it is properly aimed towards the desired relay surface.")
+                        print("WARN: part of the laser scan did not intersect the scene. "
+                              "Results for those illumination points should be ignored.")
+
                     self.laser_targets: mi.Point3f = si.p
 
         return super().prepare(scene, sensor, seed, spp, aovs)

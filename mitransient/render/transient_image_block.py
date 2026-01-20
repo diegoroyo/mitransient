@@ -61,7 +61,7 @@ class TransientImageBlock(mi.Object):
         size_flat = self.channel_count * dr.prod(size_ext)
         shape = None
         if self.exhaustive_scan:
-            size_flat *= self.laser_scan_height * self.laser_scan_height
+            size_flat *= self.laser_scan_height * self.laser_scan_width
             shape = (size_ext.y, size_ext.x, self.laser_scan_height, self.laser_scan_width, size_ext.z, self.channel_count)
         else:
             shape = (size_ext.y, size_ext.x, size_ext.z, self.channel_count)
@@ -132,8 +132,8 @@ class TransientImageBlock(mi.Object):
             index = None
             if self.exhaustive_scan:
                 index = dr.fma(p.y, self.size_xyt.x, p.x)
-                index = dr.fma(index, self.laser_scan_height, laser_y)
                 index = dr.fma(index, self.laser_scan_width, laser_x)
+                index = dr.fma(index, self.laser_scan_height, laser_y)
                 index = dr.fma(index, self.size_xyt.z, p.z) * self.channel_count
             else:
                 index = dr.fma(p.y, self.size_xyt.x, p.x)
