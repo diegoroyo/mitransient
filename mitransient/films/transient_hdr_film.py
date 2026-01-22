@@ -90,11 +90,13 @@ class TransientHDRFilm(mi.Film):
        - |float|
        - Horizontal resolution of the laser scanning pattern.
          Only used if `exhaustive_scan` is true.
+         (default: 0)
 
      * - laser_scan_height
        - |float|
        - Vertical resolution of the laser scanning pattern.
          Only used if `exhaustive_scan` is true.
+         (default: 0)
 
     See also, from `mi.Film <https://mitsuba.readthedocs.io/en/latest/src/generated/plugins_films.html>`_:
 

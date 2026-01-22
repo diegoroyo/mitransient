@@ -740,7 +740,7 @@ class TransientNLOSPath(TransientADIntegrator):
 
             # Add transient contribution because of emitter found
             if primal:
-                add_transient(Le, distance, ray.wavelengths, active, 0, 0)
+                add_transient(Le, distance, ray.wavelengths, active)
 
             # ---------------------- Emitter sampling ----------------------
 

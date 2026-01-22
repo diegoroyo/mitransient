@@ -409,14 +409,13 @@ class TransientADIntegrator(ADIntegrator):
                 dr.eval()
 
     def add_transient_f(self, film: TransientHDRFilm, pos: mi.Vector2f,
-                        ray_weight: mi.Float, sample_scale: mi.Float,
-                        laser_x: mi.UInt = 0, laser_y: mi.UInt = 0):
+                        ray_weight: mi.Float, sample_scale: mi.Float):
         """
         Return a lambda function for saving transient samples.
         It pre-multiplies the sample scale.
         """
         return (
-            lambda spec, distance, wavelengths, active, laser_x, laser_y: film.add_transient_data(
+            lambda spec, distance, wavelengths, active, laser_x = 0, laser_y = 0: film.add_transient_data(
                 pos, distance, wavelengths, spec * sample_scale, ray_weight, active,
                 laser_x, laser_y
             )
