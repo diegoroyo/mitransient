@@ -114,10 +114,10 @@ class TransientNLOSPath(TransientADIntegrator):
 
      * - capture_type
        - |enum|
-       - 'Single' performs an NLOS capture with only one illumination point.
-         'Confocal' performs a capture with the same number of illumination
+       - 'Single' (or 1) performs an NLOS capture with only one illumination point.
+         'Confocal' (or 2) performs a capture with the same number of illumination
          and scanned points, where the laser always aims at the current scanned point.
-         In 'Exhaustive' captures each time the sensor scans a point, the laser illuminates
+         In 'Exhaustive' (or 3) captures each time the sensor scans a point, the laser illuminates
          its complete grid. (default: 'Single')
 
      * - force_equal_illumination_scanning
@@ -289,6 +289,13 @@ class TransientNLOSPath(TransientADIntegrator):
         # Intersect with the scene to obtain the scanned points
         si = scene.ray_intersect(sensor_rays, ray_flags=mi.RayFlags.All, coherent=mi.Bool(True))
         self.sensor_targets: mi.Point3f = si.p
+
+        if not dr.all(si.is_valid()):
+            assert dr.any(si.is_valid()), \
+                ("The sensor did not intersect any geometry in the scene."
+                 "Please, make sure it is properly aimed towards the desired relay surface.")
+            print("WARN: part of the sensor scan did not intersect the scene. "
+                  "Results for those scanned points should be ignored.")
 
         # prepare laser sampling by precomputing the laser focusing point in the geometry
         if self.laser_sampling:

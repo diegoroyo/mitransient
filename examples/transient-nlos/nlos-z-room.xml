@@ -1,0 +1,95 @@
+<scene version="2.1.0">
+
+	<!-- Camera and Rendering Parameters -->
+	<sensor type="perspective" id="elm__1" name="elm__1">
+		<string name="fov_axis" value="x"/>
+		<float name="fov" value="39.999999"/>
+		<float name="principal_point_offset_x" value="0.000000"/>
+		<float name="principal_point_offset_y" value="-0.000000"/>
+		<float name="near_clip" value="0.100000"/>
+		<float name="far_clip" value="100.000000"/>
+		<transform name="to_world">
+			<rotate x="1" angle="180.00000500895632"/>
+			<rotate y="1" angle="45.00000125223908"/>
+			<rotate z="1" angle="180.00000500895632"/>
+			<translate value="-2.000000 0.000000 2.000000"/>
+		</transform>
+		<sampler type="independent" name="sampler">
+			<integer name="sample_count" value="250000"/>
+		</sampler>
+		<film type="transient_hdr_film" name="film">
+			<integer name="width" value="32"/>
+			<integer name="height" value="32"/>
+			<integer name="temporal_bins" value="300"/>
+			<float name="bin_width_opl" value="0.006"/>
+			<float name="start_opl" value="5.25"/>
+			<rfilter type="box" name="rfilter"/>
+		</film>
+	</sensor>
+
+	<integrator type="transient_nlos_path">
+		<boolean name="nlos_laser_sampling" value="true"/>
+		<boolean name="nlos_hidden_geometry_sampling" value="true"/>
+		<boolean name="nlos_hidden_geometry_sampling_do_rroulette" value="false"/>
+		<boolean name="nlos_hidden_geometry_sampling_includes_relay_wall" value="false"/>
+		<boolean name="discard_direct_paths" value="False"/>
+		<boolean name="account_first_and_last_bounces" value="False"/>
+		<string name="temporal_filter" value="box"/>
+		<integer name="capture_type" value="1"/> <!-- 1 == CaptureType.Single -->
+	</integrator>
+
+<!-- Materials -->
+	<bsdf type="twosided" id="default-bsdf" name="default-bsdf">
+		<bsdf type="diffuse" name="bsdf"/>
+	</bsdf>
+
+<!-- Emitters -->
+	<emitter type="projector">
+		<rgb name="irradiance" value="100.0"/>
+		<float name="fov" value="0.2"/>
+		<transform name="to_world">
+			<rotate x="1" angle="180.00000500895632"/>
+			<rotate y="1" angle="45.00000125223908"/>
+			<rotate z="1" angle="180.00000500895632"/>
+			<translate value="-2.000000 0.000000 2.000000"/>
+		</transform>
+	</emitter>
+
+<!-- Shapes -->
+
+	<shape type="ply" name="elm__3">
+		<string name="filename" value="meshes/hidden_geometry_Z.ply"/>
+		<ref id="default-bsdf" name="bsdf"/>
+	</shape>
+	<shape type="ply" name="elm__4">
+		<string name="filename" value="meshes/Plane_001.ply"/>
+		<boolean name="face_normals" value="true"/>
+		<ref id="default-bsdf" name="bsdf"/>
+	</shape>
+	<shape type="ply" name="elm__5">
+		<string name="filename" value="meshes/Plane_002.ply"/>
+		<boolean name="face_normals" value="true"/>
+		<ref id="default-bsdf" name="bsdf"/>
+	</shape>
+	<shape type="ply" name="elm__6">
+		<string name="filename" value="meshes/Plane_003.ply"/>
+		<boolean name="face_normals" value="true"/>
+		<ref id="default-bsdf" name="bsdf"/>
+	</shape>
+	<shape type="ply" name="elm__7">
+		<string name="filename" value="meshes/Plane_004.ply"/>
+		<boolean name="face_normals" value="true"/>
+		<ref id="default-bsdf" name="bsdf"/>
+	</shape>
+	<shape type="ply" name="elm__8">
+		<string name="filename" value="meshes/Plane_005.ply"/>
+		<boolean name="face_normals" value="true"/>
+		<ref id="default-bsdf" name="bsdf"/>
+	</shape>
+	<shape type="ply" name="elm__9">
+		<string name="filename" value="meshes/Plane_006.ply"/>
+		<boolean name="face_normals" value="true"/>
+		<ref id="default-bsdf" name="bsdf"/>
+	</shape>
+
+</scene>
