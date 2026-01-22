@@ -417,7 +417,7 @@ class TransientADIntegrator(ADIntegrator):
         return (
             lambda spec, distance, wavelengths, active, laser_x = 0, laser_y = 0: film.add_transient_data(
                 pos, distance, wavelengths, spec * sample_scale, ray_weight, active,
-                laser_x, laser_y
+                laser_x = laser_x, laser_y = laser_y
             )
         )
 
