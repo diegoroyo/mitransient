@@ -54,7 +54,7 @@ class AngularAreaLight(mi.Emitter):
 
     def __init__(self, props: mi.Properties):
         super().__init__(props)
-        self.radiance: mi.Texture = props.get('radiance')
+        self.radiance: mi.Texture = props.get_texture('radiance', 1.0)
         cutoff_angle: mi.Float = props.get('cutoff_angle', 10)
         self.cutoff_angle: mi.Float = dr.deg2rad(cutoff_angle)
         beam_width: mi.Float = props.get('beam_width', cutoff_angle)
