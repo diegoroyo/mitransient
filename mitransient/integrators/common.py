@@ -379,7 +379,7 @@ class TransientADIntegrator(ADIntegrator):
                     δaovs=None,
                     state_in=None,
                     active=mi.Bool(True),
-                    add_transient=lambda _, __, ___, ____, _____, ______: None,
+                    add_transient=lambda *args, **kwargs: None,
                     pos=pos
                 )
 
@@ -399,7 +399,7 @@ class TransientADIntegrator(ADIntegrator):
                     δaovs=None,
                     state_in=state_out,
                     active=mi.Bool(True),
-                    add_transient=lambda _, __, ___, ____, _____, ______: None,
+                    add_transient=lambda *args, **kwargs: None,
                     gather_derivatives_at_distance=lambda δL, distance:
                         film.gather_derivatives_at_distance(pos, δL, distance),
                     pos=pos
