@@ -116,8 +116,8 @@ class TransientHDRFilm(mi.Film):
         self.bin_width_opl = props.get("bin_width_opl", mi.Float(0.003))
         self.start_opl = props.get("start_opl", mi.Float(0))
         self.exhaustive_scan = props.get("exhaustive_scan", False)
-        self.laser_scan_width = props.get("laser_scan_width", mi.UInt(0))
-        self.laser_scan_height = props.get("laser_scan_height", mi.UInt(0))
+        self.laser_scan_width = props.get("laser_scan_width", 0)
+        self.laser_scan_height = props.get("laser_scan_height", 0)
 
     def end_opl(self):
         return self.start_opl + self.bin_width_opl * self.temporal_bins
