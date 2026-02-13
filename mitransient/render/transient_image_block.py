@@ -17,6 +17,9 @@ class TransientImageBlock(mi.Object):
         self,
         size_xyt: mi.ScalarVector3u,
         offset_xyt: mi.ScalarPoint3i,
+        exhaustive_scan: mi.Bool,
+        laser_scan_width: mi.UInt,
+        laser_scan_height: mi.UInt,
         channel_count: int,
         rfilter: mi.ReconstructionFilter,
         border: bool = False,
@@ -29,6 +32,9 @@ class TransientImageBlock(mi.Object):
         super().__init__()
         self.offset_xyt = offset_xyt
         self.size_xyt = mi.ScalarVector3u(0)
+        self.exhaustive_scan = exhaustive_scan
+        self.laser_scan_width = laser_scan_width
+        self.laser_scan_height = laser_scan_height
         self.channel_count = channel_count
         self.rfilter = rfilter
         # TODO(diego): figure out if we need normalize/coalesce/compensate
@@ -53,7 +59,12 @@ class TransientImageBlock(mi.Object):
         size_ext = self.size_xyt + 2 * border_size_ScalarPoint3
 
         size_flat = self.channel_count * dr.prod(size_ext)
-        shape = (size_ext.y, size_ext.x, size_ext.z, self.channel_count)
+        shape = None
+        if self.exhaustive_scan:
+            size_flat *= self.laser_scan_height * self.laser_scan_width
+            shape = (size_ext.y, size_ext.x, self.laser_scan_height, self.laser_scan_width, size_ext.z, self.channel_count)
+        else:
+            shape = (size_ext.y, size_ext.x, size_ext.z, self.channel_count)
 
         self.tensor = mi.TensorXf(dr.zeros(mi.Float, size_flat), shape)
         # Compensation is not implented: https://github.com/mitsuba-renderer/mitsuba3/blob/b2ec619c7ba612edb1cf820463b32e5a334d8471/src/render/imageblock.cpp#L80
@@ -68,9 +79,11 @@ class TransientImageBlock(mi.Object):
         dr.scatter_reduce(dr.ReduceOp.Add, self.tensor.array,
                           value, index, active)
 
-    def put(self, pos: mi.Point3f, wavelengths: mi.UnpolarizedSpectrum,
+    def put(self, pos: mi.Point3f,
+            wavelengths: mi.UnpolarizedSpectrum,
             value: mi.Spectrum, alpha: mi.Float,
-            weight: mi.Float, active: bool = True):
+            weight: mi.Float, active: bool = True,
+            laser_x: mi.UInt = 0, laser_y: mi.UInt = 0):
         spec_u = mi.unpolarized_spectrum(value)
 
         if mi.is_spectral:
@@ -84,9 +97,11 @@ class TransientImageBlock(mi.Object):
         else:
             values = [spec_u.x, spec_u.y, spec_u.z, alpha, weight]
 
-        self.put_(pos, values, active)
+        self.put_(pos, values, active, laser_x, laser_y)
 
-    def put_(self, pos: mi.Point3f, values: Sequence[mi.Float], active: bool = True):
+    def put_(self, pos: mi.Point3f,
+             values: Sequence[mi.Float], active: bool = True,
+             laser_x: mi.UInt = 0, laser_y: mi.UInt = 0):
         # Check if all sample values are valid
         if self.warn_negative or self.warn_invalid:
             is_valid = True
@@ -114,8 +129,15 @@ class TransientImageBlock(mi.Object):
         if not self.rfilter:
             p = mi.Point3u(dr.floor(pos) - self.offset_xyt)
 
-            index = dr.fma(p.y, self.size_xyt.x, p.x)
-            index = dr.fma(index, self.size_xyt.z, p.z) * self.channel_count
+            index = None
+            if self.exhaustive_scan:
+                index = dr.fma(p.y, self.size_xyt.x, p.x)
+                index = dr.fma(index, self.laser_scan_width, laser_x)
+                index = dr.fma(index, self.laser_scan_height, laser_y)
+                index = dr.fma(index, self.size_xyt.z, p.z) * self.channel_count
+            else:
+                index = dr.fma(p.y, self.size_xyt.x, p.x)
+                index = dr.fma(index, self.size_xyt.z, p.z) * self.channel_count
 
             active &= dr.all((0 <= p) & (p < self.size_xyt))
 

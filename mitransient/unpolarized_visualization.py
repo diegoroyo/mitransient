@@ -76,7 +76,7 @@ def save_frames(data, folder, axis_video=2):
             f'{folder}/{i:03d}.exr')
 
 
-def show_video(input_sample, axis_video=2, uint8_srgb=True):
+def show_video(input_sample, axis_video=2, uint8_srgb=True, normalize=False):
     """
     Shows the transient video in a IPython/Jupyter environment.
 
@@ -97,6 +97,7 @@ def show_video(input_sample, axis_video=2, uint8_srgb=True):
         return tuple([np.s_[:] if dim != axis_video else np.s_[index] for dim in range(dims)])
 
     num_frames = input_sample.shape[axis_video]
+    input_max = np.max(input_sample, axis=None)
     fig = plt.figure()
 
     frame = input_sample[generate_index(
@@ -107,6 +108,8 @@ def show_video(input_sample, axis_video=2, uint8_srgb=True):
     def update(i):
         frame = input_sample[generate_index(
             axis_video, len(input_sample.shape), i)]
+        if normalize:
+            frame /= input_max # Normalize with respect to the maximum
         img = mi.util.convert_to_bitmap(frame, uint8_srgb)
         im.set_data(img)
         return im

@@ -239,7 +239,7 @@ class PhasorHDRFilm(mi.Film):
 
     def add_transient_data(self, pos: mi.Vector2f, distance: mi.Float,
                            wavelengths: mi.UnpolarizedSpectrum, spec: mi.Spectrum,
-                           ray_weight: mi.Float, active: mi.Bool):
+                           ray_weight: mi.Float, active: mi.Bool, **kwargs):
         """
         Add a path's contribution to the film:
         * pos: pixel position

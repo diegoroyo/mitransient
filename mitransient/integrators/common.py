@@ -172,7 +172,8 @@ class TransientADIntegrator(ADIntegrator):
                     active=mi.Bool(True),
                     add_transient=self.add_transient_f(
                         film=film, pos=pos, ray_weight=weight, sample_scale=1.0 / total_spp
-                    )
+                    ),
+                    pos=pos # Origin position of the ray needed for Confocal captures
                 )
 
                 # Prepare an ImageBlock as specified by the film
@@ -262,7 +263,8 @@ class TransientADIntegrator(ADIntegrator):
                     δaovs=None,
                     state_in=None,
                     active=mi.Bool(True),
-                    add_transient=lambda _, __, ___, ____: None
+                    add_transient=lambda _, __, ___, ____: None,
+                    pos=pos
                 )
 
                 # Launch the Monte Carlo sampling process in backward AD mode
@@ -284,7 +286,8 @@ class TransientADIntegrator(ADIntegrator):
                     active=mi.Bool(True),
                     add_transient=self.add_transient_f(
                         film=film, pos=pos, ray_weight=weight, sample_scale=1.0 / total_spp
-                    )
+                    ),
+                    pos=pos
                 )
 
                 # Prepare an ImageBlock as specified by the film
@@ -376,7 +379,8 @@ class TransientADIntegrator(ADIntegrator):
                     δaovs=None,
                     state_in=None,
                     active=mi.Bool(True),
-                    add_transient=lambda _, __, ___, ____: None
+                    add_transient=lambda *args, **kwargs: None,
+                    pos=pos
                 )
 
                 # Launch the Monte Carlo sampling process in backward AD mode
@@ -395,22 +399,25 @@ class TransientADIntegrator(ADIntegrator):
                     δaovs=None,
                     state_in=state_out,
                     active=mi.Bool(True),
-                    add_transient=lambda _, __, ___, ____: None,
+                    add_transient=lambda *args, **kwargs: None,
                     gather_derivatives_at_distance=lambda δL, distance:
-                        film.gather_derivatives_at_distance(pos, δL, distance)
+                        film.gather_derivatives_at_distance(pos, δL, distance),
+                    pos=pos
                 )
 
                 del ray, weight, pos, sampler_i
                 dr.eval()
 
-    def add_transient_f(self, film: TransientHDRFilm, pos: mi.Vector2f, ray_weight: mi.Float, sample_scale: mi.Float):
+    def add_transient_f(self, film: TransientHDRFilm, pos: mi.Vector2f,
+                        ray_weight: mi.Float, sample_scale: mi.Float):
         """
         Return a lambda function for saving transient samples.
         It pre-multiplies the sample scale.
         """
         return (
-            lambda spec, distance, wavelengths, active: film.add_transient_data(
-                pos, distance, wavelengths, spec * sample_scale, ray_weight, active
+            lambda spec, distance, wavelengths, active, laser_x = 0, laser_y = 0: film.add_transient_data(
+                pos, distance, wavelengths, spec * sample_scale, ray_weight, active,
+                laser_x = laser_x, laser_y = laser_y
             )
         )
 
