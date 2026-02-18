@@ -83,19 +83,20 @@ class TransientHDRFilm(mi.Film):
          one for the points scanned by the sensor, and another for the points illuminated by the laser.
          This is required (and supported) only for Exhaustive NLOS captures, as these captures take into account
          the contribution of each illuminated point for each scanned point.
+         See also ``transient_nlos_path`` and its ``capture_type`` parameter.
          NOTE: this type of scanning does not support cropping.
          (default: false)
 
      * - laser_scan_width
        - |float|
        - Horizontal resolution of the laser scanning pattern.
-         Only used if `exhaustive_scan` is true.
+         Only used if ``exhaustive_scan`` is true.
          (default: 0)
 
      * - laser_scan_height
        - |float|
        - Vertical resolution of the laser scanning pattern.
-         Only used if `exhaustive_scan` is true.
+         Only used if ``exhaustive_scan`` is true.
          (default: 0)
 
     See also, from `mi.Film <https://mitsuba.readthedocs.io/en/latest/src/generated/plugins_films.html>`_:

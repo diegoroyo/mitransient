@@ -9,7 +9,9 @@ from mitsuba.ad.integrators.common import mis_weight  # type: ignore
 
 from mitransient.integrators.common import TransientADIntegrator
 
-CaptureType = IntEnum('CaptureType', [('Single', 1), ('Confocal', 2), ('Exhaustive', 3)])
+CaptureType = IntEnum(
+    'CaptureType', [('Single', 1), ('Confocal', 2), ('Exhaustive', 3)])
+
 
 class TransientNLOSPath(TransientADIntegrator):
     r"""
@@ -113,25 +115,27 @@ class TransientNLOSPath(TransientADIntegrator):
          (default: false)
 
      * - capture_type
-       - |enum|
+       - |string or int|
        - 'Single' (or 1) performs an NLOS capture with only one illumination point.
          'Confocal' (or 2) performs a capture with the same number of illumination
          and scanned points, where the laser always aims at the current scanned point.
-         In 'Exhaustive' (or 3) captures each time the sensor scans a point, the laser illuminates
-         its complete grid. (default: 'Single')
-
+         In 'Exhaustive' (or 3) captures, each time the sensor scans a point the laser illuminates
+         its complete grid. 
+         See also ``transient_hdr_film`` and its ``exhautive_scan`` parameter. (default: 'Single')
      * - force_equal_illumination_scanning
        - |bool|
        - Forces the illumination points to be the same as the scanned points,
-         ignoring 'laser_illumination_resolution' even in 'Exhaustive captures'.
+         ignoring 'laser_illumination_resolution' even in 'exhaustive' captures.
          (default: true)
 
      * - illumination_scan_fov
        - |float|
-       - Horizontal FOV in degrees of the illuminated scan area. If set to true,
+       - Used only for 'Exhaustive' captures (see ``capture_type``),
+         and only when ``force_equal_illumination_scanning`` is false.
+         This value represents the horizontal field of view (FOV) in degrees of the illuminated scan area.
+         If ``force_equal_illumination_scanning`` is true,
          the points illuminated in the scene will be obtained by tracing a grid of rays
          beginning at the emitter, equally spaced in the scan area defined by this FOV.
-         Only required for Exhaustive captures, in case force_equal_illumination_scanning is False.
          (default: 20)
 
      * - nlos_laser_sampling
@@ -211,8 +215,17 @@ class TransientNLOSPath(TransientADIntegrator):
                     'This will cause the final image to be all zero.')
         self.discard_direct_paths: bool = props.get(
             'discard_direct_paths', False)
-        self.capture_type: CaptureType = CaptureType(props.get(
-            'capture_type', CaptureType.Single))
+        capture_type: CaptureType = props.get(
+            'capture_type', CaptureType.Single)
+        if isinstance(capture_type, CaptureType):
+            self.capture_type = capture_type
+        elif isinstance(capture_type, int):
+            self.capture_type = CaptureType(capture_type)
+        elif isinstance(capture_type, str):
+            self.capture_type = CaptureType[capture_type.capitalize()]
+        else:
+            raise AssertionError(
+                'capture_type must be either an int, a string or a CaptureType enum')
         self.force_equal_grids: bool = props.get(
             'force_equal_illumination_scanning', True)
         self.illumination_scan_fov: mi.Float = props.get(
@@ -278,16 +291,23 @@ class TransientNLOSPath(TransientADIntegrator):
                 surface_areas)
 
         # Generate a ray for each of the sensor's "pixels"
-        self.scan_resolution: mi.ScalarVector2u = mi.traverse(sensor)["film.size"]
+        self.scan_resolution: mi.ScalarVector2u = \
+            mi.traverse(sensor)["film.size"]
         scan_x, scan_y = dr.meshgrid(
-            dr.linspace(mi.Float, 0.0, 1.0, self.scan_resolution[0], endpoint=False),
-            dr.linspace(mi.Float, 0.0, 1.0, self.scan_resolution[1], endpoint=False),
+            dr.linspace(mi.Float, 0.0, 1.0,
+                        self.scan_resolution[0], endpoint=False),
+            dr.linspace(mi.Float, 0.0, 1.0,
+                        self.scan_resolution[1], endpoint=False),
         )
         points: mi.Point2f = mi.Point2f(scan_x, scan_y)
-        sensor_rays, _ = sensor.sample_ray(mi.Float(0.0), mi.Float(0.0), points, mi.Point2f(0.0), mi.Bool(True))
+        sensor_rays, _ = sensor.sample_ray(
+            mi.Float(0.0), mi.Float(0.0),
+            points,
+            mi.Point2f(0.0), mi.Bool(True))
 
         # Intersect with the scene to obtain the scanned points
-        si = scene.ray_intersect(sensor_rays, ray_flags=mi.RayFlags.All, coherent=mi.Bool(True))
+        si = scene.ray_intersect(
+            sensor_rays, ray_flags=mi.RayFlags.All, coherent=mi.Bool(True))
         self.sensor_targets: mi.Point3f = si.p
 
         if not dr.all(si.is_valid()):
@@ -316,7 +336,7 @@ class TransientNLOSPath(TransientADIntegrator):
             elif self.capture_type == CaptureType.Confocal:
                 # In a confocal capture the illuminated point is always the same measured point
                 self.laser_targets: mi.Point3f = self.sensor_targets
-            else: # CaptureType.Exhaustive
+            else:  # CaptureType.Exhaustive
                 sensor_params = mi.traverse(scene.sensors()[0])
                 self.laser_resolution = mi.ScalarVector2u([sensor_params["film.laser_scan_width"],
                                                            sensor_params["film.laser_scan_height"]])
@@ -337,15 +357,18 @@ class TransientNLOSPath(TransientADIntegrator):
 
                     # Generate a ray for each of the illuminated points
                     laser_x, laser_y = dr.meshgrid(
-                        dr.linspace(mi.Float, 0.0, 1.0, self.laser_resolution[0], endpoint=False),
-                        dr.linspace(mi.Float, 0.0, 1.0, self.laser_resolution[1], endpoint=False),
+                        dr.linspace(mi.Float, 0.0, 1.0,
+                                    self.laser_resolution[0], endpoint=False),
+                        dr.linspace(mi.Float, 0.0, 1.0,
+                                    self.laser_resolution[1], endpoint=False),
                     )
                     points: mi.Point2f = mi.Point2f(laser_x, laser_y)
                     laser_rays, _ = (dummy_emitter.
                                      sample_ray(mi.Float(0.0), mi.Float(0.0), mi.Point2f(0.0), points, mi.Bool(True)))
 
                     # Intersect with the scene to obtain the illuminated points
-                    si = scene.ray_intersect(laser_rays, ray_flags=mi.RayFlags.All, coherent=mi.Bool(True))
+                    si = scene.ray_intersect(
+                        laser_rays, ray_flags=mi.RayFlags.All, coherent=mi.Bool(True))
 
                     if not dr.all(si.is_valid()):
                         assert dr.any(si.is_valid()), \
@@ -418,7 +441,9 @@ class TransientNLOSPath(TransientADIntegrator):
         active_e &= ~scene.ray_test(si.spawn_ray_to(emitter_origin), active_e)
 
         focus_laser = kwargs.get('focus_laser', False)
-        ds = None; em_weight = None; si_in_focus = None
+        ds = None
+        em_weight = None
+        si_in_focus = None
         if focus_laser and (self.capture_type == CaptureType.Confocal
                             or self.capture_type == CaptureType.Exhaustive):
             # Focus the emitter towards each of the scanned points
@@ -444,7 +469,8 @@ class TransientNLOSPath(TransientADIntegrator):
                 # contribution with AD to enable light source optimization
                 if focus_laser and (self.capture_type == CaptureType.Confocal
                                     or self.capture_type == CaptureType.Exhaustive):
-                    ds.d = dr.replace_grad(ds.d, dr.normalize(ds.p - si_in_focus.p))
+                    ds.d = dr.replace_grad(
+                        ds.d, dr.normalize(ds.p - si_in_focus.p))
                 else:
                     ds.d = dr.replace_grad(ds.d, dr.normalize(ds.p - si.p))
                 em_val = scene.eval_emitter_direction(si, ds, active_e)
@@ -476,7 +502,8 @@ class TransientNLOSPath(TransientADIntegrator):
             if self.capture_type == CaptureType.Exhaustive:
                 laser_x = kwargs.get("laser_x", 0)
                 laser_y = kwargs.get("laser_y", 0)
-            add_transient(Lr_dir, distance, si.wavelengths, active_e, laser_x, laser_y)
+            add_transient(Lr_dir, distance, si.wavelengths,
+                          active_e, laser_x, laser_y)
 
         return Lr_dir
 
@@ -565,8 +592,8 @@ class TransientNLOSPath(TransientADIntegrator):
             # Each measured point is only illuminated by the corresponding laser point
             pos = mi.Vector2u(kwargs.get('pos', None))
             laser_targets = dr.gather(mi.Point3f,
-                self.laser_targets, pos[0] + pos[1] * self.scan_resolution[0])
-        else: # CaptureType.Exhaustive
+                                      self.laser_targets, pos[0] + pos[1] * self.scan_resolution[0])
+        else:  # CaptureType.Exhaustive
             # Each measured point is illuminated by all the laser points
             laser_resolution_x = laser_resolution_y = None
             if self.force_equal_grids:
@@ -664,10 +691,12 @@ class TransientNLOSPath(TransientADIntegrator):
 
         # Get the origin pixel in the sensor of each ray
         pos = None
+        laser_x = laser_y = 0
         if self.capture_type == CaptureType.Confocal:
             assert 'pos' in kwargs.keys(), \
                 'Sensor origin pixels must be defined for each ray in confocal mode'
             pos = kwargs.get('pos', None)
+            laser_x, laser_y = pos
 
         # Rendering a primal image? (vs performing forward/reverse-mode AD)
         primal = mode == dr.ADMode.Primal
@@ -695,6 +724,10 @@ class TransientNLOSPath(TransientADIntegrator):
         if self.camera_unwarp:
             raise AssertionError(
                 'Do not use camera_unwarp with TransientNLOSPath. Use account_first_and_last_bounces instead for the same purpose.')
+
+        if not primal and self.capture_type == CaptureType.Exhaustive:
+            raise AssertionError(
+                'Exhaustive capture type is not supported in differentiable rendering mode.')
 
         if self.laser_sampling:
             emitter_sample_f = self.emitter_laser_sample
@@ -738,8 +771,9 @@ class TransientNLOSPath(TransientADIntegrator):
                 Le = β * mi.Spectrum(mis) * ds.emitter.eval(si, active_next)
 
             # Add transient contribution because of emitter found
-            if primal:
-                add_transient(Le, distance, ray.wavelengths, active)
+            if primal and self.capture_type != CaptureType.Exhaustive:
+                add_transient(Le, distance, ray.wavelengths,
+                              active, laser_x, laser_y)
 
             # ---------------------- Emitter sampling ----------------------
 
@@ -878,7 +912,7 @@ class TransientNLOSPath(TransientADIntegrator):
                     else:
                         δL_part = dr.forward_to(Lo)
                         add_transient(δL_part, distance,
-                                      ray.wavelengths, True)
+                                      ray.wavelengths, True, laser_x, laser_y)
                         δL += δL_part
 
             depth[si.is_valid()] += 1

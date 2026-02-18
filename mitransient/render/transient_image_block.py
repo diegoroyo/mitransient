@@ -62,7 +62,8 @@ class TransientImageBlock(mi.Object):
         shape = None
         if self.exhaustive_scan:
             size_flat *= self.laser_scan_height * self.laser_scan_width
-            shape = (size_ext.y, size_ext.x, self.laser_scan_height, self.laser_scan_width, size_ext.z, self.channel_count)
+            shape = (size_ext.y, size_ext.x, self.laser_scan_height,
+                     self.laser_scan_width, size_ext.z, self.channel_count)
         else:
             shape = (size_ext.y, size_ext.x, size_ext.z, self.channel_count)
 
@@ -101,7 +102,7 @@ class TransientImageBlock(mi.Object):
 
     def put_(self, pos: mi.Point3f,
              values: Sequence[mi.Float], active: bool = True,
-             laser_x: mi.UInt = 0, laser_y: mi.UInt = 0):
+             laser_x: mi.UInt = None, laser_y: mi.UInt = None):
         # Check if all sample values are valid
         if self.warn_negative or self.warn_invalid:
             is_valid = True
@@ -131,13 +132,16 @@ class TransientImageBlock(mi.Object):
 
             index = None
             if self.exhaustive_scan:
+                assert laser_x is not None and laser_y is not None, "laser_x and laser_y must be provided for exhaustive scan"
                 index = dr.fma(p.y, self.size_xyt.x, p.x)
                 index = dr.fma(index, self.laser_scan_width, laser_x)
                 index = dr.fma(index, self.laser_scan_height, laser_y)
-                index = dr.fma(index, self.size_xyt.z, p.z) * self.channel_count
+                index = dr.fma(index, self.size_xyt.z, p.z) * \
+                    self.channel_count
             else:
                 index = dr.fma(p.y, self.size_xyt.x, p.x)
-                index = dr.fma(index, self.size_xyt.z, p.z) * self.channel_count
+                index = dr.fma(index, self.size_xyt.z, p.z) * \
+                    self.channel_count
 
             active &= dr.all((0 <= p) & (p < self.size_xyt))
 

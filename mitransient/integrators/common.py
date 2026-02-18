@@ -173,7 +173,7 @@ class TransientADIntegrator(ADIntegrator):
                     add_transient=self.add_transient_f(
                         film=film, pos=pos, ray_weight=weight, sample_scale=1.0 / total_spp
                     ),
-                    pos=pos # Origin position of the ray needed for Confocal captures
+                    pos=pos  # Origin position of the ray needed for Confocal captures
                 )
 
                 # Prepare an ImageBlock as specified by the film
@@ -263,7 +263,7 @@ class TransientADIntegrator(ADIntegrator):
                     δaovs=None,
                     state_in=None,
                     active=mi.Bool(True),
-                    add_transient=lambda _, __, ___, ____: None,
+                    add_transient=lambda *args, **kwargs: None,
                     pos=pos
                 )
 
@@ -297,7 +297,7 @@ class TransientADIntegrator(ADIntegrator):
                 block.set_coalesce(block.coalesce() and spp_i >= 4)
 
                 # NOTE(diego): Mitsuba 3.6.X needs extra care when dealing
-                # with polarized functions, so we'll our version instead
+                # with polarized functions, so we'll use our version instead
                 splat_function = (
                     ADIntegrator._splat_to_block
                     if Version(mi.__version__) >= Version('3.7.0')
@@ -415,9 +415,9 @@ class TransientADIntegrator(ADIntegrator):
         It pre-multiplies the sample scale.
         """
         return (
-            lambda spec, distance, wavelengths, active, laser_x = 0, laser_y = 0: film.add_transient_data(
+            lambda spec, distance, wavelengths, active, laser_x=None, laser_y=None: film.add_transient_data(
                 pos, distance, wavelengths, spec * sample_scale, ray_weight, active,
-                laser_x = laser_x, laser_y = laser_y
+                laser_x=laser_x, laser_y=laser_y
             )
         )
 
