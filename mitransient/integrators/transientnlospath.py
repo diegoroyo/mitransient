@@ -305,8 +305,7 @@ class TransientNLOSPath(TransientADIntegrator):
             assert self.capture_type in CaptureType, \
                 'Unknown capture type, must be one of Single, Confocal or Exhaustive'
             if self.capture_type == CaptureType.Single:
-                laser_dir: mi.Vector3f = trafo.transform_affine(
-                    mi.Vector3f(0, 0, 1))
+                laser_dir: mi.Vector3f = trafo @ mi.Vector3f(0, 0, 1)
 
                 laser_ray = mi.Ray3f(laser_origin, laser_dir)
                 si = scene.ray_intersect(laser_ray)
