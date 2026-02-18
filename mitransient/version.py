@@ -1,5 +1,5 @@
 # mitransient version
-__version__ = '1.2.0'
+__version__ = '1.3.0'
 
 # Mitsuba minimum and maximum compatible versions
 __mi_version_min__ = '3.6.0'
