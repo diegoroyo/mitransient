@@ -94,8 +94,8 @@ class NLOSCaptureMeter(NLOSSensor):
             props.get('account_first_and_last_bounces', True)
 
         if 'account_first_and_last_bounces' in props.keys():
-            print('WARN: account_first_and_last_bounces in nlos_capture_meter has been deprecated. '
-                  'Please, use account_first_and_last_bounces in transient_path_nlos instead.')
+            mi.Log(mi.LogLevel.Warn, 'account_first_and_last_bounces in nlos_capture_meter has been deprecated. '
+                   'Please, use account_first_and_last_bounces in transient_nlos_path instead.')
 
         self._world_transform: Transform4f = \
             Transform4f().translate(
@@ -234,7 +234,6 @@ class NLOSCaptureMeter(NLOSSensor):
     def to_string(self):
         string = f"{type(self).__name__}[\n"
         string += f"  laser_bounce_opl = {self.laser_bounce_opl}, \n"
-        string += f"  account_first_and_last_bounces = {self.account_first_and_last_bounces}, \n"
         string += f"  is_confocal = {self.is_confocal}, \n"
         if self.is_confocal:
             string += f"  laser_target = {self.laser_target}, \n"

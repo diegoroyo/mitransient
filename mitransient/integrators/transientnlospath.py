@@ -314,8 +314,8 @@ class TransientNLOSPath(TransientADIntegrator):
             assert dr.any(si.is_valid()), \
                 ("The sensor did not intersect any geometry in the scene."
                  "Please, make sure it is properly aimed towards the desired relay surface.")
-            print("WARN: part of the sensor scan did not intersect the scene. "
-                  "Results for those scanned points should be ignored.")
+            mi.Log(mi.LogLevel.Warn, "Part of the sensor scan did not intersect the scene. "
+                   "Results for those scanned points should be ignored.")
 
         # prepare laser sampling by precomputing the laser focusing point in the geometry
         if self.laser_sampling:
@@ -374,8 +374,8 @@ class TransientNLOSPath(TransientADIntegrator):
                         assert dr.any(si.is_valid()), \
                             ("The emitter did not intersect any geometry in the scene. "
                              "Please, make sure it is properly aimed towards the desired relay surface.")
-                        print("WARN: part of the laser scan did not intersect the scene. "
-                              "Results for those illumination points should be ignored.")
+                        mi.Log(mi.LogLevel.Warn, "Part of the laser scan did not intersect the scene. "
+                               "Results for those illumination points should be ignored.")
 
                     self.laser_targets: mi.Point3f = si.p
 

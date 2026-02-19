@@ -52,6 +52,11 @@ def check_compatibility():
     mitsuba_supported_latest = Version(__mi_version_latest__)
     mitsuba_supported_max = Version(__mi_version_max__)
 
+    if mitsuba_version == Version('3.7.1'):
+        mi.Log(mi.LogLevel.Warn,
+               f'Mitsuba v{mitsuba_version} has a known issue that causes it to crash when used with mitransient. '
+               f'To avoid this, downgrade Mitsuba to v3.7.0 (You can use the command `pip install -U mitsuba==3.7.0`).')
+
     if mitsuba_version < mitsuba_supported_min:
         raise RuntimeError(
             f'mitransient v{mitransient_version} only supports Mitsuba 3 at least v{mitsuba_supported_min} and strictly less than v{mitsuba_supported_max}. '
