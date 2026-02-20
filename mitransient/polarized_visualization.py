@@ -9,7 +9,6 @@
 from enum import Enum
 import mitsuba as mi
 import numpy as np
-import cv2
 import os
 
 
@@ -27,7 +26,8 @@ def plot_to_numpy(fig):
     return np.moveaxis(np.asarray(buf)[:, :, :-1], [0, 1, 2], [1, 2, 0])
 
 
-DisplayMethod = Enum('DisplayMethod', [('ShowVideo', 1), ('SaveVideo', 2), ('SaveFrames', 3)])
+DisplayMethod = Enum(
+    'DisplayMethod', [('ShowVideo', 1), ('SaveVideo', 2), ('SaveFrames', 3)])
 
 
 def show_video_polarized(stokes, degree_of_polarization, angle_of_polarization, type_of_polarization, chirality, save_path=None,
@@ -49,7 +49,9 @@ def show_video_polarized(stokes, degree_of_polarization, angle_of_polarization, 
     """
     import logging
     import matplotlib.pyplot as plt
-    logging.getLogger('matplotlib').setLevel(logging.ERROR)  # Supress matplotlib warnings
+    import cv2
+    logging.getLogger('matplotlib').setLevel(
+        logging.ERROR)  # Supress matplotlib warnings
 
     stokes_np = np.array(stokes)
     timebins = stokes.shape[-2]
