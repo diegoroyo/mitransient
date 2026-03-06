@@ -115,13 +115,14 @@ class TransientNLOSPath(TransientADIntegrator):
          (default: false)
 
      * - capture_type
-       - |string or int|
+       - string | int
        - 'Single' (or 1) performs an NLOS capture with only one illumination point.
          'Confocal' (or 2) performs a capture with the same number of illumination
          and scanned points, where the laser always aims at the current scanned point.
          In 'Exhaustive' (or 3) captures, each time the sensor scans a point the laser illuminates
          its complete grid. 
          See also ``transient_hdr_film`` and its ``exhautive_scan`` parameter. (default: 'Single')
+
      * - force_equal_illumination_scanning
        - |bool|
        - Forces the illumination points to be the same as the scanned points,
