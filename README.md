@@ -62,7 +62,7 @@ If you use our code in your project, please consider citing us using the followi
 ```bibtex
 @misc{royo2025mitransient,
       title={mitransient: Transient light transport in Mitsuba 3}, 
-      author={Diego Royo and Jorge Garcia-Pueyo and Miguel Crespo and Óscar Pueyo-Ciutad and Guillermo Enguita and Diego Bielsa},
+      author={Diego Royo and Jorge Garcia-Pueyo and Miguel Crespo and Guillermo Enguita and Óscar Pueyo-Ciutad and Diego Bielsa},
       year={2025},
       eprint={2510.25660},
       archivePrefix={arXiv},
