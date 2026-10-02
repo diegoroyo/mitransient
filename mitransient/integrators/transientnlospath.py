@@ -274,8 +274,27 @@ class TransientNLOSPath(TransientADIntegrator):
 
             # self.hidden_geometries_distribution = mi.DiscreteDistribution(pdf_hidden_area)
             # ------------------------------------------------------------------------------------
+            scene_shapes = scene.shapes()
+            shape_ids = [shape.id() for shape in scene_shapes]
+
+            # Mitsuba does not guarantee that scene.shapes() preserves a stable
+            # ordering after scene optimization. When possible, use shape IDs to
+            # define a canonical ordering for the HGS discrete distribution.
+            #
+            # Keep the original ordering as a fallback for scenes without unique,
+            # non-empty IDs to preserve the existing behavior.
+            if (all(shape_ids)
+                    and len(set(shape_ids)) == len(shape_ids)):
+                shape_indices = sorted(
+                    range(len(scene_shapes)),
+                    key=lambda i: shape_ids[i]
+                )
+            else:
+                shape_indices = list(range(len(scene_shapes)))
+
             surface_areas = []
-            for shape in scene.shapes():
+            for shape_index in shape_indices:
+                shape = scene_shapes[shape_index]
                 surface_areas.append(
                     0.0 if (shape == sensor.get_shape()
                             and not self.hg_sampling_includes_relay_wall) else shape.surface_area()[0]
@@ -288,6 +307,7 @@ class TransientNLOSPath(TransientADIntegrator):
                 raise AssertionError('Hidden geometry sampling is activated, '
                                      'but the hidden geometry in the scene has zero surface area?')
 
+            self.hidden_geometry_shape_indices = mi.UInt(shape_indices)
             self.hidden_geometries_distribution = mi.DiscreteDistribution(
                 surface_areas)
 
@@ -422,8 +442,10 @@ class TransientNLOSPath(TransientADIntegrator):
                 sample2.x, active)
         sample2.x = new_sample
 
+        shape_index = dr.gather(
+            mi.UInt, self.hidden_geometry_shape_indices, index, active)
         shape: mi.ShapePtr = dr.gather(
-            mi.ShapePtr, scene.shapes_dr(), index, active)
+            mi.ShapePtr, scene.shapes_dr(), shape_index, active)
         ps = shape.sample_position(ref.time, sample2, active)
         ps.pdf *= shape_pdf
 
