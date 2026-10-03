@@ -86,9 +86,12 @@ exclude_patterns = ['_build', 'Thumbs.db',
 # -- Options for HTML output -------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#options-for-html-output
 
+html_logo = '../.images/mitransient_logo.png'
+html_favicon = '../.images/mitransient_logo.png'
 html_title = 'mitransient'
 html_theme = 'furo'
 html_static_path = ['_static']
+html_css_files = ['theme_overrides.css']
 
 # Force pygments style in dark mode back to the light variant
 pygments_dark_style = 'tango'

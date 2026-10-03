@@ -1,5 +1,5 @@
 <div align="center">
-<img align="center" src="https://github.com/mitsuba-renderer/mitsuba2/raw/master/docs/images/logo_plain.png" width="90" height="90"/>
+<img align="center" src="https://raw.githubusercontent.com/diegoroyo/mitransient/main/.images/mitransient_logo.png" width="90" height="93"/>
 </div>
 
 <!-- PROJECT LOGO -->
