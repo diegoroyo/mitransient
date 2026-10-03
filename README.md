@@ -1,5 +1,5 @@
 <div align="center">
-<img align="center" src="https://raw.githubusercontent.com/diegoroyo/mitransient/main/.images/mitransient_logo.png" width="90" height="93"/>
+<img align="center" src="https://raw.githubusercontent.com/diegoroyo/mitransient/main/.images/mitransient_logo.png" width="90"/>
 </div>
 
 <!-- PROJECT LOGO -->
