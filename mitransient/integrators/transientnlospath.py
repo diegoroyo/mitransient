@@ -151,6 +151,13 @@ class TransientNLOSPath(TransientADIntegrator):
          If True, ray directions are sampled using the Hidden Geometry Sampling technique.
          See [Royo2022] for more information about Hidden Geometry Sampling (default: false)
 
+     * - nlos_hidden_geometry_sampling_max_depth
+       - |int|
+       - Limits Hidden Geometry Sampling to path vertices with depth smaller than
+         this value. A value of 1 therefore applies HGS only at the first path
+         vertex (depth 0). A value of -1 disables the depth limit and preserves
+         the previous behavior. (default: -1)
+
      * - nlos_hidden_geometry_sampling_do_rroulette
        - |bool|
        - Only relevant when `nlos_hidden_geometry_sampling` is True.
@@ -235,6 +242,12 @@ class TransientNLOSPath(TransientADIntegrator):
             'nlos_laser_sampling', False)
         self.hg_sampling: bool = props.get(
             'nlos_hidden_geometry_sampling', False)
+        self.hg_sampling_max_depth: int = props.get(
+            'nlos_hidden_geometry_sampling_max_depth', -1)
+        if self.hg_sampling_max_depth == 0 or self.hg_sampling_max_depth < -1:
+            raise RuntimeError(
+                'nlos_hidden_geometry_sampling_max_depth must be -1 '
+                'or a positive integer')
         self.hg_sampling_do_rroulette = (
             props.get('nlos_hidden_geometry_sampling_do_rroulette', False)
             and
@@ -247,6 +260,17 @@ class TransientNLOSPath(TransientADIntegrator):
         )
         self.account_first_and_last_bounces: bool = props.get(
             'account_first_and_last_bounces', False)
+
+    def _apply_hg_sampling_depth_limit(
+            self, depth: mi.UInt32, do_hg_sample: mi.Bool,
+            pdf_bsdf_method: mi.Float) -> Tuple[mi.Bool, mi.Float]:
+        if self.hg_sampling_max_depth != -1:
+            hg_sampling_active = depth < self.hg_sampling_max_depth
+            do_hg_sample &= hg_sampling_active
+            pdf_bsdf_method = dr.select(
+                hg_sampling_active, pdf_bsdf_method, mi.Float(1.0))
+
+        return do_hg_sample, pdf_bsdf_method
 
     def prepare(self, scene: mi.Scene, sensor: mi.Sensor, seed: mi.UInt32, spp: int, aovs: List):
         # prepare laser sampling
@@ -829,6 +853,10 @@ class TransientNLOSPath(TransientADIntegrator):
                 # only one option
                 do_hg_sample = mi.Bool(self.hg_sampling)
                 pdf_bsdf_method = mi.Float(1.0)
+
+            do_hg_sample, pdf_bsdf_method = \
+                self._apply_hg_sampling_depth_limit(
+                    depth, do_hg_sample, pdf_bsdf_method)
 
             active_hg = active_next & do_hg_sample
             bsdf_sample_hg, bsdf_weight_hg = self.hidden_geometry_sample(
