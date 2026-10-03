@@ -35,7 +35,6 @@ class PhasorImageBlock(mi.ImageBlock):
             border=False,
             normalize=False,
             coalesce=False,
-            compensate=False,
             warn_negative=warn_negative,
             warn_invalid=warn_invalid)
 

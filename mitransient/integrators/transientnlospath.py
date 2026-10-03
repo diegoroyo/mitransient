@@ -380,7 +380,7 @@ class TransientNLOSPath(TransientADIntegrator):
                 self.laser_targets: mi.Point3f = si.p
             elif self.capture_type == CaptureType.Confocal:
                 # In a confocal capture the illuminated point is always the same measured point
-                self.laser_targets: mi.Point3f = self.sensor_targets
+                self.laser_targets: mi.Point3f = dr.copy(self.sensor_targets)
             else:  # CaptureType.Exhaustive
                 sensor_params = mi.traverse(scene.sensors()[0])
                 self.laser_resolution = mi.ScalarVector2u([sensor_params["film.laser_scan_width"],
@@ -389,7 +389,7 @@ class TransientNLOSPath(TransientADIntegrator):
                     assert dr.all(self.scan_resolution == self.laser_resolution), \
                         ("Sensor and laser scan resolution must be equal if "
                          "force_equal_illumination_scanning is set to True")
-                    self.laser_targets: mi.Point3f = self.sensor_targets
+                    self.laser_targets: mi.Point3f = dr.copy(self.sensor_targets)
                 else:
                     # Create a copy of the original emitter with a higher FOV
                     # Illuminated points will be obtained from a discrete ray scan inside this new FOV

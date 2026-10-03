@@ -30,8 +30,8 @@ def tonemap_grad_transient(transient, axis_video=2):
     tnp_tonemapped /= max_val
     tnp_tonemapped = np.clip(tnp_tonemapped, -1, 1)
     nt = tnp.shape[axis_video]
-    from matplotlib import cm
-    colormap = cm.get_cmap('coolwarm')
+    import matplotlib as mpl
+    colormap = mpl.colormaps['coolwarm']
     for i in range(nt):
         frame = tnp_tonemapped[:, :, i, 0]
         frame_norm = (frame + 1) / 2

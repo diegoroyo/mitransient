@@ -23,7 +23,7 @@ setup(
         "numpy",
     ],
     extras_require={
-        'recommended': ['matplotlib', 'opencv-python', 'ipython'],
+        'recommended': ['matplotlib>=3.9.0', 'opencv-python', 'ipython'],
     },
     long_description=readme,
     long_description_content_type="text/markdown",
