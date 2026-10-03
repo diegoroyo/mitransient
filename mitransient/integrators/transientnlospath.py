@@ -705,7 +705,7 @@ class TransientNLOSPath(TransientADIntegrator):
 
         bs: mi.BSDFSample3f = dr.zeros(mi.BSDFSample3f)
         bs.wo = wo
-        bs.pdf = ps_hg.pdf * dr.sqr(dist) / dr.abs(cos_theta_g)
+        bs.pdf = ps_hg.pdf * dr.square(dist) / dr.abs(cos_theta_g)
         bs.eta = 1.0
         bs.sampled_type = mi.UInt32(mi.BSDFFlags.Reflection)
         bs.sampled_component = 0

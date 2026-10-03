@@ -6,6 +6,7 @@ def integrator():
         'nlos_laser_sampling': True,
         'nlos_hidden_geometry_sampling': True,
         'nlos_hidden_geometry_sampling_includes_relay_wall': False,
+        'capture_type': 'single',
         'temporal_filter': 'box',
     }
 
@@ -39,8 +40,7 @@ def laser():
     }
 
 
-def sensor(capture_type, *, sx=1, sy=1, spp=5000):
-    # TODO add confocal and exhaustive parameters/etc
+def sensor(sx=1, sy=1, spp=5000):
     return {
         'type': 'nlos_capture_meter',
         'sampler': {
@@ -85,7 +85,7 @@ def test00_Z_single():
     import mitransient as mitr
     sx, sy = 4, 2
     relay_wall_obj = mi.load_dict(relay_wall(
-        lambda: sensor('single', sx=sx, sy=sy, spp=1)))
+        lambda: sensor(sx=sx, sy=sy, spp=1)))
     laser_obj = mi.load_dict(laser())
     scene = mi.load_dict(
         {
@@ -102,17 +102,10 @@ def test00_Z_single():
         relay_wall_obj,
         laser_obj)
 
-    transient_integrator = scene.integrator()
-    transient_integrator.prepare_transient(scene, sensor=0)
-
     # Render the scene and develop the data
-    data_steady, data_transient = transient_integrator.render(scene)
+    data_steady, data_transient = mi.render(scene)
     # And evaluate the output to launch the corresponding kernel
     dr.eval(data_steady, data_transient)
 
-    # FIXME the data is transposed when comparing steady and transient
-    # TAL expects (sx, sy) format for data_transient, does not care about
-    # data_steady
-    # maybe this is just not a problem
     assert data_steady.shape == (sy, sx, 3)
-    assert data_transient.shape == (sx, sy, 300, 3)
+    assert data_transient.shape == (sy, sx, 300, 3)
