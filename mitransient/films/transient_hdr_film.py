@@ -158,16 +158,17 @@ class TransientHDRFilm(mi.Film):
             rfilter=self.rfilter()
         )
 
-    def gather_derivatives_at_distance(self, pos, δL, distance: mi.Float):
+    def gather_derivatives_at_distance(self, pos, δL, distance: mi.Float, δL_steady=None):
         pos_distance = (distance - self.start_opl) / self.bin_width_opl
-        coords = mi.Vector3f(pos.x, pos.y, pos_distance)
-        indices = dr.fma(coords.x, self.size().y * self.temporal_bins,
-                         dr.fma(coords.y, self.temporal_bins, coords.z))
-        alpha = mi.has_flag(self.flags(), mi.FilmFlags.Alpha)
-        color_channels = len(self.channels) - (2 if alpha else 1)
-        active_g = (indices > 0) & (
-            indices < dr.prod(δL.shape) // color_channels)
-        result = dr.gather(mi.Spectrum, δL, indices, active=active_g)
+        p = mi.Point3i(dr.floor(mi.Point3f(pos.x, pos.y, pos_distance))) - self.crop_offset_xyt
+        index = dr.fma(p.y, self.size().x, p.x)
+        active_g = dr.all((p >= 0) & (p < self.crop_size_xyt))
+        result = dr.gather(mi.Spectrum, δL, mi.UInt32(
+            dr.fma(index, self.temporal_bins, p.z)), active=active_g)
+        if δL_steady is not None:
+            # the steady image receives contributions from all distances
+            result += dr.gather(mi.Spectrum, δL_steady, mi.UInt32(index),
+                                active=dr.all((p.xy >= 0) & (p.xy < self.crop_size_xyt.xy)))
         return result
 
     def prepare_transient_(self, aovs: Sequence[str]):

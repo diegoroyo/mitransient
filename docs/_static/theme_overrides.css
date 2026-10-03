@@ -1,0 +1,8 @@
+/* Sidebar logo and title, matching mitsuba.readthedocs.io */
+.sidebar-brand-text {
+    text-align: center;
+}
+
+.sidebar-logo {
+    max-width: 25%;
+}

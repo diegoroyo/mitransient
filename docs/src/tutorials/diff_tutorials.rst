@@ -12,6 +12,6 @@ enabling applications such as inverse rendering and optimization in the transien
       
       ../examples/diff-transient/backward_transient
       ../examples/diff-transient/backward_steady
-      ../examples/diff-transient/forward_inverse_rendering_cbox
-      ../examples/diff-transient/forward_inverse_rendering_staircase
+      ../examples/diff-transient/forward_differentiable_rendering_cbox
+      ../examples/diff-transient/forward_differentiable_rendering_staircase
 

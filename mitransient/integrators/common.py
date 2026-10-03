@@ -361,9 +361,15 @@ class TransientADIntegrator(ADIntegrator):
                 # otherwise you should use splatting_and_backward_gradient_image
                 # from the original mitsuba3 code
                 h, w, t, c = grad_in_transient.shape
-                δL = grad_in_transient + \
-                    dr.reshape(grad_in_steady, (h, w, 1, c))
-                δL = dr.reshape(dr.moveaxis(δL, -1, 0), (c, h*w*t))
+                δL = dr.reshape(dr.moveaxis(grad_in_transient, -1, 0), (c, h*w*t))
+                δL_steady = mi.Spectrum(
+                    dr.reshape(dr.moveaxis(grad_in_steady, -1, 0), (c, h*w)))
+
+                # Reads the adjoint radiance of the pixel / time bin that a
+                # contribution of this sample at a given distance falls into
+                def gather_δL(δL, distance):
+                    return film.gather_derivatives_at_distance(
+                        pos, δL, distance, δL_steady) * weight / spp_i
 
                 # Launch the Monte Carlo sampling process in primal mode
                 # NOTE(diego): we only do this to get state_out to pass it to the function below
@@ -375,11 +381,12 @@ class TransientADIntegrator(ADIntegrator):
                     ray=ray,
                     depth=mi.UInt32(0),
                     β=β_init(sensor, ray),
-                    δL=None,
+                    δL=δL,
                     δaovs=None,
                     state_in=None,
                     active=mi.Bool(True),
                     add_transient=lambda *args, **kwargs: None,
+                    gather_derivatives_at_distance=gather_δL,
                     pos=pos
                 )
 
@@ -400,8 +407,7 @@ class TransientADIntegrator(ADIntegrator):
                     state_in=state_out,
                     active=mi.Bool(True),
                     add_transient=lambda *args, **kwargs: None,
-                    gather_derivatives_at_distance=lambda δL, distance:
-                        film.gather_derivatives_at_distance(pos, δL, distance),
+                    gather_derivatives_at_distance=gather_δL,
                     pos=pos
                 )
 

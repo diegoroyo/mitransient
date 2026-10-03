@@ -156,6 +156,9 @@ class TransientPRBVolpathIntegrator(TransientADIntegrator):
         specular_chain = mi.Bool(True)
 
         distance = mi.Float(0.0)                      # Distance of the path
+        # Backward mode (and its primal pass) weights each contribution by the
+        # adjoint radiance at its own time bin, so 'L' is already weighted
+        weighted = gather_derivatives_at_distance is not None
 
         # Correct for camera unwarping
         if self.camera_unwarp:
@@ -243,7 +246,7 @@ class TransientPRBVolpathIntegrator(TransientADIntegrator):
                 if dr.hint(not is_primal and dr.grad_enabled(weight), mode='scalar'):
                     Lo = dr.detach(
                         dr.select(active_medium | escaped_medium, L / dr.maximum(1e-8, weight), 0.0))
-                    dr.backward(δL * weight * Lo)
+                    dr.backward(weight * Lo)
 
                 phase_ctx = mi.PhaseFunctionContext(sampler)
                 phase = mei.medium.phase_function()
@@ -275,9 +278,10 @@ class TransientPRBVolpathIntegrator(TransientADIntegrator):
                 emitted = emitter.eval(si, active_e)
                 contrib = dr.select(count_direct, β * emitted,
                                     β * mis_weight(last_scatter_direction_pdf, emitter_pdf) * emitted)
-                L[active_e] += dr.detach(contrib if is_primal else -contrib)
+                w_e = gather_derivatives_at_distance(δL, distance) if weighted else 1
+                L[active_e] += dr.detach(w_e * contrib if is_primal else -w_e * contrib)
                 if dr.hint(not is_primal and dr.grad_enabled(contrib), mode='scalar'):
-                    dr.backward(δL * contrib)
+                    dr.backward(w_e * contrib)
 
                 if is_primal:
                     add_transient(contrib, distance, ray.wavelengths, active_e)
@@ -314,17 +318,17 @@ class TransientPRBVolpathIntegrator(TransientADIntegrator):
 
                     contrib = β * nee_weight * \
                         mis_weight(ds.pdf, nee_directional_pdf) * emitted
-                    L[active_e] += dr.detach(contrib if is_primal else -contrib)
+                    w_em = gather_derivatives_at_distance(
+                        δL, distance + ds.dist * η) if weighted else 1
+                    L[active_e] += dr.detach(w_em * contrib if is_primal else -w_em * contrib)
 
                     if dr.hint(not is_primal, mode='scalar'):
                         self.sample_emitter(mei, si, active_e_medium, active_e_surface,
                                             scene, nee_sampler, medium, channel, active_e, adj_emitted=contrib,
-                                            δL=δL, mode=mode)
+                                            δL=w_em, mode=mode)
 
                         if dr.hint(dr.grad_enabled(nee_weight) or dr.grad_enabled(emitted), mode='scalar'):
-                            δL_read = gather_derivatives_at_distance(
-                                δL, distance + ds.dist * η)
-                            dr.backward(δL_read * contrib)
+                            dr.backward(w_em * contrib)
 
                     if is_primal:
                         add_transient(contrib, distance + ds.dist *
@@ -350,7 +354,7 @@ class TransientPRBVolpathIntegrator(TransientADIntegrator):
                         dr.detach(dr.select(act_medium_scatter, L /
                                   dr.maximum(1e-8, phase_eval), 0.0))
                     if mode == dr.ADMode.Backward:
-                        dr.backward_from(δL * Lo)
+                        dr.backward_from(Lo)
                     else:
                         δL += dr.forward_to(Lo)
 
@@ -377,8 +381,7 @@ class TransientPRBVolpathIntegrator(TransientADIntegrator):
                         dr.detach(dr.select(active_surface, L /
                                   dr.maximum(1e-8, bsdf_eval), 0.0))
                     if dr.hint(mode == dr.ADMode.Backward, mode='scalar'):
-                        δL_read = gather_derivatives_at_distance(δL, distance)
-                        dr.backward_from(δL_read * Lo)
+                        dr.backward_from(Lo)
                     else:
                         δL_part = dr.forward_to(Lo)
                         add_transient(δL_part, distance,

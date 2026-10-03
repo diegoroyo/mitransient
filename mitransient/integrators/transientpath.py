@@ -124,6 +124,10 @@ class TransientPath(TransientADIntegrator):
         η = mi.Float(1)                               # Index of refraction
         active = mi.Bool(active)                      # Active SIMD lanes
         distance = mi.Float(0.0)                      # Distance of the path
+        # Backward mode (and its primal pass) weights each contribution by the
+        # adjoint radiance at its own time bin, so 'L' is already weighted
+        weighted = gather_derivatives_at_distance is not None
+        δβ = mi.Spectrum(0)                           # Forward mode: d(log β)
 
         # Variables caching information from the previous bounce
         prev_si = dr.zeros(mi.SurfaceInteraction3f)
@@ -178,6 +182,7 @@ class TransientPath(TransientADIntegrator):
             # Add transient contribution because of emitter found
             if primal:
                 add_transient(Le, distance, ray.wavelengths, active)
+            w_e = gather_derivatives_at_distance(δL, distance) if weighted else 1
 
             # ---------------------- Emitter sampling ----------------------
 
@@ -216,6 +221,8 @@ class TransientPath(TransientADIntegrator):
             if primal:
                 add_transient(Lr_dir, distance + ds.dist *
                               η, ray.wavelengths, active)
+            w_em = gather_derivatives_at_distance(
+                δL, distance + ds.dist * η) if weighted else 1
 
             # ------------------ Detached BSDF sampling -------------------
 
@@ -227,7 +234,7 @@ class TransientPath(TransientADIntegrator):
                 bsdf_weight, -bsdf_sample.wo, si.wi)
 
             # ---- Update loop variables based on current interaction -----
-            L = (L + Le + Lr_dir) if primal else (L - Le - Lr_dir)
+            L = (L + w_e * Le + w_em * Lr_dir) if primal else (L - w_e * Le - w_em * Lr_dir)
             ray = si.spawn_ray(si.to_world(bsdf_sample.wo))
             η *= bsdf_sample.eta
             β = β * bsdf_weight
@@ -307,13 +314,18 @@ class TransientPath(TransientADIntegrator):
 
                     # Propagate derivatives from/to 'Lo' based on 'mode'
                     if dr.hint(mode == dr.ADMode.Backward, mode='scalar'):
-                        δL_read = gather_derivatives_at_distance(δL, distance)
-                        dr.backward_from(δL_read * Lo)
+                        dr.backward_from(w_e * Le + w_em * Lr_dir + Lr_ind)
                     else:
-                        δL_part = dr.forward_to(Lo)
-                        add_transient(δL_part, distance,
-                                      ray.wavelengths, True)
-                        δL += δL_part
+                        # Path throughput derivatives (δβ) of previous
+                        # vertices also affect this vertex's contributions
+                        δLe, δLr_dir, δtmp = dr.forward_to(Le, Lr_dir, tmp)
+                        δLe += δβ * Le
+                        δLr_dir += δβ * Lr_dir
+                        add_transient(δLe, distance, ray.wavelengths, active)
+                        add_transient(δLr_dir, distance + ds.dist * η,
+                                      ray.wavelengths, active)
+                        δL += δLe + δLr_dir
+                        δβ += δtmp
 
             depth[si.is_valid()] += 1
             active = active_next

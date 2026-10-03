@@ -538,11 +538,11 @@ class TransientNLOSPath(TransientADIntegrator):
                 active_e &= depth > 2
             Lr_dir[active_e] = β * bsdf_spec * em_weight
 
-        if primal:
-            # Only take into account the distance of the last bounce if required
-            if self.account_first_and_last_bounces:
-                distance += ds.dist * η
+        # Only take into account the distance of the last bounce if required
+        if self.account_first_and_last_bounces:
+            distance += ds.dist * η
 
+        if primal:
             # Add the transient contribution, taking into account the
             # laser illumination position if the capture is Exhaustive
             laser_x = laser_y = 0
@@ -552,7 +552,8 @@ class TransientNLOSPath(TransientADIntegrator):
             add_transient(Lr_dir, distance, si.wavelengths,
                           active_e, laser_x, laser_y)
 
-        return Lr_dir
+        # The distance is needed by sample() to place the derivatives in time
+        return Lr_dir, distance
 
     @dr.syntax
     def emitter_laser_targets_sample(
@@ -577,8 +578,9 @@ class TransientNLOSPath(TransientADIntegrator):
 
         # 2. Evaluate BSDF to desired direction
         wo = si.to_local(d)
-        bsdf_spec = bsdf.eval(ctx=bsdf_ctx, si=si, wo=wo, active=active_e)
-        bsdf_spec = si.to_world_mueller(bsdf_spec, -wo, si.wi)
+        with dr.resume_grad(when=mode != dr.ADMode.Primal):
+            bsdf_spec = bsdf.eval(ctx=bsdf_ctx, si=si, wo=wo, active=active_e)
+            bsdf_spec = si.to_world_mueller(bsdf_spec, -wo, si.wi)
 
         ray_bsdf.maxt = dr.inf
         si_bsdf: mi.SurfaceInteraction3f = scene.ray_intersect(
@@ -594,7 +596,8 @@ class TransientNLOSPath(TransientADIntegrator):
         #              (similar to sampling an area light)
         #              divide by pdf
         pdf_ls *= dr.square(distance_laser) / mi.Frame3f.cos_theta(wl)
-        bsdf_spec /= pdf_ls
+        with dr.resume_grad(when=mode != dr.ADMode.Primal):
+            β_next = β * bsdf_spec / pdf_ls
 
         bsdf_next = si_bsdf.bsdf(ray=ray_bsdf)
 
@@ -605,7 +608,7 @@ class TransientNLOSPath(TransientADIntegrator):
         # 3. Combine laser + emitter sampling
         return self.emitter_nee_sample(
             mode=mode, scene=scene, sampler=sampler, si=si_bsdf,
-            bsdf=bsdf_next, bsdf_ctx=bsdf_ctx, β=β * bsdf_spec, distance=distance + distance_laser * η, η=η,
+            bsdf=bsdf_next, bsdf_ctx=bsdf_ctx, β=β_next, distance=distance + distance_laser * η, η=η,
             depth=depth+1, active_e=active_e, add_transient=add_transient, focus_laser=True,
             laser_x=laser_x, laser_y=laser_y)
 
@@ -668,10 +671,12 @@ class TransientNLOSPath(TransientADIntegrator):
                     mode=mode, scene=scene, sampler=sampler, si=si, laser_targets=laser_targets,
                     bsdf=bsdf, bsdf_ctx=bsdf_ctx, β=β, distance=distance, η=η,
                     depth=depth+1, active_e=active_e, add_transient=add_transient,
-                    laser_x=laser_x, laser_y=laser_y)
+                    laser_x=laser_x, laser_y=laser_y)[0]
 
                 i += 1
-            return Lr_dir / (laser_resolution_x * laser_resolution_y)
+            # NOTE: each laser point has its own distance, but exhaustive
+            # capture is primal-only, so the returned distance is unused
+            return Lr_dir / (laser_resolution_x * laser_resolution_y), distance
 
         # Evaluate the contribution of only one illuminated point,
         # in the case of Single and Confocal captures
@@ -762,6 +767,10 @@ class TransientNLOSPath(TransientADIntegrator):
         η = mi.Float(1)                               # Index of refraction
         active = mi.Bool(active)                      # Active SIMD lanes
         distance = mi.Float(ray.time)                 # Distance of the path
+        # Backward mode (and its primal pass) weights each contribution by the
+        # adjoint radiance at its own time bin, so 'L' is already weighted
+        weighted = gather_derivatives_at_distance is not None
+        δβ = mi.Spectrum(0)                           # Forward mode: d(log β)
 
         # Variables caching information from the previous bounce
         prev_si = dr.zeros(mi.SurfaceInteraction3f)
@@ -821,6 +830,7 @@ class TransientNLOSPath(TransientADIntegrator):
             if primal and self.capture_type != CaptureType.Exhaustive:
                 add_transient(Le, distance, ray.wavelengths,
                               active, laser_x, laser_y)
+            w_e = gather_derivatives_at_distance(δL, distance) if weighted else 1
 
             # ---------------------- Emitter sampling ----------------------
 
@@ -832,11 +842,13 @@ class TransientNLOSPath(TransientADIntegrator):
                 bsdf.flags(), mi.BSDFFlags.Smooth)
 
             # Uses NEE or laser sampling depending on self.laser_sampling
-            Lr_dir = emitter_sample_f(
+            Lr_dir, distance_em = emitter_sample_f(
                 mode, scene, sampler,
                 si, bsdf, bsdf_ctx,
                 β, distance, η, depth,
                 active_em, add_transient, pos=pos)
+            w_em = gather_derivatives_at_distance(
+                δL, distance_em) if weighted else 1
 
             # ------------------ Detached BSDF sampling -------------------
 
@@ -878,7 +890,7 @@ class TransientNLOSPath(TransientADIntegrator):
 
             # ---- Update loop variables based on current interaction -----
 
-            L = (L + Le + Lr_dir) if primal else (L - Le - Lr_dir)
+            L = (L + w_e * Le + w_em * Lr_dir) if primal else (L - w_e * Le - w_em * Lr_dir)
             ray = si.spawn_ray(si.to_world(bsdf_sample.wo))
             η *= bsdf_sample.eta
             β = mi.Spectrum(β * bsdf_weight / pdf_bsdf_method)
@@ -958,13 +970,19 @@ class TransientNLOSPath(TransientADIntegrator):
 
                     # Propagate derivatives from/to 'Lo' based on 'mode'
                     if dr.hint(mode == dr.ADMode.Backward, mode='scalar'):
-                        δL_read = gather_derivatives_at_distance(δL, distance)
-                        dr.backward_from(δL_read * Lo)
+                        dr.backward_from(w_e * Le + w_em * Lr_dir + Lr_ind)
                     else:
-                        δL_part = dr.forward_to(Lo)
-                        add_transient(δL_part, distance,
-                                      ray.wavelengths, True, laser_x, laser_y)
-                        δL += δL_part
+                        # Path throughput derivatives (δβ) of previous
+                        # vertices also affect this vertex's contributions
+                        δLe, δLr_dir, δtmp = dr.forward_to(Le, Lr_dir, tmp)
+                        δLe += δβ * Le
+                        δLr_dir += δβ * Lr_dir
+                        add_transient(δLe, distance, ray.wavelengths,
+                                      active, laser_x, laser_y)
+                        add_transient(δLr_dir, distance_em,
+                                      ray.wavelengths, active, laser_x, laser_y)
+                        δL += δLe + δLr_dir
+                        δβ += δtmp
 
             depth[si.is_valid()] += 1
             active = active_next
