@@ -3,8 +3,8 @@ __version__ = '1.3.0'
 
 # Mitsuba minimum and maximum compatible versions
 __mi_version_min__ = '3.6.0'
-__mi_version_latest__ = '3.8.0'
-__mi_version_max__ = '3.9.0'
+__mi_version_latest__ = '3.9.1'
+__mi_version_max__ = '3.10.0'
 
 
 class Version:
@@ -13,7 +13,7 @@ class Version:
         if len(data) != 3:
             raise RuntimeError(
                 f'Version string {string} expected to have three numbers')
-        self.version = (data[0], data[1], data[2])
+        self.version = (int(data[0]), int(data[1]), int(data[2]))
 
     def __eq__(self, other):
         return self.version == other.version

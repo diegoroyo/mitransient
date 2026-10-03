@@ -18,9 +18,12 @@ setup(
     author_email='droyo@unizar.es',
     license='BSD',
     packages=find_packages(),
-    install_requires=[f"mitsuba>={__mi_version_min__},<{__mi_version_max__}"],
+    install_requires=[
+        f"mitsuba>={__mi_version_min__},<{__mi_version_max__}",
+        "numpy",
+    ],
     extras_require={
-        'recommended': ['numpy', 'matplotlib', 'opencv-python'],
+        'recommended': ['matplotlib', 'opencv-python', 'ipython'],
     },
     long_description=readme,
     long_description_content_type="text/markdown",
