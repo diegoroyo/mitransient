@@ -9,11 +9,14 @@ __mi_version_max__ = '3.10.0'
 
 class Version:
     def __init__(self, string) -> None:
-        data = string.split('.')
-        if len(data) != 3:
+        # Only the leading major.minor.patch numbers are compared, so that
+        # strings such as '3.9.1.dev0' or '3.9.1rc1' are also accepted
+        import re
+        match = re.match(r'^\s*v?(\d+)\.(\d+)\.(\d+)', string)
+        if match is None:
             raise RuntimeError(
-                f'Version string {string} expected to have three numbers')
-        self.version = (int(data[0]), int(data[1]), int(data[2]))
+                f'Version string {string} expected to start with three numbers')
+        self.version = tuple(int(x) for x in match.groups())
 
     def __eq__(self, other):
         return self.version == other.version
@@ -57,12 +60,15 @@ def check_compatibility():
                f'Mitsuba v{mitsuba_version} has a known issue that causes it to crash when used with mitransient. '
                f'To avoid this, upgrade Mitsuba to v3.8.0 or higher (You can use the command `pip install -U mitsuba==3.8.0`).')
 
+    supported = True
     if mitsuba_version < mitsuba_supported_min:
-        raise RuntimeError(
+        supported = False
+        mi.Log(mi.LogLevel.Warn,
             f'mitransient v{mitransient_version} only supports Mitsuba 3 at least v{mitsuba_supported_min} and strictly less than v{mitsuba_supported_max}. '
-            f'You are using Mitsuba ({mitsuba_version}). Please upgrade Mitsuba to v{mitsuba_supported_latest} (You can use the command `pip install -U mitsuba=={mitsuba_supported_max}`).')
-    elif mitsuba_version > mitsuba_supported_max:
-        raise RuntimeError(
+            f'You are using Mitsuba ({mitsuba_version}). Things may not work as expected. Please upgrade Mitsuba to v{mitsuba_supported_latest} (You can use the command `pip install -U mitsuba=={mitsuba_supported_latest}`).')
+    elif mitsuba_version >= mitsuba_supported_max:
+        supported = False
+        mi.Log(mi.LogLevel.Warn,
             f'mitransient v{mitransient_version} only supports Mitsuba 3 at least v{mitsuba_supported_min} and strictly less than v{mitsuba_supported_max}. '
-            f'You are using Mitsuba ({mitsuba_version}). Please downgrade Mitsuba to v{mitsuba_supported_latest} (You can use the command `pip install -U mitsuba=={mitsuba_supported_max}`).')
-    return True
+            f'You are using Mitsuba ({mitsuba_version}). Things may not work as expected. Please downgrade Mitsuba to v{mitsuba_supported_latest} (You can use the command `pip install -U mitsuba=={mitsuba_supported_latest}`).')
+    return supported

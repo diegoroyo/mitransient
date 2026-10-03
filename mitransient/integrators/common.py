@@ -235,7 +235,7 @@ class TransientADIntegrator(ADIntegrator):
             )
 
             if len(samplers_spps) > 1:
-                Log(LogLevel.ERROR,
+                Log(LogLevel.Error,
                     "render_forward is not implemented for >2^26 samples."
                     "Please set spp to a lower value or reduce the dimensions of your image.")
 
@@ -348,7 +348,7 @@ class TransientADIntegrator(ADIntegrator):
             )
 
             if len(samplers_spps) > 1:
-                Log(LogLevel.ERROR,
+                Log(LogLevel.Error,
                     "render_backward is not implemented for >2^26 samples."
                     "Please set spp to a lower value or reduce the dimensions of your image.")
 

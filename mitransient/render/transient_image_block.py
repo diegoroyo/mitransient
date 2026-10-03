@@ -115,10 +115,10 @@ class TransientImageBlock(mi.Object):
                 for k in range(self.channel_count):
                     is_valid &= dr.isfinite(values[k])
 
-            if dr.any(active and not is_valid):
+            if dr.any(active & ~is_valid):
                 log_str = "Invalid sample value: ["
                 for k in range(self.channel_count):
-                    log_str += values[k]
+                    log_str += str(values[k])
                     if k + 1 < self.channel_count:
                         log_str += ", "
                 log_str += "]"
@@ -152,13 +152,10 @@ class TransientImageBlock(mi.Object):
 
     def to_string(self):
         string = f"{type(self).__name__}[\n"
-        string += f"  offset_xyt = {self.offset_xyt}"
+        string += f"  offset_xyt = {self.offset_xyt}, \n"
         string += f"  size_xyt = {self.size_xyt}, \n"
         string += f"  channel_count = {self.channel_count}, \n"
         string += f"  border_size = {self.border_size}, \n"
-        string += f"  normalize = {self.normalize}, \n"
-        string += f"  coalesce = {self.coalesce}, \n"
-        string += f"  compensate = {self.compensate}, \n"
         string += f"  warn_negative = {self.warn_negative}, \n"
         string += f"  warn_invalid = {self.warn_invalid}, \n"
         if self.rfilter:

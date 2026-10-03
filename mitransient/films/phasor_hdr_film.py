@@ -109,11 +109,11 @@ class PhasorHDRFilm(mi.Film):
         # FIXME generate from arbitrary list
         # maybe do Dist1D, or look at specfilm
         # or just dont do wl_mean+wl_sigma, allow for more arbitrary choices
-        self.wl_mean = props.get("wl_mean", mi.Float(100.0))
-        self.wl_sigma = props.get("wl_sigma", mi.Float(1000.0))
-        self.temporal_bins = props.get("temporal_bins", mi.UInt32(4096))
-        self.bin_width_opl = props.get("bin_width_opl", mi.Float(0.003))
-        self.start_opl = props.get("start_opl", mi.Float(0))
+        self.wl_mean = props.get("wl_mean", 100.0)
+        self.wl_sigma = props.get("wl_sigma", 1000.0)
+        self.temporal_bins = props.get("temporal_bins", 4096)
+        self.bin_width_opl = props.get("bin_width_opl", 0.003)
+        self.start_opl = props.get("start_opl", 0.0)
 
         if not (self.crop_size().x == self.size().x and self.crop_size().y == self.size().y):
             mi.Log(mi.LogLevel.Error, "PhasorHDRFilm: crop_size must match size")
@@ -134,8 +134,12 @@ class PhasorHDRFilm(mi.Film):
         frequencies = np.fft.fftfreq(nt, d=self.bin_width_opl)[
             freq_min_idx:freq_max_idx+1].astype(np.float32)
 
+        # the DC component (frequency 0) has an infinite wavelength
+        def wavelength_str(f):
+            return f"{1/f:.4f}m" if f != 0 else "inf (DC)"
+
         mi.Log(mi.LogLevel.Info,
-               f"PhasorHDRFilm: Using {len(frequencies)} wavelengths from {1/frequencies[-1]:.4f}m to {1/frequencies[0]:.4f}m")
+               f"PhasorHDRFilm: Using {len(frequencies)} wavelengths from {wavelength_str(frequencies[-1])} to {wavelength_str(frequencies[0])}")
         self.frequencies = ArrayXf([mi.Float(f) for f in frequencies])
 
     def create_block(self):
@@ -203,7 +207,8 @@ class PhasorHDRFilm(mi.Film):
         return len(self.channels)
 
     def clear(self):
-        self.storage.clear()
+        self.steady.clear()
+        self.phasors.clear()
 
     def develop(self, raw: bool = False):
         steady_image = self.steady.develop(raw=raw)
